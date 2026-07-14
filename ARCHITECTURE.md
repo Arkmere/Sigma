@@ -12,6 +12,10 @@ Alternatives considered: React Native/Expo offers stronger native deployment but
 
 - `src/app/content.ts`: route identifiers, navigation metadata and page copy for the Ticket 1 shell.
 - `src/app/app.ts`: shell rendering, route event binding and settings/theme controls.
+- `src/domain/model.ts`: canonical schema and current-measurement selection.
+- `src/domain/service.ts`: profile, record, history, search and export operations.
+- `src/domain/taxonomy.ts`: initial browse taxonomy.
+- `src/data/repository.ts`: typed versioned persistence boundary.
 - `src/lib/preferences.ts`: framework-neutral local preference utilities.
 - `src/styles.css`: semantic design tokens, responsive layout and component styles.
 - `scripts/build.mjs`: cross-platform static asset preparation after TypeScript compilation.
@@ -24,9 +28,11 @@ Ticket 1 uses a small TypeScript shell controller for route selection. No URL ro
 
 The shell was split into content metadata and rendering code during Ticket 1A. This is a small maintainability improvement that avoids one monolithic controller without prematurely creating a large framework-style folder hierarchy.
 
-## Local persistence direction
+## Local persistence
 
-Theme preference is stored locally in `localStorage` through `src/lib/preferences.ts`. This is shell configuration only, not the canonical measurement database. Ticket 2 should introduce a deliberate local persistence layer, likely IndexedDB via a typed adapter, with structured export capability.
+Theme preference is stored separately through `src/lib/preferences.ts`. Canonical Ticket 2 data uses `LocalStorageRepository`, a typed versioned adapter over browser localStorage. Domain and UI code do not access the storage key directly. The service saves after each mutation and can export a complete versioned JSON snapshot.
+
+LocalStorage keeps the static foundation dependency-free and makes deterministic persistence tests straightforward. Its trade-offs are synchronous access, browser-specific capacity/retention and no Sigma-provided encryption. The repository interface allows a future IndexedDB adapter without changing domain operations.
 
 ## Theme architecture
 
@@ -40,7 +46,7 @@ The app stores a user preference of `system`, `light` or `dark`, resolves it aga
 
 ## Testing architecture
 
-Node built-in tests cover deterministic theme utilities and DOM-like application shell interaction. The behavioural shell tests mount the compiled app against a lightweight test DOM harness, navigate to every primary destination, exercise theme controls and verify local preference persistence. A supplementary source-contract test checks that the shell still contains required destinations and guardrail text.
+Node built-in tests cover profile and record creation, measurement history/current-value rules, provenance, profile isolation, search, export shape, persistence reload and DOM-like route/record rendering. The UI harness is deliberately lightweight and is not a full browser engine.
 
 ## Linting status
 
@@ -68,3 +74,5 @@ No backend, hosted database, authentication provider, analytics, telemetry, adve
 6. Development: build-then-serve Node dev script. Reason: works from a clean checkout. Trade-off: no watch mode yet.
 7. Testing: Node built-in test runner with a lightweight DOM harness. Reason: no browser dependency while still testing behaviour. Trade-off: not a full browser or native-device test.
 8. Linting: remove misleading lint script. Reason: `npm run lint` must mean real linting. Trade-off: linting remains a known limitation until a real linter is added.
+9. Ticket 2 persistence: versioned localStorage repository. Reason: isolated, dependency-free local authority suitable for this static demo. Trade-off: synchronous, capacity-limited and not encrypted by Sigma.
+10. Measurement history: immutable child values with derived current selection. Reason: provenance and earlier facts cannot be accidentally overwritten. Trade-off: editing metadata and richer correction workflows remain future work.

@@ -12,7 +12,7 @@ Sigma is a private, local-first personal and family measurement vault. It record
 Sigma is not a fitness tracker, health-analysis app, weight-loss app, medical diagnosis system, fashion or fit recommendation engine, or social network.
 
 ## Current demo scope
-Ticket 1 provides only the app shell, navigation, theme preference and constitutional documentation. It does not implement profile persistence, measurement records, conversions, Family logic, sharing, payments, sync or integrations.
+Tickets 1–2 provide the app shell and a single-device local record-keeping engine: independent and managed profiles, physical measurement history, standard sizes, brand/product fit facts, search, provenance and JSON backup. They do not implement conversions, Family relationships or sharing, payments, cloud sync, external integrations or permissions.
 
 ## Durable rules
 - Local data is authoritative for the demo.

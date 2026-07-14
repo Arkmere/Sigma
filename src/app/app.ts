@@ -1,135 +1,109 @@
-import { pages, navigationItems, type PageContent, type RouteId } from './content.js';
-import {
-  readThemePreference,
-  resolveTheme,
-  type ThemePreference,
-  writeThemePreference,
-} from '../lib/preferences.js';
+import { navigationItems, type RouteId } from './content.js';
+import { LocalStorageRepository } from '../data/repository.js';
+import { SigmaService } from '../domain/service.js';
+import { categories, measurementOptions } from '../domain/taxonomy.js';
+import { currentMeasurementValue, type BrandFit, type PhysicalMeasurement, type Profile, type StandardSize } from '../domain/model.js';
+import { readThemePreference, resolveTheme, type ThemePreference, writeThemePreference } from '../lib/preferences.js';
 
-function prefersDark(): boolean {
-  return globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
-}
+type RecordMode = 'measurement' | 'standard_size' | 'brand_fit';
+const today = () => new Date().toISOString().slice(0, 10);
+const e = (value: unknown) => String(value ?? '').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character]!);
+const field = (data: FormData, name: string) => String(data.get(name) ?? '').trim();
 
-export function mountApp(root: HTMLElement): void {
+export function mountApp(root: HTMLElement, service = new SigmaService(new LocalStorageRepository(globalThis.localStorage))): void {
   let route: RouteId = 'profiles';
   let themePreference = readThemePreference();
+  let recordMode: RecordMode = 'measurement';
+  let search = '';
+  let category = '';
+  let editingProfileId = '';
 
   const render = () => {
-    const resolvedTheme = resolveTheme(themePreference, prefersDark());
-
-    document.documentElement.dataset.theme = resolvedTheme;
+    const resolved = resolveTheme(themePreference, globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false);
+    document.documentElement.dataset.theme = resolved;
     document.documentElement.dataset.themePreference = themePreference;
     writeThemePreference(themePreference);
+    root.innerHTML = renderShell(route, service, { recordMode, search, category, editingProfileId, themePreference, resolved });
 
-    root.innerHTML = renderShell(route, themePreference, resolvedTheme);
-
-    root.querySelectorAll<HTMLButtonElement>('[data-route]').forEach((button) => {
-      button.addEventListener('click', () => {
-        route = button.dataset.route as RouteId;
-        render();
-      });
-    });
-
-    root.querySelectorAll<HTMLInputElement>('input[name="theme"]').forEach((input) => {
-      input.addEventListener('change', () => {
-        themePreference = input.value as ThemePreference;
-        render();
-      });
-    });
+    root.querySelectorAll<HTMLElement>('[data-route]').forEach((button) => button.addEventListener('click', () => { route = button.dataset.route as RouteId; render(); }));
+    root.querySelectorAll<HTMLElement>('[data-select-profile]').forEach((button) => button.addEventListener('click', () => { service.selectProfile(button.dataset.selectProfile!); route = 'measurements'; render(); }));
+    root.querySelectorAll<HTMLElement>('[data-edit-profile]').forEach((button) => button.addEventListener('click', () => { editingProfileId = button.dataset.editProfile!; render(); }));
+    root.querySelectorAll<HTMLElement>('[data-record-mode]').forEach((button) => button.addEventListener('click', () => { recordMode = button.dataset.recordMode as RecordMode; render(); }));
+    root.querySelectorAll<HTMLInputElement>('input[name="theme"]').forEach((input) => input.addEventListener('change', () => { themePreference = input.value as ThemePreference; render(); }));
+    root.querySelector<HTMLFormElement>('#profile-form')?.addEventListener('submit', (event) => { event.preventDefault(); saveProfile(service, new FormData(event.currentTarget as HTMLFormElement), editingProfileId); editingProfileId = ''; render(); });
+    root.querySelector<HTMLFormElement>('#record-form')?.addEventListener('submit', (event) => { event.preventDefault(); saveRecord(service, recordMode, new FormData(event.currentTarget as HTMLFormElement)); render(); });
+    root.querySelectorAll<HTMLFormElement>('[data-history-form]').forEach((form) => form.addEventListener('submit', (event) => { event.preventDefault(); addHistory(service, form.dataset.historyForm!, new FormData(event.currentTarget as HTMLFormElement)); render(); }));
+    root.querySelectorAll<HTMLFormElement>('[data-edit-measurement-form]').forEach((form) => form.addEventListener('submit', (event) => { event.preventDefault(); const data = new FormData(event.currentTarget as HTMLFormElement); service.updateMeasurement(form.dataset.editMeasurementForm!, { label: field(data, 'label'), measurementType: field(data, 'measurementType'), category: field(data, 'category') }); render(); }));
+    root.querySelectorAll<HTMLFormElement>('[data-edit-size-form]').forEach((form) => form.addEventListener('submit', (event) => { event.preventDefault(); const data = new FormData(event.currentTarget as HTMLFormElement); service.updateStandardSize(form.dataset.editSizeForm!, { label: field(data, 'label'), category: field(data, 'category'), sizingSystem: field(data, 'sizingSystem'), sizeValue: field(data, 'sizeValue'), notes: field(data, 'notes') || undefined }); render(); }));
+    root.querySelectorAll<HTMLFormElement>('[data-edit-brand-form]').forEach((form) => form.addEventListener('submit', (event) => { event.preventDefault(); const data = new FormData(event.currentTarget as HTMLFormElement); service.updateBrandFit(form.dataset.editBrandForm!, { category: field(data, 'category'), brand: field(data, 'brand'), productName: field(data, 'productName') || undefined, productLine: field(data, 'productLine') || undefined, sizingSystem: field(data, 'sizingSystem'), sizeValue: field(data, 'sizeValue'), fitNotes: field(data, 'fitNotes') || undefined }); render(); }));
+    root.querySelector<HTMLInputElement>('#record-search')?.addEventListener('input', (event) => { search = (event.currentTarget as HTMLInputElement).value; render(); });
+    root.querySelector<HTMLSelectElement>('#category-filter')?.addEventListener('change', (event) => { category = (event.currentTarget as HTMLSelectElement).value; render(); });
+    root.querySelector<HTMLElement>('#export-data')?.addEventListener('click', () => downloadBackup(service));
+    root.querySelector<HTMLElement>('#reset-data')?.addEventListener('click', () => { if (globalThis.confirm('Delete all Sigma profiles and records stored in this browser?')) { service.reset(); route = 'profiles'; render(); } });
   };
-
   render();
 }
 
-function renderShell(
-  route: RouteId,
-  themePreference: ThemePreference,
-  resolvedTheme: 'light' | 'dark',
-): string {
-  return `<div class="app-shell">
-    <aside class="sidebar" aria-label="Primary">
-      <div class="brand">
-        <div class="brand-mark" aria-hidden="true">Σ</div>
-        <div>
-          <p>Sigma</p>
-          <span>Private measurement vault</span>
-        </div>
-      </div>
-      <nav>
-        <ul>${navigationItems.map((item) => renderNavigationItem(item, route)).join('')}</ul>
-      </nav>
-      <div class="sidebar-note">
-        <strong>Local-first shell</strong>
-        <span>No account, cloud, analytics, telemetry or runtime permissions.</span>
-      </div>
-    </aside>
-    <main class="content" tabindex="-1">
-      ${route === 'settings' ? renderSettings(themePreference, resolvedTheme) : renderPage(pages[route])}
-    </main>
-  </div>`;
+function renderShell(route: RouteId, service: SigmaService, state: { recordMode: RecordMode; search: string; category: string; editingProfileId: string; themePreference: ThemePreference; resolved: 'light' | 'dark' }): string {
+  const data = service.snapshot();
+  return `<div class="app-shell"><aside class="sidebar" aria-label="Primary"><div class="brand"><div class="brand-mark" aria-hidden="true">Σ</div><div><p>Sigma</p><span>Private measurement vault</span></div></div><nav><ul>${navigationItems.map((item) => `<li><button data-route="${item.id}" class="${route === item.id ? 'active' : ''}" ${route === item.id ? 'aria-current="page"' : ''}><span aria-hidden="true">${item.icon}</span><span class="nav-label">${item.label}</span><span class="nav-short">${item.shortLabel}</span></button></li>`).join('')}</ul></nav><div class="sidebar-note"><strong>${data.profiles.length} local profile${data.profiles.length === 1 ? '' : 's'}</strong><span>No account, cloud, analytics, telemetry or runtime permissions.</span></div></aside><main class="content" tabindex="-1">${renderRoute(route, service, state)}</main></div>`;
 }
 
-function renderNavigationItem(
-  item: (typeof navigationItems)[number],
-  activeRoute: RouteId,
-): string {
-  const isActive = item.id === activeRoute;
-  const current = isActive ? 'aria-current="page"' : '';
-
-  return `<li>
-    <button data-route="${item.id}" class="${isActive ? 'active' : ''}" ${current}>
-      <span aria-hidden="true">${item.icon}</span>
-      <span class="nav-label">${item.label}</span>
-      <span class="nav-short">${item.shortLabel}</span>
-    </button>
-  </li>`;
+function renderRoute(route: RouteId, service: SigmaService, state: { recordMode: RecordMode; search: string; category: string; editingProfileId: string; themePreference: ThemePreference; resolved: 'light' | 'dark' }): string {
+  if (route === 'profiles') return renderProfiles(service, state.editingProfileId);
+  if (route === 'measurements') return renderRecords(service, state.recordMode, state.search, state.category);
+  if (route === 'privacy') return renderPrivacy(service);
+  if (route === 'settings') return renderSettings(service, state.themePreference, state.resolved);
+  return header('Explicit consent', 'Family', 'Family and sharing are not implemented yet.') + empty('Family', 'Connection will never mean automatic access.', 'Managed profiles in Ticket 2 are local records only. No Family membership, adult connections or sharing grants exist.');
 }
 
-function renderPage(page: PageContent): string {
-  const bullets = page.bullets.length > 0
-    ? `<ul>${page.bullets.map((bullet) => `<li>${bullet}</li>`).join('')}</ul>`
-    : '';
-
-  return `<header class="page-header">
-    <p class="kicker">${page.kicker}</p>
-    <h1>${page.title}</h1>
-    <p>${page.description}</p>
-  </header>
-  <section class="empty-state" aria-labelledby="${page.eyebrow}-title">
-    <p class="eyebrow">${page.eyebrow}</p>
-    <h2 id="${page.eyebrow}-title">${page.emptyTitle}</h2>
-    <div class="empty-copy"><p>${page.body}</p></div>
-    ${bullets}
-  </section>`;
+function renderProfiles(service: SigmaService, editingId: string): string {
+  const data = service.snapshot(); const editing = data.profiles.find((profile) => profile.id === editingId);
+  const cards = data.profiles.map((profile) => `<article class="record-card ${profile.id === data.activeProfileId ? 'selected' : ''}"><div><p class="eyebrow">${profile.profileType === 'independent' ? 'Independent' : 'Managed'} profile</p><h2>${e(profile.displayName)}</h2><p>${e(profile.relationshipLabel || (profile.profileType === 'managed' ? 'Locally managed dependant' : 'Independent local record'))}</p></div><div class="button-row"><button class="secondary" data-select-profile="${profile.id}">${profile.id === data.activeProfileId ? 'View records' : 'Select profile'}</button><button class="quiet" data-edit-profile="${profile.id}">Edit</button></div></article>`).join('');
+  return header('Person first', 'Profiles', 'Independent and managed profiles stored only in this browser.') + `<div class="page-grid"><section><div class="section-heading"><div><p class="eyebrow">Local profiles</p><h2>${data.profiles.length ? 'Choose a person' : 'Start with a person, not an account.'}</h2></div></div>${cards || `<div class="empty-inline"><p>No profiles exist yet. Create your independent profile or a locally managed profile.</p></div>`}</section><section class="form-card"><p class="eyebrow">${editing ? 'Edit profile' : 'New profile'}</p><h2>${editing ? `Update ${e(editing.displayName)}` : 'Create a local profile'}</h2><form id="profile-form" class="stacked-form"><label>Display name<input name="displayName" required value="${e(editing?.displayName)}"></label><label>Profile type<select name="profileType"><option value="independent" ${editing?.profileType === 'independent' ? 'selected' : ''}>Independent</option><option value="managed" ${editing?.profileType === 'managed' ? 'selected' : ''}>Managed</option></select></label><label>Relationship label <span>optional</span><input name="relationshipLabel" value="${e(editing?.relationshipLabel)}" placeholder="e.g. Self, daughter, dependant"></label><label>Date of birth <span>optional</span><input type="date" name="dateOfBirth" value="${e(editing?.dateOfBirth)}"></label><label>Notes <span>optional</span><textarea name="notes">${e(editing?.notes)}</textarea></label><button type="submit">${editing ? 'Save profile' : 'Create profile'}</button></form></section></div>`;
 }
 
-function renderSettings(pref: ThemePreference, resolvedTheme: 'light' | 'dark'): string {
-  const options: ThemePreference[] = ['system', 'light', 'dark'];
-  const controls = options.map((option) => {
-    const checked = pref === option ? 'checked' : '';
-    const label = option[0].toUpperCase() + option.slice(1);
-
-    return `<label>
-      <input type="radio" name="theme" value="${option}" ${checked} />
-      <span>${label}</span>
-    </label>`;
-  }).join('');
-
-  return `<header class="page-header">
-    <p class="kicker">Local preferences</p>
-    <h1>Settings</h1>
-    <p>Shell-level preferences stored locally on this device, without an account or cloud service.</p>
-  </header>
-  <section class="settings-card" aria-labelledby="theme-heading">
-    <div>
-      <p class="eyebrow">Appearance</p>
-      <h2 id="theme-heading">Theme preference</h2>
-      <p>Choose light, dark or system. The preference is saved locally in this browser for the demo shell.</p>
-    </div>
-    <fieldset class="theme-options">
-      <legend class="sr-only">Theme preference</legend>
-      ${controls}
-    </fieldset>
-    <p class="metadata">Resolved theme: ${resolvedTheme}. Build: Ticket 1 shell.</p>
-  </section>`;
+function renderRecords(service: SigmaService, mode: RecordMode, search: string, category: string): string {
+  const profile = service.activeProfile();
+  if (!profile) return header('Record keeping', 'Measurements & Sizes', 'Recorded facts remain separate and local.') + empty('No active profile', 'Create a profile before adding records.', 'Profiles keep every measurement and size tied to the correct person.');
+  const records = service.records(profile.id, search, category);
+  return header('Record keeping', 'Measurements & Sizes', `Showing private local records for ${e(profile.displayName)}.`) + `<div class="profile-banner"><span>Active profile</span><strong>${e(profile.displayName)}</strong><button class="quiet" data-route="profiles">Switch</button></div><div class="record-tabs" role="group" aria-label="Record type"><button data-record-mode="measurement" class="${mode === 'measurement' ? 'active' : ''}">Physical</button><button data-record-mode="standard_size" class="${mode === 'standard_size' ? 'active' : ''}">Standard sizes</button><button data-record-mode="brand_fit" class="${mode === 'brand_fit' ? 'active' : ''}">Brand & product</button></div><div class="toolbar"><label>Search<input id="record-search" value="${e(search)}" placeholder="Label, brand, category…"></label><label>Category<select id="category-filter"><option value="">All categories</option>${categoryOptions(category)}</select></label></div><div class="page-grid records-layout"><section><div class="section-heading"><div><p class="eyebrow">Browse</p><h2>${modeLabel(mode)}</h2></div><span>${records[mode === 'measurement' ? 'measurements' : mode === 'standard_size' ? 'standardSizes' : 'brandFits'].length} records</span></div>${renderRecordList(mode, records)}</section>${renderRecordForm(profile, mode)}</div>`;
 }
+
+function renderRecordList(mode: RecordMode, records: ReturnType<SigmaService['records']>): string {
+  if (mode === 'measurement') return records.measurements.map(renderMeasurement).join('') || noRecords('physical measurements');
+  if (mode === 'standard_size') return records.standardSizes.map(renderSize).join('') || noRecords('standard sizes');
+  return records.brandFits.map(renderBrand).join('') || noRecords('brand or product fit records');
+}
+
+function renderMeasurement(record: PhysicalMeasurement): string {
+  const current = currentMeasurementValue(record)!; const history = [...record.values].sort((a, b) => b.measuredAt.localeCompare(a.measuredAt));
+  return `<article class="record-card"><div class="record-title"><div><p class="eyebrow">${e(record.category)}</p><h3>${e(record.label)}</h3></div><strong class="record-value">${current.value} ${e(current.unit)}</strong></div><p class="metadata">Current · measured ${formatDate(current.measuredAt)} · ${sourceLabel(current.sourceType, current.sourceName)}</p><details><summary>History & provenance (${history.length})</summary><ol class="history-list">${history.map((value, index) => `<li><strong>${value.value} ${e(value.unit)}</strong><span>${index === 0 ? 'Current · ' : ''}${formatDate(value.measuredAt)}</span><small>${sourceLabel(value.sourceType, value.sourceName)} · recorded ${formatDate(value.recordedAt)}${value.notes ? ` · ${e(value.notes)}` : ''}</small></li>`).join('')}</ol><form class="inline-form" data-history-form="${record.id}"><label>New value<input name="value" type="number" step="any" required></label><label>Unit<input name="unit" required value="${e(current.unit)}"></label><label>Measured<input name="measuredAt" type="date" required value="${today()}"></label><label>Notes<input name="notes"></label><button type="submit">Add newer value</button></form></details><details><summary>Edit measurement details</summary><form class="inline-form compact-edit" data-edit-measurement-form="${record.id}"><label>Label<input name="label" required value="${e(record.label)}"></label><label>Type<input name="measurementType" required value="${e(record.measurementType)}"></label><label>Category<select name="category">${categoryOptions(record.category)}</select></label><button type="submit">Save details</button></form></details></article>`;
+}
+
+function renderSize(record: StandardSize): string { return `<article class="record-card"><div class="record-title"><div><p class="eyebrow">${e(record.category)}</p><h3>${e(record.label)}</h3></div><strong class="record-value">${e(record.sizingSystem)} ${e(record.sizeValue)}</strong></div><p class="metadata">Recorded ${formatDate(record.recordedAt)} · ${sourceLabel(record.sourceType, record.sourceName)} · no conversion applied</p>${record.notes ? `<p>${e(record.notes)}</p>` : ''}<details><summary>Edit recorded size</summary><form class="inline-form compact-edit" data-edit-size-form="${record.id}"><label>Label<input name="label" required value="${e(record.label)}"></label><label>Category<select name="category">${categoryOptions(record.category)}</select></label><label>System<input name="sizingSystem" required value="${e(record.sizingSystem)}"></label><label>Size<input name="sizeValue" required value="${e(record.sizeValue)}"></label><label>Notes<input name="notes" value="${e(record.notes)}"></label><button type="submit">Save edit</button></form></details></article>`; }
+function renderBrand(record: BrandFit): string { return `<article class="record-card"><div class="record-title"><div><p class="eyebrow">${e(record.category)}</p><h3>${e(record.brand)}${record.productName ? ` · ${e(record.productName)}` : ''}</h3></div><strong class="record-value">${e(record.sizingSystem)} ${e(record.sizeValue)}</strong></div><p class="metadata">Recorded fact · ${formatDate(record.recordedAt)} · ${sourceLabel(record.sourceType, record.sourceName)}</p>${record.fitNotes ? `<p>${e(record.fitNotes)}</p>` : ''}<details><summary>Edit recorded fact</summary><form class="inline-form compact-edit" data-edit-brand-form="${record.id}"><label>Brand<input name="brand" required value="${e(record.brand)}"></label><label>Product<input name="productName" value="${e(record.productName)}"></label><label>Line<input name="productLine" value="${e(record.productLine)}"></label><label>Category<select name="category">${categoryOptions(record.category)}</select></label><label>System<input name="sizingSystem" required value="${e(record.sizingSystem)}"></label><label>Size<input name="sizeValue" required value="${e(record.sizeValue)}"></label><label>Fit notes<input name="fitNotes" value="${e(record.fitNotes)}"></label><button type="submit">Save edit</button></form></details></article>`; }
+
+function renderRecordForm(profile: Profile, mode: RecordMode): string {
+  const common = `<input type="hidden" name="profileId" value="${profile.id}"><label>Category<select name="category" required>${categoryOptions('')}</select></label>`;
+  let fields = '';
+  if (mode === 'measurement') fields = `${common}<label>Measurement<label class="sr-only" for="measurementType">Measurement</label><select id="measurementType" name="measurementType">${Object.entries(measurementOptions).flatMap(([group, labels]) => labels.map((label) => `<option value="${e(label)}">${e(group)} · ${e(label)}</option>`)).join('')}</select></label><label>Label<input name="label" required placeholder="e.g. Waist"></label><div class="form-row"><label>Value<input name="value" type="number" step="any" required></label><label>Unit<input name="unit" required placeholder="cm, kg, in…"></label></div><label>Measured on<input name="measuredAt" type="date" required value="${today()}"></label><label>Source name <span>optional</span><input name="sourceName" placeholder="e.g. Measured at home"></label><label>Notes <span>optional</span><textarea name="notes"></textarea></label>`;
+  if (mode === 'standard_size') fields = `${common}<label>Label<input name="label" required placeholder="e.g. General shoe size"></label><div class="form-row"><label>Sizing system<input name="sizingSystem" required placeholder="UK, EU, brand system…"></label><label>Recorded size<input name="sizeValue" required placeholder="9, Q, W34 L30…"></label></div><label>Notes <span>optional</span><textarea name="notes"></textarea></label>`;
+  if (mode === 'brand_fit') fields = `${common}<label>Brand<input name="brand" required></label><label>Product name <span>optional</span><input name="productName"></label><label>Product line <span>optional</span><input name="productLine"></label><div class="form-row"><label>Sizing system<input name="sizingSystem" required placeholder="UK, US, brand system…"></label><label>Recorded size<input name="sizeValue" required></label></div><label>Fit notes <span>optional</span><textarea name="fitNotes" placeholder="Your recorded experience, not a recommendation"></textarea></label>`;
+  return `<section class="form-card"><p class="eyebrow">Add for ${e(profile.displayName)}</p><h2>New ${modeLabel(mode).toLowerCase()}</h2><form id="record-form" class="stacked-form">${fields}<button type="submit">Save recorded fact</button></form></section>`;
+}
+
+function renderPrivacy(service: SigmaService): string { const data = service.snapshot(); return header('Ownership', 'Privacy', 'Truthful controls for data stored in this browser.') + `<section class="settings-card"><p class="eyebrow">Local-only data</p><h2>Your records remain on this device.</h2><p>Sigma stores ${data.profiles.length} profiles and ${data.measurements.length + data.standardSizes.length + data.brandFits.length} records in this browser. There is no cloud sync, account, telemetry, sharing or production encryption claim.</p><div class="button-row"><button id="export-data">Download JSON backup</button></div><p class="metadata">Visibility is recorded as private. Ticket 2 does not transmit or share it.</p></section>`; }
+function renderSettings(service: SigmaService, pref: ThemePreference, resolved: 'light' | 'dark'): string { return header('Local preferences', 'Settings', 'Appearance and local data controls without an account.') + `<div class="page-grid"><section class="settings-card"><p class="eyebrow">Appearance</p><h2>Theme preference</h2><fieldset class="theme-options"><legend class="sr-only">Theme preference</legend>${(['system', 'light', 'dark'] as ThemePreference[]).map((option) => `<label><input type="radio" name="theme" value="${option}" ${pref === option ? 'checked' : ''}><span>${option[0].toUpperCase() + option.slice(1)}</span></label>`).join('')}</fieldset><p class="metadata">Resolved theme: ${resolved}</p></section><section class="settings-card"><p class="eyebrow">Storage</p><h2>Local data version 1</h2><p>${service.snapshot().profiles.length} profiles are stored locally. Export before clearing if you need a backup.</p><div class="button-row"><button id="export-data">Download JSON backup</button><button id="reset-data" class="danger">Reset local data</button></div></section></div>`; }
+
+function saveProfile(service: SigmaService, data: FormData, editingId: string): void { const input = { displayName: field(data, 'displayName'), profileType: field(data, 'profileType') as Profile['profileType'], relationshipLabel: field(data, 'relationshipLabel'), dateOfBirth: field(data, 'dateOfBirth'), notes: field(data, 'notes') }; editingId ? service.updateProfile(editingId, input) : service.createProfile(input); }
+function saveRecord(service: SigmaService, mode: RecordMode, data: FormData): void { const profileId = field(data, 'profileId'); const recordedAt = new Date().toISOString(); const category = field(data, 'category'); if (mode === 'measurement') { const value = Number(field(data, 'value')); const unit = field(data, 'unit'); service.addMeasurement({ profileId, category, measurementType: field(data, 'measurementType'), label: field(data, 'label'), value, unit, originalValue: value, originalUnit: unit, measuredAt: field(data, 'measuredAt'), recordedAt, sourceType: 'manual', sourceName: field(data, 'sourceName') || undefined, acquisitionMethod: 'manual', notes: field(data, 'notes') || undefined }); } else if (mode === 'standard_size') service.addStandardSize({ profileId, category, label: field(data, 'label'), sizingSystem: field(data, 'sizingSystem'), sizeValue: field(data, 'sizeValue'), recordedAt, sourceType: 'manual', notes: field(data, 'notes') || undefined }); else service.addBrandFit({ profileId, category, brand: field(data, 'brand'), productName: field(data, 'productName') || undefined, productLine: field(data, 'productLine') || undefined, sizingSystem: field(data, 'sizingSystem'), sizeValue: field(data, 'sizeValue'), fitNotes: field(data, 'fitNotes') || undefined, recordedAt, sourceType: 'manual' }); }
+function addHistory(service: SigmaService, id: string, data: FormData): void { const value = Number(field(data, 'value')); const unit = field(data, 'unit'); service.addMeasurementValue(id, { value, unit, originalValue: value, originalUnit: unit, measuredAt: field(data, 'measuredAt'), recordedAt: new Date().toISOString(), sourceType: 'manual', acquisitionMethod: 'manual', notes: field(data, 'notes') || undefined }); }
+function downloadBackup(service: SigmaService): void { const blob = new Blob([JSON.stringify(service.exportBackup(), null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `sigma-backup-${today()}.json`; link.click(); URL.revokeObjectURL(url); }
+function categoryOptions(selected: string): string { return categories.map((item) => `<option value="${e(item)}" ${item === selected ? 'selected' : ''}>${e(item)}</option>`).join(''); }
+function sourceLabel(source: string, name?: string): string { return source === 'manual' ? `Manual${name ? ` · ${e(name)}` : ''}` : e(source.replaceAll('_', ' ')); }
+function formatDate(value: string): string { const date = new Date(`${value.slice(0, 10)}T00:00:00`); return Number.isNaN(date.valueOf()) ? e(value) : new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(date); }
+function modeLabel(mode: RecordMode): string { return mode === 'measurement' ? 'Physical measurements' : mode === 'standard_size' ? 'Standard sizes' : 'Brand & product fit'; }
+function noRecords(label: string): string { return `<div class="empty-inline"><p>No ${label} match this view. Add a recorded fact using the form.</p></div>`; }
+function header(kicker: string, title: string, description: string): string { return `<header class="page-header"><p class="kicker">${e(kicker)}</p><h1>${e(title)}</h1><p>${e(description)}</p></header>`; }
+function empty(eyebrow: string, title: string, body: string): string { return `<section class="empty-state"><p class="eyebrow">${e(eyebrow)}</p><h2>${e(title)}</h2><p>${e(body)}</p></section>`; }

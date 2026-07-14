@@ -1,9 +1,11 @@
 # Privacy Principles
 
-## Current guarantees in Ticket 1
+## Current guarantees through Ticket 2
 - No telemetry, analytics, advertising trackers, hosted authentication, cloud database or runtime OS permission requests are present.
-- Theme preference is stored locally in browser storage.
-- No measurement, profile, health, contact, camera, Bluetooth, location or notification data is collected.
+- Theme preference, profiles and user-entered records are stored locally in browser storage.
+- User data is transmitted nowhere by Sigma. A deliberate JSON download exports a local backup.
+- No health platform, contact, camera, Bluetooth, location or notification data is accessed.
+- Local browser storage and exported JSON are not encrypted by Sigma; no production security claim is made.
 
 ## Architectural intentions
 - User data belongs to the user.
