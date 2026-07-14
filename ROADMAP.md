@@ -1,5 +1,10 @@
-Sigma demo development plan
-Target outcome
+# Sigma Roadmap
+
+This is the authoritative durable master plan for the Sigma demo. It restores the substantive seven-ticket roadmap from the original lowercase `state.md`; `STATE.md` is the factual current implementation state.
+
+## Original Sigma Demo Development Plan
+
+### Target outcome
 
 At the end of the plan, there should be a genuinely usable local-first demo of Sigma that can be run on a phone or desktop development environment and demonstrates the complete product concept.
 
@@ -34,7 +39,7 @@ Production-grade cryptography or backend infrastructure.
 
 However, the architecture should explicitly accommodate them.
 
-Ticket 1 — Project foundation, product constitution and application shell
+## Ticket 1 — Project foundation, product constitution and application shell
 Objective
 
 Create the repository, development foundation, formal product rules, core app shell, navigation system, design system, and architectural boundaries before implementing substantive features.
@@ -133,7 +138,7 @@ Codex instruction
 
 Do not begin implementing the full feature set. This ticket is for project foundations, product rules, architecture, navigation, visual system, and documentation. Read all project documentation before making architectural decisions. Do not invent product behaviour contrary to those documents.
 
-Ticket 2 — Canonical profile, measurement and size record system
+## Ticket 2 — Canonical profile, measurement and size record system
 
 This is the largest and most important ticket.
 
@@ -282,7 +287,7 @@ Export a structured backup of their data if practical within the selected stack.
 
 At this stage Sigma should already be genuinely useful to a single user.
 
-Ticket 3 — International units and sizing conversion engine
+## Ticket 3 — International units and sizing conversion engine
 Objective
 
 Build Sigma's conversion system as a first-class capability, without turning Sigma into a recommendation engine.
@@ -370,7 +375,7 @@ Enter a supported international standard size.
 Switch display system where a valid conversion exists.
 Always see which value was actually recorded.
 Never receive a clothing recommendation.
-Ticket 4 — Family, managed children, consent and granular sharing
+## Ticket 4 — Family, managed children, consent and granular sharing
 Objective
 
 Implement the complete Family concept in demo form.
@@ -469,7 +474,7 @@ Share selected information.
 Revoke access.
 See clearly what every connected person can access.
 Confirm that Family membership does not imply blanket sharing.
-Ticket 5 — Data sources, just-in-time permissions and future measurement acquisition
+## Ticket 5 — Data sources, just-in-time permissions and future measurement acquisition
 Objective
 
 Build the architecture and user experience for future external data sources and camera-based measurement without prematurely implementing expensive integrations.
@@ -594,7 +599,7 @@ Denial does not break unrelated features.
 External source access is narrowly scoped.
 Future camera measurement fits naturally into the data model.
 No irrelevant health data is represented as available for import.
-Ticket 6 — Integrated UX, visual polish and complete demo journey
+## Ticket 6 — Integrated UX, visual polish and complete demo journey
 Objective
 
 Take everything built so far and turn it into one coherent application rather than a collection of completed technical features.
@@ -684,7 +689,7 @@ Acceptance criteria
 
 A new tester should be able to understand what Sigma is, use the principal features, and experience the intended privacy model without needing explanation from the developer.
 
-Ticket 7 — Independent whole-project audit and demo release
+## Ticket 7 — Independent whole-project audit and demo release
 
 I would absolutely include this, even though it is not an implementation ticket in the conventional sense.
 
