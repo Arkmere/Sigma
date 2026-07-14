@@ -1,18 +1,17 @@
 {
-  "name": "sigma",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
   "scripts": {
-    "dev": "node scripts/dev.mjs",
-    "build": "tsc -p tsconfig.build.json && node scripts/build.mjs",
+    "dev": "python3 -m http.server 5173 --directory dist",
+    "build": "tsc -p tsconfig.build.json && cp index.html dist/index.html && cp src/styles.css dist/styles.css && python3 scripts/patch-dist-html.py",
     "typecheck": "tsc -p tsconfig.json --pretty false",
+    "lint": "tsc -p tsconfig.json --pretty false",
     "test": "npm run build && node --test test/*.test.mjs"
   },
-  "devDependencies": {
-    "typescript": "5.9.3"
-  },
+  "dependencies": {},
+  "devDependencies": {},
   "engines": {
     "node": ">=20"
-  }
+  },
+  "private": true,
+  "version": "0.1.0",
+  "name": "sigma"
 }

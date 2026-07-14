@@ -19,6 +19,6 @@ Commands:
 - Install: `npm install`
 - Run: `npm run dev`
 - Test: `npm test`
-- Lint: no lint command exists yet; add a real linter before documenting `npm run lint`.
+- Lint: `npm run lint`
 - Type-check: `npm run typecheck`
 - Build: `npm run build`
