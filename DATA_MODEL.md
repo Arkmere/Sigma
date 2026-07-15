@@ -17,7 +17,17 @@ Only manual acquisition is active. The source vocabulary anticipates `imported_h
 - Standard size: profile, category, label, recorded sizing system/value, date, provenance and notes.
 - Brand fit: profile, category, brand, optional product/product-line, recorded sizing system/value, fit notes, date and provenance.
 
-These are recorded facts. No size conversion, cross-brand inference, or recommendation exists.
+These are recorded facts. Ticket 3 may derive transient standard equivalents for explicitly supported footwear rows, but never changes these records, converts between brands, or makes a recommendation.
+
+## Derived conversions (not persisted)
+
+`ConversionResult` is a typed runtime view with exact-unit or standard-equivalent kind, recorded input, derived output, exactness and source/version metadata. Results are computed through `SigmaService` and do not form part of `SigmaData`.
+
+Exact conversions support length (`mm`, `cm`, `m`, `in`, `ft`) and mass (`g`, `kg`, `oz`, `lb`, `st`). Aliases resolve centrally; unknown units remain valid facts but produce no conversion. Known measurement types constrain dimensional meaning and categorical sizes are not treated as lengths.
+
+Footwear lookup is separate. The adult-simplified ISO 19407:2023 subset contains only the ticket-supplied `UK 9`, `EU 43`, `US Men's 10` row. Adult/child and US Men's/US Women's contexts remain distinct. Generic `US`, unencoded rows and ambiguity return no result.
+
+Ring helpers cover inner circumference and diameter in millimetres and ISO size explicitly represented by circumference. Regional commercial sizes are not inferred.
 
 ## Ownership and visibility
 

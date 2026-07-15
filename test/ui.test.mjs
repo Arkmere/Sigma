@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { mountApp } from '../dist/app/app.js';
 import { LocalStorageRepository } from '../dist/data/repository.js';
 import { SigmaService } from '../dist/domain/service.js';
+import { renderRecords } from '../dist/app/ui/records.js';
 
 class Control {
   constructor(attributes) { this.dataset = attributes; this.value = ''; this.listeners = new Map(); }
@@ -60,4 +61,16 @@ test('profile-aware UI shows physical, standard-size and brand-fit records with 
   const root = new Root(); mountApp(root, service);
   root.querySelectorAll('[data-route]').find((item) => item.dataset.route === 'measurements').click();
   assert.match(root.textContent, /96 cm/); assert.match(root.textContent, /History & provenance \(2\)/); assert.match(root.textContent, /Standard sizes/); assert.match(root.textContent, /Brand & product/);
+});
+
+test('record cards distinguish recorded facts, exact conversions, standard equivalents and sources', () => {
+  const local = storage(); const service = new SigmaService(new LocalStorageRepository(local), () => '2026-07-15T12:00:00Z', (() => { let n = 0; return () => `id-${++n}`; })());
+  const profile = service.createProfile({ displayName: 'Alex', profileType: 'independent' });
+  service.addMeasurement({ profileId: profile.id, measurementType: 'Neck/collar', category: 'Upper body', label: 'Neck / collar', value: 41, unit: 'cm', originalValue: 41, originalUnit: 'cm', measuredAt: '2026-07-15', recordedAt: '2026-07-15', sourceType: 'manual', acquisitionMethod: 'manual' });
+  service.addStandardSize({ profileId: profile.id, category: 'Footwear', label: 'General shoe size', sizingSystem: 'UK', sizeValue: '9', recordedAt: '2026-07-15', sourceType: 'manual' });
+  service.addStandardSize({ profileId: profile.id, category: 'Clothing', label: 'T-shirt', sizingSystem: 'Generic', sizeValue: 'M', recordedAt: '2026-07-15', sourceType: 'manual' });
+  const physical = renderRecords(service, 'measurement', '', '');
+  assert.match(physical, /Recorded directly/); assert.match(physical, /16.14 in/); assert.match(physical, /Exact conversion/); assert.match(physical, /National Institute of Standards and Technology/);
+  const sizes = renderRecords(service, 'standard_size', '', '');
+  assert.match(sizes, /Standard equivalents/); assert.match(sizes, /Approximate standard equivalent/); assert.match(sizes, /ISO 19407:2023/); assert.match(sizes, /No supported deterministic conversion/);
 });

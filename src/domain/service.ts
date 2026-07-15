@@ -1,5 +1,6 @@
 import { currentMeasurementValue, DATA_SCHEMA_VERSION, type BrandFit, type MeasurementValue, type PhysicalMeasurement, type Profile, type SigmaBackup, type SigmaData, type StandardSize } from './model.js';
 import type { DataRepository, LoadResult } from '../data/repository.js';
+import { convertUnit, footwearConversions, measurementDimension, resolveUnit, unitsForDimension, type ConversionResult, type FootwearContext } from '../conversion/registry.js';
 
 type Clock = () => string;
 type IdFactory = () => string;
@@ -97,6 +98,21 @@ export class SigmaService {
   exportBackup(): SigmaBackup { return { product: 'Sigma', exportedAt: this.now(), ...this.snapshot(), schemaVersion: DATA_SCHEMA_VERSION }; }
   reset(): void { this.repository.clear(); this.loadResult = this.repository.load(); this.data = this.loadResult.data; }
   currentValue(record: PhysicalMeasurement) { return currentMeasurementValue(record); }
+  measurementConversions(recordId: string): ConversionResult[] {
+    const record = this.data.measurements.find((item) => item.id === recordId); const current = record && currentMeasurementValue(record);
+    if (!record || !current) return [];
+    const unit = resolveUnit(current.originalUnit); const semanticDimension = measurementDimension(record.measurementType);
+    if (!unit || (semanticDimension && unit.dimension !== semanticDimension)) return [];
+    return unitsForDimension(unit.dimension).flatMap((target) => target.symbol === unit.symbol ? [] : [convertUnit(current.originalValue, unit.symbol, target.symbol, record.id)!]);
+  }
+  standardSizeConversions(recordId: string, context: FootwearContext = 'adult_simplified'): ConversionResult[] {
+    const record = this.data.standardSizes.find((item) => item.id === recordId);
+    return record?.category === 'Footwear' ? footwearConversions(record.sizingSystem, record.sizeValue, context, record.id) : [];
+  }
+  brandFitConversions(recordId: string, context: FootwearContext = 'adult_simplified'): ConversionResult[] {
+    const record = this.data.brandFits.find((item) => item.id === recordId);
+    return record?.category === 'Footwear' ? footwearConversions(record.sizingSystem, record.sizeValue, context, record.id) : [];
+  }
   private requireProfile(id: string): Profile { const profile = this.data.profiles.find((item) => item.id === id); if (!profile) throw new Error('Profile not found.'); return profile; }
   private ensureWritable(): void { if (this.loadResult.status === 'corrupt' || this.loadResult.status === 'unsupported_version') throw new Error('Stored Sigma data must be reset before new data can be saved.'); }
   private makeValue(input: Omit<MeasurementValue, 'id' | 'createdAt'>, createdAt: string): MeasurementValue { return { ...input, id: this.id(), createdAt }; }

@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Ticket 2A data safety and maintainability pass completed. Ready for Ticket 3.
+Ticket 3 international units and sizing conversion engine completed. Ready for Ticket 4.
 
 ## Completed
 
@@ -23,6 +23,10 @@ Ticket 2A data safety and maintainability pass completed. Ready for Ticket 3.
 - Visible data-safety warning for corrupt or unsupported local data.
 - Ticket 2 UI split into shell, profile, record, status, action and shared-HTML modules.
 - Expanded practical starter catalogue across all twelve taxonomy categories.
+- Typed dynamically derived conversion results with source/version provenance; converted values are not persisted.
+- Exact length (`mm`, `cm`, `m`, `in`, `ft`) and mass (`g`, `kg`, `oz`, `lb`, `st`) conversions through canonical bases.
+- Controlled unit entry for known measurements and a limited ISO 19407:2023 adult footwear subset (`UK 9`, `EU 43`, `US Men's 10`).
+- Conservative ring circumference/diameter and explicit ISO circumference-size helpers; no regional lookup.
 
 ## Current Repository State
 
@@ -47,7 +51,9 @@ Ticket 2A data safety and maintainability pass completed. Ready for Ticket 3.
 - Tests use a lightweight DOM harness, not a full browser or native mobile runtime.
 - The development server builds once and does not watch files.
 - No real linter is configured.
-- No conversion engine, Family/sharing, entitlements/payments, cloud sync, accounts, external integrations, OS permissions, camera measurement or production cryptography.
+- The public ISO catalogue does not expose footwear table contents, so only the specification-supplied adult row is encoded; other rows and child conversions return no result.
+- Clothing, hat, glove, regional ring and specialist/equipment conversions are deliberately unsupported rather than guessed.
+- No Family/sharing, entitlements/payments, cloud sync, accounts, external integrations, OS permissions, camera measurement or production cryptography.
 
 ## Important Decisions Made
 
@@ -60,7 +66,8 @@ Ticket 2A data safety and maintainability pass completed. Ready for Ticket 3.
 - Invalid JSON, invalid version-1 structures and broken profile references are surfaced as corrupt without modifying raw storage.
 - Unknown schema versions are surfaced as unsupported and routed through a dedicated migration boundary.
 - Unsafe repository states are read-only until reset so creating a profile cannot overwrite unreadable personal data.
+- Schema version remains 1. Conversion results are transient views over canonical recorded fields and never enter storage or backups.
 
 ## Next Planned Work
 
-Ticket 3: International units and sizing conversion engine, preserving recorded facts separately from converted display values.
+Ticket 4: Family, managed children, consent and granular sharing.

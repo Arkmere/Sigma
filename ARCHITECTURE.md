@@ -16,6 +16,7 @@ Alternatives considered: React Native/Expo offers stronger native deployment but
 - `src/domain/model.ts`: canonical schema and current-measurement selection.
 - `src/domain/service.ts`: profile, record, history, search and export operations.
 - `src/domain/taxonomy.ts`: initial browse taxonomy.
+- `src/conversion`: typed results, central units/aliases, dimensional semantics, discrete sizing tables, conservative ring helpers and isolated source metadata.
 - `src/data/repository.ts`: explicit load-status and versioned persistence boundary.
 - `src/data/migrations.ts`: runtime schema validation, referential integrity and migration dispatch.
 - `src/lib/preferences.ts`: framework-neutral local preference utilities.
@@ -32,7 +33,7 @@ The shell was split into content metadata and rendering code during Ticket 1A. T
 
 ## Local persistence
 
-Theme preference is stored separately through `src/lib/preferences.ts`. Canonical Ticket 2 data uses `LocalStorageRepository`, a typed versioned adapter over browser localStorage. Domain and UI code do not access the storage key directly. The service saves after each mutation and can export a complete versioned JSON snapshot.
+Theme preference is stored separately through `src/lib/preferences.ts`. Canonical Ticket 2 data uses `LocalStorageRepository`, a typed versioned adapter over browser localStorage. Domain and UI code do not access the storage key directly. The service saves after each mutation and can export a complete versioned JSON snapshot. Conversion operations are read-only service methods derived at render time; converted values are never persisted or exported and schema version remains 1.
 
 Loads produce `empty`, `ok`, `corrupt`, or `unsupported_version`. Version 1 is runtime-validated before entering the domain, including profile references. Corrupt/unsupported raw storage is preserved; the service exposes the state and blocks mutations until explicit reset. `migrateStoredData` is the single boundary for future schema versions.
 
@@ -60,7 +61,7 @@ No lint command exists after Ticket 1A because the previous command was misleadi
 
 - Source adapters: health platforms, devices, camera and third-party sources must pass allowlisted measurement data into the future record engine.
 - Permission service: future platform permissions must be mediated by a pre-permission explanation flow.
-- Conversion engine: conversions must live outside UI components and preserve original recorded facts.
+- Conversion expansion: add permitted, versioned table rows or categories through registries without moving formulas or tables into UI code.
 - Sharing/consent boundary: connections, grants, revocation and auditability must be independent of Family membership.
 - Entitlements: future paid unlock state must not become a payment SDK dependency.
 
@@ -82,3 +83,6 @@ No backend, hosted database, authentication provider, analytics, telemetry, adve
 10. Measurement history: immutable child values with derived current selection. Reason: provenance and earlier facts cannot be accidentally overwritten. Trade-off: editing metadata and richer correction workflows remain future work.
 11. Ticket 2A data safety: runtime validation and explicit load status. Reason: unreadable personal records must never masquerade as first-run emptiness. Trade-off: recovery/import tooling remains unavailable.
 12. Ticket 2A UI split: orchestration remains in `app.ts`; rendering and form translation live under `src/app/ui`. Reason: Ticket 3 can add display semantics without expanding one monolithic file.
+13. Ticket 3 conversion boundary: exact units, table lookup, source metadata and formatting live under `src/conversion`; UI consumes typed service results.
+14. Ticket 3 ambiguity policy: unsupported units, generic US footwear, missing rows, categorical clothing and regional ring sizes return no result.
+15. Ticket 3 footwear scope: the ISO public catalogue does not publish table rows, so only the ticket-supplied adult simplified UK 9/EU 43/US Men's 10 subset is encoded and labelled as guidance.
