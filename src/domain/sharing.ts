@@ -1,5 +1,11 @@
 import type { BrandFit, PhysicalMeasurement, SharingGrant, SharingScope, SigmaData, StandardSize } from './model.js';
 export type CanonicalRecord = PhysicalMeasurement | StandardSize | BrandFit;
+export function canManageProfile(data: SigmaData, actorId: string, targetId: string): boolean {
+  const actor = data.profiles.find((p) => p.id === actorId);
+  const target = data.profiles.find((p) => p.id === targetId);
+  if (actor?.profileType !== 'independent' || !target) return false;
+  return target.profileType === 'independent' ? actorId === targetId : target.managedByProfileIds?.includes(actorId) === true;
+}
 export const profilesShareFamily = (data: SigmaData, a: string, b: string) => data.familyMemberships.some((m) => m.profileId === a && data.familyMemberships.some((n) => n.familyId === m.familyId && n.profileId === b));
 export const activeConnection = (data: SigmaData, a: string, b: string) => data.adultConnections.some((c) => c.status === 'active' && ((c.initiatorProfileId === a && c.recipientProfileId === b) || (c.initiatorProfileId === b && c.recipientProfileId === a)));
 export function scopeCovers(scope: SharingScope, record: CanonicalRecord): boolean {

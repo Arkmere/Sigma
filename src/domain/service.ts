@@ -1,5 +1,5 @@
 import { currentMeasurementValue, DATA_SCHEMA_VERSION, type AdultConnection, type BrandFit, type Family, type MeasurementValue, type PhysicalMeasurement, type Profile, type SharingGrant, type SharingScope, type SigmaBackup, type SigmaData, type StandardSize } from './model.js';
-import { activeConnection, canCreateGrant, canRevokeGrant, canViewRecord } from './sharing.js';
+import { activeConnection, canCreateGrant, canManageProfile, canRevokeGrant, canViewRecord, profilesShareFamily } from './sharing.js';
 import type { DataRepository, LoadResult } from '../data/repository.js';
 import { convertUnit, footwearConversions, measurementSemantics, resolveUnit, unitsForDimension, type ConversionResult, type FootwearContext } from '../conversion/registry.js';
 
@@ -38,7 +38,7 @@ export class SigmaService {
   createFamily(name: string): Family { this.ensureWritable(); const actor=this.requireActor(); const t=this.now(); const family={id:this.id(),name:name.trim(),createdByProfileId:actor.id,createdAt:t,updatedAt:t}; if(!family.name) throw new Error('Family name is required.'); this.data.families.push(family); this.addMembershipInternal(family.id,actor.id,actor.id,t); this.persist(); return structuredClone(family); }
   addFamilyMember(familyId:string, profileId:string): void { this.ensureWritable(); const actor=this.requireActor(); this.requireFamily(familyId); this.requireProfile(profileId); if(!this.data.familyMemberships.some(m=>m.familyId===familyId&&m.profileId===actor.id)) throw new Error('Actor must belong to the Family.'); this.addMembershipInternal(familyId,profileId,actor.id,this.now()); this.persist(); }
   createManagedProfile(input:{displayName:string; managedKind:'child'|'dependant'; familyId:string; relationshipLabel?:string}):Profile { this.ensureWritable(); const actor=this.requireActor(); this.requireFamily(input.familyId); if(!this.data.familyMemberships.some(m=>m.familyId===input.familyId&&m.profileId===actor.id)) throw new Error('Manager must belong to the Family.'); const t=this.now(); const p:Profile={id:this.id(),displayName:input.displayName.trim(),profileType:'managed',relationshipLabel:clean(input.relationshipLabel),managedKind:input.managedKind,managedByProfileIds:[actor.id],createdAt:t,updatedAt:t}; if(!p.displayName) throw new Error('Display name is required.'); this.data.profiles.push(p); this.addMembershipInternal(input.familyId,p.id,actor.id,t); this.persist(); return structuredClone(p); }
-  assignManager(profileId:string, managerId?:string):void { this.ensureWritable(); const actor=this.requireActor(); const p=this.requireProfile(profileId); if(p.profileType!=='managed') throw new Error('Profile is not managed.'); const manager=this.requireProfile(managerId??actor.id); if(manager.profileType!=='independent' || manager.id!==actor.id) throw new Error('A manager must explicitly act for themselves.'); p.managedByProfileIds=[...new Set([...(p.managedByProfileIds??[]),manager.id])]; p.updatedAt=this.now(); this.persist(); }
+  assignManager(profileId:string, managerId:string):void { this.ensureWritable(); const actor=this.requireActor(); const p=this.requireProfile(profileId); if(p.profileType!=='managed') throw new Error('Profile is not managed.'); const manager=this.requireProfile(managerId); if(manager.profileType!=='independent') throw new Error('A manager must be independent.'); if(p.managedByProfileIds?.includes(manager.id)) throw new Error('Profile already has that manager.'); if(p.managedByProfileIds?.length) { if(!p.managedByProfileIds.includes(actor.id)) throw new Error('Only an existing manager may add another manager.'); } else { const hasFamily=this.data.familyMemberships.some(m=>m.profileId===p.id); if(!hasFamily||!profilesShareFamily(this.data,actor.id,p.id)||manager.id!==actor.id) throw new Error('Legacy initial assignment requires the acting adult to share an existing Family and assign themselves explicitly.'); } if(p.managedKind==='child'&&!profilesShareFamily(this.data,manager.id,p.id)) throw new Error('A child manager must share a Family with the child.'); p.managedByProfileIds=[...(p.managedByProfileIds??[]),manager.id]; p.updatedAt=this.now(); this.persist(); }
   requestConnection(recipientId:string):AdultConnection { this.ensureWritable(); const actor=this.requireActor(); const recipient=this.requireProfile(recipientId); if(recipient.profileType!=='independent'||recipient.id===actor.id) throw new Error('Choose another independent adult.'); if(this.data.adultConnections.some(c=>['pending','active'].includes(c.status)&&((c.initiatorProfileId===actor.id&&c.recipientProfileId===recipient.id)||(c.initiatorProfileId===recipient.id&&c.recipientProfileId===actor.id)))) throw new Error('A pending or active connection already exists.'); const c:AdultConnection={id:this.id(),initiatorProfileId:actor.id,recipientProfileId:recipient.id,status:'pending',requestedAt:this.now()}; this.data.adultConnections.push(c); this.persist(); return structuredClone(c); }
   respondConnection(id:string, accept:boolean):void { this.ensureWritable(); const actor=this.requireActor(); const c=this.requireConnection(id); if(c.status!=='pending'||c.recipientProfileId!==actor.id) throw new Error('Only the recipient may respond to a pending request.'); c.status=accept?'active':'declined'; c.respondedAt=this.now(); this.persist(); }
   disconnect(id:string):void { this.ensureWritable(); const actor=this.requireActor(); const c=this.requireConnection(id); if(c.status!=='active'||![c.initiatorProfileId,c.recipientProfileId].includes(actor.id)) throw new Error('Only a connected participant may disconnect.'); c.status='disconnected'; c.disconnectedAt=this.now(); c.disconnectedByProfileId=actor.id; this.persist(); }
@@ -47,12 +47,18 @@ export class SigmaService {
   sharedRecords(actorId=this.data.activeActorProfileId??'') { const all=[...this.data.measurements,...this.data.standardSizes,...this.data.brandFits]; return all.filter(r=>r.profileId!==actorId&&canViewRecord(this.data,actorId,r)); }
   sharedRecordConversions(actorId:string, recordId:string):ConversionResult[] { if(!this.canViewRecord(actorId,recordId)) return []; if(this.data.measurements.some(r=>r.id===recordId)) return this.measurementConversions(recordId); if(this.data.standardSizes.some(r=>r.id===recordId)) return this.standardSizeConversions(recordId); return this.brandFitConversions(recordId); }
   canViewRecord(actorId:string, recordId:string):boolean { const r=[...this.data.measurements,...this.data.standardSizes,...this.data.brandFits].find(x=>x.id===recordId); return !!r&&canViewRecord(this.data,actorId,r); }
+  canManageProfile(profileId:string):boolean { const actor=this.activeActor(); return !!actor&&canManageProfile(this.data,actor.id,profileId); }
   hasActiveConnection(a:string,b:string):boolean{return activeConnection(this.data,a,b);}
 
-  updateProfile(profileId: string, input: Partial<Pick<Profile, 'displayName' | 'profileType' | 'relationshipLabel' | 'dateOfBirth' | 'notes'>>): Profile {
+  updateProfile(profileId: string, input: Partial<Pick<Profile, 'displayName' | 'relationshipLabel' | 'dateOfBirth' | 'notes'>>): Profile {
     this.ensureWritable();
+    this.requireManagement(profileId);
     const profile = this.requireProfile(profileId);
-    Object.assign(profile, input, { updatedAt: this.now() });
+    if (input.displayName !== undefined) profile.displayName = input.displayName;
+    if ('relationshipLabel' in input) profile.relationshipLabel = clean(input.relationshipLabel);
+    if ('dateOfBirth' in input) profile.dateOfBirth = clean(input.dateOfBirth);
+    if ('notes' in input) profile.notes = clean(input.notes);
+    profile.updatedAt = this.now();
     profile.displayName = profile.displayName.trim();
     if (!profile.displayName) throw new Error('Display name is required.');
     this.persist(); return structuredClone(profile);
@@ -60,7 +66,7 @@ export class SigmaService {
 
   addMeasurement(input: Omit<PhysicalMeasurement, 'id' | 'kind' | 'values' | 'visibility' | 'createdAt' | 'updatedAt'> & Omit<MeasurementValue, 'id' | 'createdAt'>): PhysicalMeasurement {
     this.ensureWritable();
-    this.requireProfile(input.profileId); const timestamp = this.now();
+    this.requireManagement(input.profileId); const timestamp = this.now();
     const value = this.makeValue(input, timestamp);
     const record: PhysicalMeasurement = { id: this.id(), profileId: input.profileId, kind: 'measurement', measurementType: input.measurementType, category: input.category, label: input.label, values: [value], visibility: 'private', createdAt: timestamp, updatedAt: timestamp };
     this.data.measurements.push(record); this.persist(); return structuredClone(record);
@@ -69,18 +75,20 @@ export class SigmaService {
   addMeasurementValue(recordId: string, input: Omit<MeasurementValue, 'id' | 'createdAt'>): PhysicalMeasurement {
     this.ensureWritable();
     const record = this.data.measurements.find((item) => item.id === recordId); if (!record) throw new Error('Measurement not found.');
+    this.requireManagement(record.profileId);
     record.values.push(this.makeValue(input, this.now())); record.updatedAt = this.now(); this.persist(); return structuredClone(record);
   }
 
   updateMeasurement(recordId: string, input: Pick<PhysicalMeasurement, 'label' | 'category' | 'measurementType'>): PhysicalMeasurement {
     this.ensureWritable();
     const record = this.data.measurements.find((item) => item.id === recordId); if (!record) throw new Error('Measurement not found.');
+    this.requireManagement(record.profileId);
     Object.assign(record, input, { updatedAt: this.now() }); this.persist(); return structuredClone(record);
   }
 
   addStandardSize(input: Omit<StandardSize, 'id' | 'kind' | 'visibility' | 'createdAt' | 'updatedAt'>): StandardSize {
     this.ensureWritable();
-    this.requireProfile(input.profileId); const timestamp = this.now();
+    this.requireManagement(input.profileId); const timestamp = this.now();
     const record: StandardSize = { ...input, id: this.id(), kind: 'standard_size', visibility: 'private', createdAt: timestamp, updatedAt: timestamp };
     this.data.standardSizes.push(record); this.persist(); return structuredClone(record);
   }
@@ -88,12 +96,13 @@ export class SigmaService {
   updateStandardSize(recordId: string, input: Pick<StandardSize, 'category' | 'label' | 'sizingSystem' | 'sizeValue' | 'notes'>): StandardSize {
     this.ensureWritable();
     const record = this.data.standardSizes.find((item) => item.id === recordId); if (!record) throw new Error('Standard size not found.');
+    this.requireManagement(record.profileId);
     Object.assign(record, input, { updatedAt: this.now() }); this.persist(); return structuredClone(record);
   }
 
   addBrandFit(input: Omit<BrandFit, 'id' | 'kind' | 'visibility' | 'createdAt' | 'updatedAt'>): BrandFit {
     this.ensureWritable();
-    this.requireProfile(input.profileId); const timestamp = this.now();
+    this.requireManagement(input.profileId); const timestamp = this.now();
     const record: BrandFit = { ...input, id: this.id(), kind: 'brand_fit', visibility: 'private', createdAt: timestamp, updatedAt: timestamp };
     this.data.brandFits.push(record); this.persist(); return structuredClone(record);
   }
@@ -101,6 +110,7 @@ export class SigmaService {
   updateBrandFit(recordId: string, input: Pick<BrandFit, 'category' | 'brand' | 'productName' | 'productLine' | 'sizingSystem' | 'sizeValue' | 'fitNotes'>): BrandFit {
     this.ensureWritable();
     const record = this.data.brandFits.find((item) => item.id === recordId); if (!record) throw new Error('Brand fit not found.');
+    this.requireManagement(record.profileId);
     Object.assign(record, input, { updatedAt: this.now() }); this.persist(); return structuredClone(record);
   }
 
@@ -134,6 +144,7 @@ export class SigmaService {
   }
   private requireProfile(id: string): Profile { const profile = this.data.profiles.find((item) => item.id === id); if (!profile) throw new Error('Profile not found.'); return profile; }
   private requireActor():Profile { const actor=this.activeActor(); if(!actor) throw new Error('Select an independent acting adult.'); return actor; }
+  private requireManagement(profileId:string):Profile { const actor=this.requireActor(); const profile=this.requireProfile(profileId); if(!canManageProfile(this.data,actor.id,profileId)) throw new Error('Acting adult is not authorised to manage this profile.'); return profile; }
   private requireFamily(id:string){const f=this.data.families.find(x=>x.id===id);if(!f)throw new Error('Family not found.');return f;}
   private requireConnection(id:string){const c=this.data.adultConnections.find(x=>x.id===id);if(!c)throw new Error('Connection not found.');return c;}
   private addMembershipInternal(familyId:string,profileId:string,addedByProfileId:string,createdAt:string){if(this.data.familyMemberships.some(m=>m.familyId===familyId&&m.profileId===profileId))throw new Error('Profile is already a Family member.');this.data.familyMemberships.push({id:this.id(),familyId,profileId,addedByProfileId,createdAt});}

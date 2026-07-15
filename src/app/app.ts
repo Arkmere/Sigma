@@ -31,7 +31,7 @@ export function mountApp(root: HTMLElement, service = new SigmaService(new Local
     onForm(root,'#managed-form',(form)=>{const data=new FormData(form);service.createManagedProfile({displayName:field(data,'displayName'),managedKind:field(data,'managedKind') as 'child'|'dependant',familyId:field(data,'familyId')});render();});
     onForm(root,'#member-form',(form)=>{const data=new FormData(form);service.addFamilyMember(field(data,'familyId'),field(data,'profileId'));render();});
     onForm(root,'#grant-form',(form)=>{const data=new FormData(form);const type=field(data,'scopeType');const scope=type==='profile'?{type:'profile' as const}:type==='category'?{type:'category' as const,category:field(data,'category')}:type.startsWith('record:')?{type:'record' as const,recordKind:type.slice(7) as 'measurement'|'standard_size'|'brand_fit',recordId:field(data,'recordId')}:{type:'record_kind' as const,recordKind:type as 'standard_size'|'brand_fit'};service.grantAccess(field(data,'ownerId'),field(data,'recipientId'),scope);render();});
-    bind(root,'[data-assign-manager]','click',(el)=>{service.assignManager(el.dataset.assignManager!);render();});
+    bind(root,'[data-assign-manager]','click',(el)=>{service.assignManager(el.dataset.assignManager!,service.activeActor()!.id);render();});
     bind(root,'[data-respond]','click',(el)=>{service.respondConnection(el.dataset.respond!,el.dataset.accept==='true');render();});
     bind(root,'[data-disconnect]','click',(el)=>{service.disconnect(el.dataset.disconnect!);render();});
     bind(root,'[data-revoke-grant]','click',(el)=>{service.revokeGrant(el.dataset.revokeGrant!);render();});

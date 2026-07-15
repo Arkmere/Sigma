@@ -34,9 +34,9 @@ The shell was split into content metadata and rendering code during Ticket 1A. T
 
 ## Local persistence
 
-Theme preference is stored separately through `src/lib/preferences.ts`. Canonical Ticket 2 data uses `LocalStorageRepository`, a typed versioned adapter over browser localStorage. Domain and UI code do not access the storage key directly. The service saves after each mutation and can export a complete versioned JSON snapshot. Conversion operations are read-only service methods derived at render time; converted values are never persisted or exported and schema version remains 1.
+Theme preference is stored separately through `src/lib/preferences.ts`. Canonical schema-2 data uses `LocalStorageRepository`, a typed versioned adapter over browser localStorage. Domain and UI code do not access the storage key directly. The service saves after each authorized mutation and can export a complete versioned JSON snapshot. Conversion operations are read-only service methods derived at render time and are never persisted.
 
-Loads produce `empty`, `ok`, `corrupt`, or `unsupported_version`. Version 1 is runtime-validated before entering the domain, including profile references. Corrupt/unsupported raw storage is preserved; the service exposes the state and blocks mutations until explicit reset. `migrateStoredData` is the single boundary for future schema versions.
+Loads produce `empty`, `ok`, `corrupt`, or `unsupported_version`. Version 1 is validated and migrated; schema 2 validates referential and authorization invariants, including grant/revocation actors and connection state metadata. Corrupt/unsupported raw storage is preserved and mutations remain blocked until explicit reset.
 
 LocalStorage keeps the static foundation dependency-free and makes deterministic persistence tests straightforward. Its trade-offs are synchronous access, browser-specific capacity/retention and no Sigma-provided encryption. The repository interface allows a future IndexedDB adapter without changing domain operations.
 
@@ -90,3 +90,5 @@ No backend, hosted database, authentication provider, analytics, telemetry, adve
 16. Ticket 4 identity: independent profiles simulate local adult actors; acting and viewed profiles are separate and this is not authentication.
 17. Ticket 4 consent: Family membership and adult connection create zero access; access uses typed, revocable grants with retained history.
 18. Ticket 4 entitlement: free/full/extended is a separate local demo preference with no payment integration or canonical-data effect.
+19. Ticket 4A authorization: record mutation uses a central owner/explicit-manager rule; read grants, connection and membership never confer editing.
+20. Ticket 4A integrity: persisted grant, revocation and connection authority/state invariants are runtime validated before data enters the domain.

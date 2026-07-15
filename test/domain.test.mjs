@@ -32,6 +32,7 @@ test('stores all record kinds against the correct profile with provenance', () =
   const sam = service.createProfile({ displayName: 'Sam', profileType: 'independent' });
   service.addMeasurement({ profileId: alex.id, measurementType: 'Waist', category: 'Upper body', label: 'Waist', value: 98, unit: 'cm', measuredAt: '2026-04-12', recordedAt: '2026-04-12T10:00:00Z', sourceType: 'manual', sourceName: 'Home tape', originalValue: 98, originalUnit: 'cm', acquisitionMethod: 'manual' });
   service.addStandardSize({ profileId: alex.id, category: 'Footwear', label: 'Shoe size', sizingSystem: 'UK', sizeValue: '9', recordedAt: '2026-07-14', sourceType: 'manual' });
+  service.selectActor(sam.id);
   const fit = service.addBrandFit({ profileId: sam.id, category: 'Footwear', brand: 'Nike', productName: 'Air Max 90', sizingSystem: 'UK', sizeValue: '7', recordedAt: '2026-07-14', sourceType: 'manual' });
   service.updateBrandFit(fit.id, { category: 'Footwear', brand: 'Nike', productName: 'Air Max 90', productLine: undefined, sizingSystem: 'UK', sizeValue: '7.5', fitNotes: 'Recorded snug fit' });
   const reloaded = new SigmaService(new LocalStorageRepository(storage));

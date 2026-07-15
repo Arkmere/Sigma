@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Ticket 4 Family, managed children, mutual consent and granular sharing completed. Ready for Ticket 5.
+Ticket 4A authorization and schema-integrity correction completed. Ticket 5 has not started.
 
 ## Completed
 
@@ -35,6 +35,10 @@ Ticket 4 Family, managed children, mutual consent and granular sharing completed
 - Typed profile/category/record-kind/specific-record grants, dedicated access evaluation and auditable revocation.
 - Read-only shared-with-me/privacy views and access-checked transient conversions.
 - Separate free/full/extended local demo entitlement with no payments or canonical-data restrictions.
+- Central record-mutation authority: independent owners manage themselves and only explicit managers mutate managed profiles.
+- Ordinary profile editing cannot change profile type; shared/connected/Family views expose no edit authority.
+- Existing-manager authorization and constrained same-existing-Family legacy manager assignment.
+- Schema-2 validation rejects impossible grantors, revokers, child recipients and connection lifecycle metadata.
 
 ## Current Repository State
 

@@ -33,6 +33,8 @@ Ring helpers cover inner circumference and diameter in millimetres and ISO size 
 
 Schema 2 adds Families, memberships, adult connections and typed grants. Membership grants zero access. Connection acceptance creates no grants. Scopes cover whole profile, category, all standard sizes, all brand fits, or a specific canonical record. Revocation preserves actor/time history.
 
+Profile management is separate from viewing: an independent actor manages only itself; a managed profile is mutable only by an explicitly listed manager. Connections, memberships, creator status and sharing grants never confer edit authority. Ordinary metadata editing cannot change profile type. Existing managers authorize additional eligible independent managers; a legacy unassigned profile can be explicitly claimed only by an acting adult already sharing an existing Family with it.
+
 ## Ownership and visibility
 
 Every record retains its original owner and private visibility; access is represented separately. Shared facts are read-only. Supported conversions may be derived after access evaluation and are never persisted.
@@ -43,6 +45,6 @@ Every record retains its original owner and private visibility; access is repres
 
 ## Validation and migration boundary
 
-`migrateStoredData` validates schema version 1 at runtime rather than trusting a TypeScript assertion. It checks root collections, required and optional fields, source vocabularies, finite numeric values, record kinds/visibility, and referential integrity between every record and its profile.
+`migrateStoredData` validates schema version 1 at runtime rather than trusting a TypeScript assertion. Schema-2 validation additionally checks grant/revocation authority, active child Family eligibility, manager independence, and connection status-specific metadata before persisted relationships enter the domain.
 
-Repository loads distinguish `empty`, `ok`, `corrupt`, and `unsupported_version`. Invalid JSON and invalid version-1 structure are corrupt; unknown versions are unsupported. Unsafe raw storage is retained unchanged. The service exposes this status and rejects mutations until user-confirmed reset clears the key. No automatic migration is currently needed because version 1 is the only supported schema, but all future versions enter through this boundary.
+Repository loads distinguish `empty`, `ok`, `corrupt`, and `unsupported_version`. Valid schema-1 data migrates losslessly to schema 2; invalid or authority-impossible data is corrupt and unknown future versions are unsupported. Unsafe raw storage is retained unchanged and mutations remain blocked until explicit reset.

@@ -4,6 +4,7 @@ import { mountApp } from '../dist/app/app.js';
 import { LocalStorageRepository } from '../dist/data/repository.js';
 import { SigmaService } from '../dist/domain/service.js';
 import { renderRecords } from '../dist/app/ui/records.js';
+import { renderProfiles } from '../dist/app/ui/profiles.js';
 
 class Control {
   constructor(attributes) { this.dataset = attributes; this.value = ''; this.listeners = new Map(); }
@@ -82,3 +83,5 @@ test('new-record taxonomy marks categorical sizes without a length dimension sel
   assert.match(html, /<option value="General shoe size" data-semantics="categorical" data-dimension="">Footwear · General shoe size<\/option>/);
   assert.doesNotMatch(html, /<option value="General shoe size"[^>]*data-dimension="length"/);
 });
+
+test('ordinary profile editing cannot change type and read-only viewers see no mutation controls',()=>{const local=storage();let n=0;const service=new SigmaService(new LocalStorageRepository(local),()=> '2026-07-15T12:00:00Z',()=>`id-${++n}`);const alex=service.createProfile({displayName:'Alex',profileType:'independent'});service.addMeasurement({profileId:alex.id,measurementType:'Waist',category:'Upper body',label:'Waist',value:90,unit:'cm',originalValue:90,originalUnit:'cm',measuredAt:'2026-07-15',recordedAt:'2026-07-15',sourceType:'manual',acquisitionMethod:'manual'});const jordan=service.createProfile({displayName:'Jordan',profileType:'independent'});const profileHtml=renderProfiles(service,jordan.id);assert.match(profileHtml,/Profile type cannot be changed/);assert.doesNotMatch(profileHtml,/name="profileType"/);service.selectProfile(alex.id);service.selectActor(jordan.id);const recordsHtml=renderRecords(service,'measurement','','');assert.match(recordsHtml,/Read-only/);assert.doesNotMatch(recordsHtml,/id="record-form"|data-history-form|data-edit-measurement-form/);});
