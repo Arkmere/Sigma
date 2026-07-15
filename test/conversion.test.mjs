@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { convertUnit, formatConvertedValue, footwearConversions, measurementDimension, resolveUnit, ringCircumferenceFromDiameter, ringDiameterFromCircumference, isoRingSizeFromCircumference } from '../dist/conversion/registry.js';
+import { convertUnit, formatConvertedValue, footwearConversions, measurementSemantics, resolveUnit, ringCircumferenceFromDiameter, ringDiameterFromCircumference, isoRingSizeFromCircumference } from '../dist/conversion/registry.js';
 import { LocalStorageRepository } from '../dist/data/repository.js';
 import { SigmaService } from '../dist/domain/service.js';
+import { measurementOptions } from '../dist/domain/taxonomy.js';
 
 const close = (actual, expected, tolerance = 1e-12) => assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} was not within ${tolerance} of ${expected}`);
 const memoryStorage = () => { const values = new Map(); return { values, getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)), removeItem: (key) => values.delete(key) }; };
@@ -28,10 +29,21 @@ test('resolves aliases centrally and refuses unknown or cross-dimensional conver
 });
 
 test('measurement taxonomy separates mass, length, categorical and custom semantics', () => {
-  assert.equal(measurementDimension('Weight'), 'mass');
-  assert.equal(measurementDimension('Waist'), 'length');
-  assert.equal(measurementDimension('T-shirt size'), undefined);
-  assert.equal(measurementDimension('Custom measurement'), undefined);
+  for (const label of ['Weight']) assert.deepEqual(measurementSemantics(label), { kind: 'dimensional', dimension: 'mass' });
+  for (const label of ['Waist', 'Hockey stick length']) assert.deepEqual(measurementSemantics(label), { kind: 'dimensional', dimension: 'length' });
+  for (const label of ['General shoe size', 'Skate size', 'Helmet size', 'PPE size', 'T-shirt size']) assert.deepEqual(measurementSemantics(label), { kind: 'categorical' });
+  assert.deepEqual(measurementSemantics('Custom measurement'), { kind: 'custom_or_unknown' });
+  assert.deepEqual(measurementSemantics('Unlisted personal dimension'), { kind: 'custom_or_unknown' });
+});
+
+test('every current non-custom taxonomy label has an explicit known semantic classification', () => {
+  for (const [category, labels] of Object.entries(measurementOptions)) {
+    for (const label of labels) {
+      const semantics = measurementSemantics(label);
+      if (category === 'Custom') assert.equal(semantics.kind, 'custom_or_unknown', `${label} should remain custom`);
+      else assert.notEqual(semantics.kind, 'custom_or_unknown', `${category} · ${label} lacks an explicit semantic classification`);
+    }
+  }
 });
 
 test('service derives measurement alternatives without mutating facts, history or persistence', () => {
@@ -51,6 +63,20 @@ test('unsupported custom measurement units remain recorded and produce no result
   const record = service.addMeasurement({ profileId: profile.id, measurementType: 'Custom measurement', category: 'Custom', label: 'Stride code', value: 7, unit: 'paces', originalValue: 7, originalUnit: 'paces', measuredAt: '2026-07-01', recordedAt: '2026-07-01', sourceType: 'manual', acquisitionMethod: 'manual' });
   assert.deepEqual(service.measurementConversions(record.id), []);
   assert.equal(service.snapshot().measurements[0].values[0].unit, 'paces');
+});
+
+test('service blocks known categorical units but permits recognised custom dimensions', () => {
+  const { service, profile } = fixture();
+  const add = (measurementType, category, unit, value = 41) => service.addMeasurement({ profileId: profile.id, measurementType, category, label: measurementType, value, unit, originalValue: value, originalUnit: unit, measuredAt: '2026-07-01', recordedAt: '2026-07-01', sourceType: 'manual', acquisitionMethod: 'manual' });
+  for (const [type, category, unit] of [['T-shirt size', 'Clothing', 'cm'], ['General shoe size', 'Footwear', 'cm'], ['Helmet size', 'Sports equipment', 'in']]) {
+    assert.deepEqual(service.measurementConversions(add(type, category, unit).id), [], `${type} must not convert`);
+  }
+  assert.equal(service.measurementConversions(add('Custom measurement', 'Custom', 'cm').id).length, 4);
+  assert.equal(service.measurementConversions(add('Custom measurement', 'Custom', 'kg').id).length, 4);
+  assert.deepEqual(service.measurementConversions(add('Custom measurement', 'Custom', 'paces').id), []);
+  assert.equal(service.measurementConversions(add('Waist', 'Upper body', 'cm').id).length, 4);
+  assert.equal(service.measurementConversions(add('Weight', 'General body dimensions', 'kg').id).length, 4);
+  const before = service.snapshot(); service.measurementConversions(before.measurements.at(-1).id); assert.deepEqual(service.snapshot(), before);
 });
 
 test('footwear subset is non-exact, context-bound, sex-specific and never interpolated', () => {

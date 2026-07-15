@@ -26,6 +26,7 @@ Ticket 3 international units and sizing conversion engine completed. Ready for T
 - Typed dynamically derived conversion results with source/version provenance; converted values are not persisted.
 - Exact length (`mm`, `cm`, `m`, `in`, `ft`) and mass (`g`, `kg`, `oz`, `lb`, `st`) conversions through canonical bases.
 - Controlled unit entry for known measurements and a limited ISO 19407:2023 adult footwear subset (`UK 9`, `EU 43`, `US Men's 10`).
+- Complete current-taxonomy dimensional semantics distinguish physical, categorical and custom/unknown measurements; categorical records never receive exact unit conversion even when recorded with a physical-unit string.
 - Conservative ring circumference/diameter and explicit ISO circumference-size helpers; no regional lookup.
 
 ## Current Repository State

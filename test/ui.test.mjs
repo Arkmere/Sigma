@@ -74,3 +74,11 @@ test('record cards distinguish recorded facts, exact conversions, standard equiv
   const sizes = renderRecords(service, 'standard_size', '', '');
   assert.match(sizes, /Standard equivalents/); assert.match(sizes, /Approximate standard equivalent/); assert.match(sizes, /ISO 19407:2023/); assert.match(sizes, /No supported deterministic conversion/);
 });
+
+test('new-record taxonomy marks categorical sizes without a length dimension selector', () => {
+  const local = storage(); const service = new SigmaService(new LocalStorageRepository(local), () => '2026-07-15T12:00:00Z', () => 'profile-1');
+  service.createProfile({ displayName: 'Alex', profileType: 'independent' });
+  const html = renderRecords(service, 'measurement', '', '');
+  assert.match(html, /<option value="General shoe size" data-semantics="categorical" data-dimension="">Footwear · General shoe size<\/option>/);
+  assert.doesNotMatch(html, /<option value="General shoe size"[^>]*data-dimension="length"/);
+});

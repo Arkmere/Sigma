@@ -23,7 +23,7 @@ These are recorded facts. Ticket 3 may derive transient standard equivalents for
 
 `ConversionResult` is a typed runtime view with exact-unit or standard-equivalent kind, recorded input, derived output, exactness and source/version metadata. Results are computed through `SigmaService` and do not form part of `SigmaData`.
 
-Exact conversions support length (`mm`, `cm`, `m`, `in`, `ft`) and mass (`g`, `kg`, `oz`, `lb`, `st`). Aliases resolve centrally; unknown units remain valid facts but produce no conversion. Known measurement types constrain dimensional meaning and categorical sizes are not treated as lengths.
+Exact conversions support length (`mm`, `cm`, `m`, `in`, `ft`) and mass (`g`, `kg`, `oz`, `lb`, `st`). Aliases resolve centrally; unknown units remain valid facts but produce no conversion. Measurement semantics explicitly distinguish known dimensional, known categorical, and custom/unknown types. Categorical records never receive mathematical unit conversions, while custom/unknown records may use an explicitly recognised recorded unit as dimensional context.
 
 Footwear lookup is separate. The adult-simplified ISO 19407:2023 subset contains only the ticket-supplied `UK 9`, `EU 43`, `US Men's 10` row. Adult/child and US Men's/US Women's contexts remain distinct. Generic `US`, unencoded rows and ambiguity return no result.
 

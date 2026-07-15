@@ -1,6 +1,6 @@
 import { currentMeasurementValue, DATA_SCHEMA_VERSION, type BrandFit, type MeasurementValue, type PhysicalMeasurement, type Profile, type SigmaBackup, type SigmaData, type StandardSize } from './model.js';
 import type { DataRepository, LoadResult } from '../data/repository.js';
-import { convertUnit, footwearConversions, measurementDimension, resolveUnit, unitsForDimension, type ConversionResult, type FootwearContext } from '../conversion/registry.js';
+import { convertUnit, footwearConversions, measurementSemantics, resolveUnit, unitsForDimension, type ConversionResult, type FootwearContext } from '../conversion/registry.js';
 
 type Clock = () => string;
 type IdFactory = () => string;
@@ -101,8 +101,8 @@ export class SigmaService {
   measurementConversions(recordId: string): ConversionResult[] {
     const record = this.data.measurements.find((item) => item.id === recordId); const current = record && currentMeasurementValue(record);
     if (!record || !current) return [];
-    const unit = resolveUnit(current.originalUnit); const semanticDimension = measurementDimension(record.measurementType);
-    if (!unit || (semanticDimension && unit.dimension !== semanticDimension)) return [];
+    const unit = resolveUnit(current.originalUnit); const semantics = measurementSemantics(record.measurementType);
+    if (!unit || semantics.kind === 'categorical' || (semantics.kind === 'dimensional' && unit.dimension !== semantics.dimension)) return [];
     return unitsForDimension(unit.dimension).flatMap((target) => target.symbol === unit.symbol ? [] : [convertUnit(current.originalValue, unit.symbol, target.symbol, record.id)!]);
   }
   standardSizeConversions(recordId: string, context: FootwearContext = 'adult_simplified'): ConversionResult[] {
