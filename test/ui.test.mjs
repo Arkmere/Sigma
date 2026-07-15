@@ -35,7 +35,7 @@ test('shell renders truthful empty states and switches every primary route witho
   const root = new Root();
   mountApp(root, new SigmaService(new LocalStorageRepository(globalThis.localStorage)));
   assert.match(root.textContent, /Start with a person, not an account/);
-  for (const [route, expected] of [['profiles', /Profiles/], ['measurements', /Create a profile before adding records/], ['family', /sharing are not implemented/], ['privacy', /Local-only data/], ['settings', /Theme preference/]]) {
+  for (const [route, expected] of [['profiles', /Profiles/], ['measurements', /Create a profile before adding records/], ['family', /Family workflows are locked/], ['privacy', /Who can see profiles/], ['settings', /Family entitlement/]]) {
     const button = root.querySelectorAll('[data-route]').find((item) => item.dataset.route === route);
     assert.ok(button); button.click(); assert.match(root.textContent, expected);
   }

@@ -1,6 +1,6 @@
 # Monetisation
 
-Ticket 1 implements no payments or payment SDKs.
+Ticket 4 adds a separate local `free`/`full`/`extended` demo preference, not payments. Free preserves personal records while locking Family workflows; Full enables the local consent demo; Extended is only a future-state label. There is no payment SDK, subscription, receipt validation or permanent cap.
 
 ## Direction
 - Free personal use should remain genuinely useful indefinitely: one personal profile, core measurements, common clothing/footwear sizes and local-first storage.

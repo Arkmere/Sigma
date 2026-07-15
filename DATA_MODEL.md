@@ -1,10 +1,10 @@
 # Data Model
 
-Ticket 2 defines schema version 1 for Sigma's canonical single-device local data.
+Ticket 4 defines schema version 2 for Sigma's canonical single-device local data. Valid version-1 data is deterministically migrated under the unchanged `sigma.data.v1` key.
 
 ## Profiles
 
-Profiles are either `independent` or `managed`. They contain `id`, `displayName`, optional relationship/date-of-birth/notes fields, and created/updated timestamps. A managed profile is a local record maintained for another person; it has no account, remote ownership, sharing, or hard-coded age-transfer rule.
+Profiles are either `independent` or `managed`. Independent profiles may act as simulated local adult authorities. `activeActorProfileId` is separate from viewed `activeProfileId`. Managed profiles use explicit manager IDs and a child/dependant kind. New managed profiles require a manager and Family; migrated legacy managed profiles remain unassigned rather than fabricating authority.
 
 ## Physical measurements
 
@@ -29,9 +29,13 @@ Footwear lookup is separate. The adult-simplified ISO 19407:2023 subset contains
 
 Ring helpers cover inner circumference and diameter in millimetres and ISO size explicitly represented by circumference. Regional commercial sizes are not inferred.
 
+## Family, consent and sharing
+
+Schema 2 adds Families, memberships, adult connections and typed grants. Membership grants zero access. Connection acceptance creates no grants. Scopes cover whole profile, category, all standard sizes, all brand fits, or a specific canonical record. Revocation preserves actor/time history.
+
 ## Ownership and visibility
 
-Every record has a `profileId` and `visibility: private`. Visibility is a forward-compatible field only; Ticket 2 has no Family, connections, grants or remote sharing.
+Every record retains its original owner and private visibility; access is represented separately. Shared facts are read-only. Supported conversions may be derived after access evaluation and are never persisted.
 
 ## Persistence and backup
 

@@ -7,6 +7,6 @@ export function renderShell(route: RouteId, service: SigmaService, content: stri
 export function renderStorageWarning(service: SigmaService): string {
   const status = service.storageStatus();
   if (status.status !== 'corrupt' && status.status !== 'unsupported_version') return '';
-  const detail = status.status === 'corrupt' ? 'The stored value is corrupt or does not match Sigma schema version 1.' : `The stored value uses unsupported schema version ${String(status.version)}.`;
+  const detail = status.status === 'corrupt' ? 'The stored value is corrupt or does not match a supported Sigma schema.' : `The stored value uses unsupported schema version ${String(status.version)}.`;
   return `<section class="data-warning" role="alert"><p class="eyebrow">Local data safety warning</p><h2>Sigma found stored local data it could not read safely.</h2><p>${detail} It has not been deleted or overwritten. Export/import recovery is not implemented yet. Reset local data only if you decide to start again.</p><button id="reset-data" class="danger">Reset local data</button></section>`;
 }

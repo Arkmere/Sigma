@@ -7,21 +7,34 @@ import { field } from './ui/html.js';
 import { renderProfiles } from './ui/profiles.js';
 import { renderRecords, type RecordMode } from './ui/records.js';
 import { renderShell } from './ui/shell.js';
-import { renderFamily, renderPrivacy, renderSettings } from './ui/status.js';
+import { renderPrivacy, renderSettings } from './ui/status.js';
+import { renderFamily as renderFamilyScreen } from './ui/family.js';
+import { readDemoEntitlement, writeDemoEntitlement, type DemoEntitlement } from '../lib/entitlement.js';
 import { unitsForDimension, type Dimension } from '../conversion/registry.js';
 
 export function mountApp(root: HTMLElement, service = new SigmaService(new LocalStorageRepository(globalThis.localStorage))): void {
-  let route: RouteId = 'profiles'; let theme = readThemePreference(); let mode: RecordMode = 'measurement'; let search = ''; let category = ''; let editingProfileId = '';
+  let route: RouteId = 'profiles'; let theme = readThemePreference(); let entitlement=readDemoEntitlement(); let mode: RecordMode = 'measurement'; let search = ''; let category = ''; let editingProfileId = '';
   const render = () => {
     const resolved = resolveTheme(theme, globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false);
     document.documentElement.dataset.theme = resolved; document.documentElement.dataset.themePreference = theme; writeThemePreference(theme);
-    const content = route === 'profiles' ? renderProfiles(service, editingProfileId) : route === 'measurements' ? renderRecords(service, mode, search, category) : route === 'privacy' ? renderPrivacy(service) : route === 'settings' ? renderSettings(service, theme, resolved) : renderFamily();
+    const content = route === 'profiles' ? renderProfiles(service, editingProfileId) : route === 'measurements' ? renderRecords(service, mode, search, category) : route === 'privacy' ? renderPrivacy(service) : route === 'settings' ? renderSettings(service, theme, resolved, entitlement) : renderFamilyScreen(service, entitlement);
     root.innerHTML = renderShell(route, service, content);
     bind(root, '[data-route]', 'click', (element) => { route = element.dataset.route as RouteId; render(); });
     bind(root, '[data-select-profile]', 'click', (element) => { service.selectProfile(element.dataset.selectProfile!); route = 'measurements'; render(); });
     bind(root, '[data-edit-profile]', 'click', (element) => { editingProfileId = element.dataset.editProfile!; render(); });
     bind(root, '[data-record-mode]', 'click', (element) => { mode = element.dataset.recordMode as RecordMode; render(); });
     root.querySelectorAll<HTMLInputElement>('input[name="theme"]').forEach((input) => input.addEventListener('change', () => { theme = input.value as ThemePreference; render(); }));
+    root.querySelector<HTMLSelectElement>('#entitlement-select')?.addEventListener('change',(event)=>{entitlement=(event.currentTarget as HTMLSelectElement).value as DemoEntitlement;writeDemoEntitlement(entitlement);render();});
+    root.querySelector<HTMLSelectElement>('#actor-select')?.addEventListener('change',(event)=>{service.selectActor((event.currentTarget as HTMLSelectElement).value);render();});
+    onForm(root,'#family-form',(form)=>{service.createFamily(field(new FormData(form),'name'));render();});
+    onForm(root,'#connection-form',(form)=>{service.requestConnection(field(new FormData(form),'recipientId'));render();});
+    onForm(root,'#managed-form',(form)=>{const data=new FormData(form);service.createManagedProfile({displayName:field(data,'displayName'),managedKind:field(data,'managedKind') as 'child'|'dependant',familyId:field(data,'familyId')});render();});
+    onForm(root,'#member-form',(form)=>{const data=new FormData(form);service.addFamilyMember(field(data,'familyId'),field(data,'profileId'));render();});
+    onForm(root,'#grant-form',(form)=>{const data=new FormData(form);const type=field(data,'scopeType');const scope=type==='profile'?{type:'profile' as const}:type==='category'?{type:'category' as const,category:field(data,'category')}:type.startsWith('record:')?{type:'record' as const,recordKind:type.slice(7) as 'measurement'|'standard_size'|'brand_fit',recordId:field(data,'recordId')}:{type:'record_kind' as const,recordKind:type as 'standard_size'|'brand_fit'};service.grantAccess(field(data,'ownerId'),field(data,'recipientId'),scope);render();});
+    bind(root,'[data-assign-manager]','click',(el)=>{service.assignManager(el.dataset.assignManager!);render();});
+    bind(root,'[data-respond]','click',(el)=>{service.respondConnection(el.dataset.respond!,el.dataset.accept==='true');render();});
+    bind(root,'[data-disconnect]','click',(el)=>{service.disconnect(el.dataset.disconnect!);render();});
+    bind(root,'[data-revoke-grant]','click',(el)=>{service.revokeGrant(el.dataset.revokeGrant!);render();});
     onForm(root, '#profile-form', (form) => { saveProfile(service, new FormData(form), editingProfileId); editingProfileId = ''; render(); });
     onForm(root, '#record-form', (form) => { saveRecord(service, mode, new FormData(form)); render(); });
     forms(root, '[data-history-form]', (form, data) => addHistory(service, form.dataset.historyForm!, data), render);

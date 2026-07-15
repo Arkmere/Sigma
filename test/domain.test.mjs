@@ -15,21 +15,21 @@ function serviceFixture() {
   return { service, storage };
 }
 
-test('creates independent and managed profiles and persists active selection', () => {
+test('creates independent profiles and persists active actor and viewed selection', () => {
   const { service, storage } = serviceFixture();
   const personal = service.createProfile({ displayName: 'Alex', profileType: 'independent' });
-  const managed = service.createProfile({ displayName: 'Sam', profileType: 'managed', relationshipLabel: 'Dependant' });
-  service.selectProfile(managed.id);
+  const jordan = service.createProfile({ displayName: 'Jordan', profileType: 'independent' });
+  service.selectProfile(jordan.id); service.selectActor(personal.id);
   const reloaded = new SigmaService(new LocalStorageRepository(storage));
-  assert.deepEqual(reloaded.snapshot().profiles.map((profile) => profile.profileType), ['independent', 'managed']);
-  assert.equal(reloaded.activeProfile()?.id, managed.id);
+  assert.deepEqual(reloaded.snapshot().profiles.map((profile) => profile.profileType), ['independent', 'independent']);
+  assert.equal(reloaded.activeProfile()?.id, jordan.id); assert.equal(reloaded.activeActor()?.id,personal.id);
   assert.equal(personal.displayName, 'Alex');
 });
 
 test('stores all record kinds against the correct profile with provenance', () => {
   const { service, storage } = serviceFixture();
   const alex = service.createProfile({ displayName: 'Alex', profileType: 'independent' });
-  const sam = service.createProfile({ displayName: 'Sam', profileType: 'managed' });
+  const sam = service.createProfile({ displayName: 'Sam', profileType: 'independent' });
   service.addMeasurement({ profileId: alex.id, measurementType: 'Waist', category: 'Upper body', label: 'Waist', value: 98, unit: 'cm', measuredAt: '2026-04-12', recordedAt: '2026-04-12T10:00:00Z', sourceType: 'manual', sourceName: 'Home tape', originalValue: 98, originalUnit: 'cm', acquisitionMethod: 'manual' });
   service.addStandardSize({ profileId: alex.id, category: 'Footwear', label: 'Shoe size', sizingSystem: 'UK', sizeValue: '9', recordedAt: '2026-07-14', sourceType: 'manual' });
   const fit = service.addBrandFit({ profileId: sam.id, category: 'Footwear', brand: 'Nike', productName: 'Air Max 90', sizingSystem: 'UK', sizeValue: '7', recordedAt: '2026-07-14', sourceType: 'manual' });
@@ -59,7 +59,7 @@ test('searches labels, categories, brands and products and exports versioned dat
   assert.equal(service.records(profile.id, '', 'Clothing').brandFits.length, 0);
   const backup = service.exportBackup();
   assert.equal(backup.product, 'Sigma');
-  assert.equal(backup.schemaVersion, 1);
+  assert.equal(backup.schemaVersion, 2);
   assert.equal(backup.profiles.length, 1);
   assert.equal(backup.brandFits.length, 1);
   assert.ok(backup.exportedAt);

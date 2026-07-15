@@ -14,9 +14,40 @@ const timestampPair = (value: Record<string, unknown>) => string(value.createdAt
 
 export function migrateStoredData(raw: unknown): MigrationResult {
   if (!object(raw)) return corrupt('Stored value is not an object.');
+  if (raw.schemaVersion === 1) {
+    const reason = validateVersionOne(raw); if (reason) return corrupt(reason);
+    const migrated = { ...structuredClone(raw), schemaVersion: DATA_SCHEMA_VERSION, activeActorProfileId: undefined, families: [], familyMemberships: [], adultConnections: [], sharingGrants: [] } as unknown as SigmaData;
+    const actor = migrated.profiles.find((p) => p.profileType === 'independent'); if (actor) migrated.activeActorProfileId = actor.id;
+    return { status: 'ok', data: migrated };
+  }
   if (raw.schemaVersion !== DATA_SCHEMA_VERSION) return { status: 'unsupported_version', version: raw.schemaVersion };
-  const reason = validateVersionOne(raw);
+  const reason = validateVersionTwo(raw);
   return reason ? corrupt(reason) : { status: 'ok', data: structuredClone(raw as unknown as SigmaData) };
+}
+
+function validateVersionTwo(root: Record<string, unknown>): string | undefined {
+  const base = validateVersionOne(root); if (base) return base;
+  if (![root.families, root.familyMemberships, root.adultConnections, root.sharingGrants].every(Array.isArray)) return 'Ticket 4 collections must be arrays.';
+  if (!optionalString(root.activeActorProfileId)) return 'activeActorProfileId must be a string when present.';
+  const profiles = root.profiles as Record<string, unknown>[]; const profile = (id: unknown) => profiles.find((p) => p.id === id);
+  if (root.activeActorProfileId !== undefined && profile(root.activeActorProfileId)?.profileType !== 'independent') return 'The active actor must be an independent profile.';
+  for (const p of profiles) {
+    if (p.profileType === 'independent' && (p.managedByProfileIds !== undefined || p.managedKind !== undefined)) return 'Independent profiles cannot have managed fields.';
+    if (p.managedByProfileIds !== undefined && (!Array.isArray(p.managedByProfileIds) || new Set(p.managedByProfileIds).size !== p.managedByProfileIds.length || p.managedByProfileIds.some((id) => profile(id)?.profileType !== 'independent'))) return 'Managed profile managers are invalid.';
+    if (p.managedKind !== undefined && !['child', 'dependant'].includes(String(p.managedKind))) return 'Managed kind is invalid.';
+  }
+  const families = root.families as Record<string, unknown>[];
+  for (const f of families) if (!requiredStrings(f, ['id','name','createdByProfileId','createdAt','updatedAt']) || profile(f.createdByProfileId)?.profileType !== 'independent') return 'A Family is invalid.';
+  const memberships = root.familyMemberships as Record<string, unknown>[]; const membershipKeys = new Set<string>();
+  for (const m of memberships) { if (!requiredStrings(m,['id','familyId','profileId','addedByProfileId','createdAt']) || !families.some((f) => f.id === m.familyId) || !profile(m.profileId) || profile(m.addedByProfileId)?.profileType !== 'independent') return 'A Family membership is invalid.'; const key=`${m.familyId}:${m.profileId}`; if(membershipKeys.has(key)) return 'Duplicate Family membership.'; membershipKeys.add(key); }
+  for (const c of root.adultConnections as Record<string, unknown>[]) if (!requiredStrings(c,['id','initiatorProfileId','recipientProfileId','status','requestedAt']) || c.initiatorProfileId === c.recipientProfileId || profile(c.initiatorProfileId)?.profileType !== 'independent' || profile(c.recipientProfileId)?.profileType !== 'independent' || !['pending','active','declined','disconnected'].includes(String(c.status)) || ![c.respondedAt,c.disconnectedAt,c.disconnectedByProfileId].every(optionalString)) return 'An adult connection is invalid.';
+  const records = [...root.measurements as Record<string,unknown>[], ...root.standardSizes as Record<string,unknown>[], ...root.brandFits as Record<string,unknown>[]];
+  for (const g of root.sharingGrants as Record<string, unknown>[]) {
+    if (!requiredStrings(g,['id','ownerProfileId','recipientProfileId','grantedByProfileId','status','grantedAt']) || !profile(g.ownerProfileId) || profile(g.recipientProfileId)?.profileType !== 'independent' || !profile(g.grantedByProfileId) || !['active','revoked'].includes(String(g.status)) || !object(g.scope)) return 'A sharing grant is invalid.';
+    const s=g.scope; if (s.type === 'category' ? !nonEmpty(s.category) : s.type === 'record_kind' ? !['standard_size','brand_fit'].includes(String(s.recordKind)) : s.type === 'record' ? !['measurement','standard_size','brand_fit'].includes(String(s.recordKind)) || !records.some((r)=>r.id===s.recordId && r.kind===s.recordKind) : s.type !== 'profile') return 'A sharing scope is invalid.';
+    if ((g.status === 'active' && (g.revokedAt !== undefined || g.revokedByProfileId !== undefined)) || (g.status === 'revoked' && (!nonEmpty(g.revokedAt) || !nonEmpty(g.revokedByProfileId)))) return 'Grant revocation metadata is inconsistent.';
+  }
+  return undefined;
 }
 
 function validateVersionOne(root: Record<string, unknown>): string | undefined {

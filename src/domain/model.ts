@@ -1,4 +1,4 @@
-export const DATA_SCHEMA_VERSION = 1;
+export const DATA_SCHEMA_VERSION = 2;
 
 export type ProfileType = 'independent' | 'managed';
 export type SourceType = 'manual' | 'imported_health_platform' | 'imported_device' | 'camera_assisted' | 'body_scan' | 'third_party_service';
@@ -11,9 +11,18 @@ export interface Profile {
   relationshipLabel?: string;
   dateOfBirth?: string;
   notes?: string;
+  managedByProfileIds?: string[];
+  managedKind?: 'child' | 'dependant';
   createdAt: string;
   updatedAt: string;
 }
+
+export interface Family { id: string; name: string; createdByProfileId: string; createdAt: string; updatedAt: string; }
+export interface FamilyMembership { id: string; familyId: string; profileId: string; addedByProfileId: string; createdAt: string; }
+export type AdultConnectionStatus = 'pending' | 'active' | 'declined' | 'disconnected';
+export interface AdultConnection { id: string; initiatorProfileId: string; recipientProfileId: string; status: AdultConnectionStatus; requestedAt: string; respondedAt?: string; disconnectedAt?: string; disconnectedByProfileId?: string; }
+export type SharingScope = { type: 'profile' } | { type: 'category'; category: string } | { type: 'record_kind'; recordKind: 'standard_size' | 'brand_fit' } | { type: 'record'; recordKind: 'measurement' | 'standard_size' | 'brand_fit'; recordId: string };
+export interface SharingGrant { id: string; ownerProfileId: string; recipientProfileId: string; grantedByProfileId: string; scope: SharingScope; status: 'active' | 'revoked'; grantedAt: string; revokedAt?: string; revokedByProfileId?: string; }
 
 export interface MeasurementValue {
   id: string;
@@ -83,10 +92,15 @@ export interface BrandFit {
 export interface SigmaData {
   schemaVersion: number;
   activeProfileId?: string;
+  activeActorProfileId?: string;
   profiles: Profile[];
   measurements: PhysicalMeasurement[];
   standardSizes: StandardSize[];
   brandFits: BrandFit[];
+  families: Family[];
+  familyMemberships: FamilyMembership[];
+  adultConnections: AdultConnection[];
+  sharingGrants: SharingGrant[];
 }
 
 export interface SigmaBackup extends SigmaData {
@@ -100,6 +114,10 @@ export const emptySigmaData = (): SigmaData => ({
   measurements: [],
   standardSizes: [],
   brandFits: [],
+  families: [],
+  familyMemberships: [],
+  adultConnections: [],
+  sharingGrants: [],
 });
 
 export function currentMeasurementValue(record: PhysicalMeasurement): MeasurementValue | undefined {

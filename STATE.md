@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Ticket 3 international units and sizing conversion engine completed. Ready for Ticket 4.
+Ticket 4 Family, managed children, mutual consent and granular sharing completed. Ready for Ticket 5.
 
 ## Completed
 
@@ -28,6 +28,13 @@ Ticket 3 international units and sizing conversion engine completed. Ready for T
 - Controlled unit entry for known measurements and a limited ISO 19407:2023 adult footwear subset (`UK 9`, `EU 43`, `US Men's 10`).
 - Complete current-taxonomy dimensional semantics distinguish physical, categorical and custom/unknown measurements; categorical records never receive exact unit conversion even when recorded with a physical-unit string.
 - Conservative ring circumference/diameter and explicit ISO circumference-size helpers; no regional lookup.
+- Schema version 2 with safe version-1 migration and no fabricated legacy managers.
+- Separate viewed profile and clearly labelled independent simulated acting adult.
+- Multiple Families, zero-access memberships, recipient-only adult connection acceptance and retained terminal history.
+- Explicit managed child/dependant authority with multiple-manager-capable schema and Family-restricted child sharing.
+- Typed profile/category/record-kind/specific-record grants, dedicated access evaluation and auditable revocation.
+- Read-only shared-with-me/privacy views and access-checked transient conversions.
+- Separate free/full/extended local demo entitlement with no payments or canonical-data restrictions.
 
 ## Current Repository State
 
@@ -35,7 +42,7 @@ Ticket 3 international units and sizing conversion engine completed. Ready for T
 - Domain: `src/domain` owns the schema, taxonomy, history rules and record service.
 - Persistence: `src/data/repository.ts` owns explicit load states; `src/data/migrations.ts` validates and dispatches schema versions.
 - UI: `src/app/app.ts` orchestrates state/events while focused modules under `src/app/ui` render screens and translate forms.
-- Data scope: local profiles, physical measurements, standard sizes and brand/product fit records only.
+- Data scope: local records plus schema-2 Families, memberships, adult connections and sharing grants.
 - Source scope: manual entry is active; future source types are schema vocabulary only.
 - Privacy: no account, cloud, telemetry, analytics, advertising, external service or permission request.
 - Testing: Node built-in test runner with domain, reload/persistence and lightweight DOM interaction coverage.
@@ -54,7 +61,8 @@ Ticket 3 international units and sizing conversion engine completed. Ready for T
 - No real linter is configured.
 - The public ISO catalogue does not expose footwear table contents, so only the specification-supplied adult row is encoded; other rows and child conversions return no result.
 - Clothing, hat, glove, regional ring and specialist/equipment conversions are deliberately unsupported rather than guessed.
-- No Family/sharing, entitlements/payments, cloud sync, accounts, external integrations, OS permissions, camera measurement or production cryptography.
+- Consent is a same-device simulation, not authenticated remote consent; there is no cloud sync, real accounts/payments, external integration, production child-law policy or cryptography.
+- The compact sharing form exposes all broad scopes; specific-record scope is supported by domain/service APIs and represented in audit views, with richer record-picker UX deferred to Ticket 6 polish.
 
 ## Important Decisions Made
 
@@ -67,8 +75,8 @@ Ticket 3 international units and sizing conversion engine completed. Ready for T
 - Invalid JSON, invalid version-1 structures and broken profile references are surfaced as corrupt without modifying raw storage.
 - Unknown schema versions are surfaced as unsupported and routed through a dedicated migration boundary.
 - Unsafe repository states are read-only until reset so creating a profile cannot overwrite unreadable personal data.
-- Schema version remains 1. Conversion results are transient views over canonical recorded fields and never enter storage or backups.
+- Schema version is 2. Version-1 facts migrate unchanged; legacy managed profiles remain unassigned. Conversion results remain transient and never enter storage or backups.
 
 ## Next Planned Work
 
-Ticket 4: Family, managed children, consent and granular sharing.
+Ticket 5: data sources, just-in-time permissions and future measurement acquisition.
