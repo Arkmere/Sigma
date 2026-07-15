@@ -26,3 +26,9 @@ Every record has a `profileId` and `visibility: private`. Visibility is a forwar
 ## Persistence and backup
 
 `LocalStorageRepository` isolates persistence behind a typed repository boundary at key `sigma.data.v1`. Stored data includes `schemaVersion`, active profile, profiles, measurements, standard sizes, and brand-fit records. JSON export adds product and export timestamp metadata. LocalStorage was chosen for the dependency-free static demo; it is synchronous, browser-scoped, capacity-limited and not encrypted by Sigma.
+
+## Validation and migration boundary
+
+`migrateStoredData` validates schema version 1 at runtime rather than trusting a TypeScript assertion. It checks root collections, required and optional fields, source vocabularies, finite numeric values, record kinds/visibility, and referential integrity between every record and its profile.
+
+Repository loads distinguish `empty`, `ok`, `corrupt`, and `unsupported_version`. Invalid JSON and invalid version-1 structure are corrupt; unknown versions are unsupported. Unsafe raw storage is retained unchanged. The service exposes this status and rejects mutations until user-confirmed reset clears the key. No automatic migration is currently needed because version 1 is the only supported schema, but all future versions enter through this boundary.

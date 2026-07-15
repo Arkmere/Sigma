@@ -332,6 +332,13 @@ nav button.active {
 }
 
 /* Ticket 2 record keeping */
+.data-warning {
+  border: 2px solid var(--error);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-5);
+  background: var(--surface);
+}
 .page-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(18rem, .8fr);

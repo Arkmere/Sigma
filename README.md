@@ -10,7 +10,7 @@ Sigma is not a fitness tracker, health-analysis app, weight-loss app, medical di
 
 ## Current implementation status
 
-Ticket 2 is complete. Sigma now provides independent and managed local profiles, physical measurements with non-destructive history and provenance, standard sizes, brand/product fit facts, profile-aware search and browsing, versioned local persistence, and JSON backup. The TypeScript shell retains cross-platform Node build/dev scripts and light/dark/system themes.
+Ticket 2A is complete. Sigma provides independent and managed local profiles, physical measurements with non-destructive history and provenance, standard sizes, brand/product fit facts, profile-aware search and browsing, validated versioned local persistence, and JSON backup. The UI is split into focused dependency-free TypeScript modules.
 
 It does not contain conversions, recommendations, Family relationships or sharing, payments, cloud sync, accounts, external integrations, OS permissions or camera measurement.
 
@@ -31,6 +31,8 @@ There is currently no `npm run lint` command. Linting is deliberately recorded a
 ## Local data
 
 Canonical Ticket 2 data is stored in this browser through a versioned localStorage repository. Settings and Privacy provide a structured JSON backup download. Local browser data and backups are not encrypted by Sigma; clearing browser storage removes the canonical local copy.
+
+Stored schema version 1 data is validated at runtime, including record-to-profile ownership. Corrupt or unsupported-version data is never treated as an ordinary empty database, deleted, or overwritten automatically. Sigma shows a warning and blocks record changes until the user explicitly confirms reset. Import, restore, and recovery export are not implemented.
 
 ## Development targets
 

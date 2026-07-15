@@ -11,11 +11,13 @@ Alternatives considered: React Native/Expo offers stronger native deployment but
 ## Layers and structure
 
 - `src/app/content.ts`: route identifiers, navigation metadata and page copy for the Ticket 1 shell.
-- `src/app/app.ts`: shell rendering, route event binding and settings/theme controls.
+- `src/app/app.ts`: top-level route/theme state, render selection and event-binding orchestration.
+- `src/app/ui`: focused shell, profile, record, status, form-action and shared HTML modules.
 - `src/domain/model.ts`: canonical schema and current-measurement selection.
 - `src/domain/service.ts`: profile, record, history, search and export operations.
 - `src/domain/taxonomy.ts`: initial browse taxonomy.
-- `src/data/repository.ts`: typed versioned persistence boundary.
+- `src/data/repository.ts`: explicit load-status and versioned persistence boundary.
+- `src/data/migrations.ts`: runtime schema validation, referential integrity and migration dispatch.
 - `src/lib/preferences.ts`: framework-neutral local preference utilities.
 - `src/styles.css`: semantic design tokens, responsive layout and component styles.
 - `scripts/build.mjs`: cross-platform static asset preparation after TypeScript compilation.
@@ -31,6 +33,8 @@ The shell was split into content metadata and rendering code during Ticket 1A. T
 ## Local persistence
 
 Theme preference is stored separately through `src/lib/preferences.ts`. Canonical Ticket 2 data uses `LocalStorageRepository`, a typed versioned adapter over browser localStorage. Domain and UI code do not access the storage key directly. The service saves after each mutation and can export a complete versioned JSON snapshot.
+
+Loads produce `empty`, `ok`, `corrupt`, or `unsupported_version`. Version 1 is runtime-validated before entering the domain, including profile references. Corrupt/unsupported raw storage is preserved; the service exposes the state and blocks mutations until explicit reset. `migrateStoredData` is the single boundary for future schema versions.
 
 LocalStorage keeps the static foundation dependency-free and makes deterministic persistence tests straightforward. Its trade-offs are synchronous access, browser-specific capacity/retention and no Sigma-provided encryption. The repository interface allows a future IndexedDB adapter without changing domain operations.
 
@@ -76,3 +80,5 @@ No backend, hosted database, authentication provider, analytics, telemetry, adve
 8. Linting: remove misleading lint script. Reason: `npm run lint` must mean real linting. Trade-off: linting remains a known limitation until a real linter is added.
 9. Ticket 2 persistence: versioned localStorage repository. Reason: isolated, dependency-free local authority suitable for this static demo. Trade-off: synchronous, capacity-limited and not encrypted by Sigma.
 10. Measurement history: immutable child values with derived current selection. Reason: provenance and earlier facts cannot be accidentally overwritten. Trade-off: editing metadata and richer correction workflows remain future work.
+11. Ticket 2A data safety: runtime validation and explicit load status. Reason: unreadable personal records must never masquerade as first-run emptiness. Trade-off: recovery/import tooling remains unavailable.
+12. Ticket 2A UI split: orchestration remains in `app.ts`; rendering and form translation live under `src/app/ui`. Reason: Ticket 3 can add display semantics without expanding one monolithic file.

@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Ticket 2 completed. Ready for Ticket 3.
+Ticket 2A data safety and maintainability pass completed. Ready for Ticket 3.
 
 ## Completed
 
@@ -17,13 +17,19 @@ Ticket 2 completed. Ready for Ticket 3.
 - Structured JSON backup containing schema, timestamps, profiles and every record type.
 - Truthful local-only Privacy and Settings controls, including confirmed destructive reset.
 - Domain, persistence and lightweight UI interaction tests for Ticket 2 journeys.
+- Runtime schema-version-1 validation, referential-integrity checks and an explicit migration boundary.
+- Distinct empty, valid, corrupt and unsupported-version repository states.
+- Preservation of unreadable raw storage with mutations blocked until user-confirmed reset.
+- Visible data-safety warning for corrupt or unsupported local data.
+- Ticket 2 UI split into shell, profile, record, status, action and shared-HTML modules.
+- Expanded practical starter catalogue across all twelve taxonomy categories.
 
 ## Current Repository State
 
 - Framework: dependency-free TypeScript static application.
 - Domain: `src/domain` owns the schema, taxonomy, history rules and record service.
-- Persistence: `src/data/repository.ts` owns synchronous versioned localStorage access; local data is authoritative.
-- UI: profile-aware screens in `src/app`, semantic responsive CSS, accessible labelled forms and keyboard-operable controls.
+- Persistence: `src/data/repository.ts` owns explicit load states; `src/data/migrations.ts` validates and dispatches schema versions.
+- UI: `src/app/app.ts` orchestrates state/events while focused modules under `src/app/ui` render screens and translate forms.
 - Data scope: local profiles, physical measurements, standard sizes and brand/product fit records only.
 - Source scope: manual entry is active; future source types are schema vocabulary only.
 - Privacy: no account, cloud, telemetry, analytics, advertising, external service or permission request.
@@ -36,7 +42,8 @@ Ticket 2 completed. Ready for Ticket 3.
 - JSON backup download is export-only; import/restore is not implemented.
 - Physical values support append-only history, but the UI does not yet correct/delete individual history entries.
 - Standard-size and brand-fit records can be edited, but those edits do not yet create a separate audit history.
-- The initial taxonomy is practical rather than exhaustive; custom labels remain available.
+- The expanded taxonomy remains a starter catalogue rather than exhaustive; custom labels remain available.
+- Corrupt/unsupported storage has no recovery, raw export, import or restore path; only confirmed reset is available.
 - Tests use a lightweight DOM harness, not a full browser or native mobile runtime.
 - The development server builds once and does not watch files.
 - No real linter is configured.
@@ -50,6 +57,9 @@ Ticket 2 completed. Ready for Ticket 3.
 - Every record is tied to one profile and marked private; visibility has no sharing effect in Ticket 2.
 - Structured JSON export is available, while import is deferred to avoid unsafe restore semantics.
 - Ticket 2 adds no recommendation, conversion, Family, permission, cloud or payment behaviour.
+- Invalid JSON, invalid version-1 structures and broken profile references are surfaced as corrupt without modifying raw storage.
+- Unknown schema versions are surfaced as unsupported and routed through a dedicated migration boundary.
+- Unsafe repository states are read-only until reset so creating a profile cannot overwrite unreadable personal data.
 
 ## Next Planned Work
 

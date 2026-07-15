@@ -16,10 +16,10 @@ class Root {
   get textContent() { return this.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(); }
   querySelector() { return null; }
   querySelectorAll(selector) {
-    if (selector !== '[data-route]') return [];
     if (this.controls.has(selector)) return this.controls.get(selector);
     const controls = [];
-    for (const match of this.html.matchAll(/data-route="([^"]+)"/g)) controls.push(new Control({ route: match[1] }));
+    if (selector === '[data-route]') for (const match of this.html.matchAll(/data-route="([^"]+)"/g)) controls.push(new Control({ route: match[1] }));
+    if (selector === '#reset-data' && this.html.includes('id="reset-data"')) controls.push(new Control({}));
     this.controls.set(selector, controls);
     return controls;
   }
@@ -37,6 +37,15 @@ test('shell renders truthful empty states and switches every primary route witho
   for (const [route, expected] of [['profiles', /Profiles/], ['measurements', /Create a profile before adding records/], ['family', /sharing are not implemented/], ['privacy', /Local-only data/], ['settings', /Theme preference/]]) {
     const button = root.querySelectorAll('[data-route]').find((item) => item.dataset.route === route);
     assert.ok(button); button.click(); assert.match(root.textContent, expected);
+  }
+});
+
+test('unsafe storage renders warnings and reset still requires confirmation', () => {
+  for (const [raw, expected] of [['{bad', /corrupt or does not match/], [JSON.stringify({ schemaVersion: 99 }), /unsupported schema version 99/]]) {
+    const local = storage(); local.setItem('sigma.data.v1', raw); const service = new SigmaService(new LocalStorageRepository(local));
+    globalThis.localStorage = local; globalThis.matchMedia = () => ({ matches: false }); globalThis.document = { documentElement: { dataset: {} } }; globalThis.confirm = () => false;
+    const root = new Root(); mountApp(root, service); assert.match(root.textContent, /could not read safely/); assert.match(root.textContent, expected);
+    root.querySelectorAll('#reset-data')[0].click(); assert.equal(local.getItem('sigma.data.v1'), raw);
   }
 });
 

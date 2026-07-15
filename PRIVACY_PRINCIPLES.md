@@ -6,6 +6,7 @@
 - User data is transmitted nowhere by Sigma. A deliberate JSON download exports a local backup.
 - No health platform, contact, camera, Bluetooth, location or notification data is accessed.
 - Local browser storage and exported JSON are not encrypted by Sigma; no production security claim is made.
+- Corrupt or unsupported local data is not automatically deleted or overwritten. Mutations and ordinary backup export are blocked until the user explicitly resets it.
 
 ## Architectural intentions
 - User data belongs to the user.
