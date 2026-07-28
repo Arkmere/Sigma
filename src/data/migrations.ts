@@ -81,13 +81,11 @@ function validateVersionOne(root: Record<string, unknown>): string | undefined {
 
 function validMeasurementValue(value: unknown): boolean {
   if (!object(value) || !requiredStrings(value, ['id', 'unit', 'measuredAt', 'recordedAt', 'originalUnit', 'createdAt']) || typeof value.value !== 'number' || !Number.isFinite(value.value) || typeof value.originalValue !== 'number' || !Number.isFinite(value.originalValue) || !sourceTypes.has(String(value.sourceType)) || !sourceTypes.has(String(value.acquisitionMethod))) return false;
-  if (!optionalString(value.sourceName) || !optionalString(value.notes) || !optionalString(value.sourceItemId) || !optionalString(value.sourceDevice) || (value.sourceId !== undefined && !sourceIds.has(String(value.sourceId))) || (value.confidence !== undefined && (typeof value.confidence !== 'number' || !Number.isFinite(value.confidence) || value.confidence < 0 || value.confidence > 1))) return false;
-  if (value.derivation !== undefined && (!object(value.derivation) || !['direct','derived'].includes(String(value.derivation.kind)) || !optionalString(value.derivation.method) || !optionalString(value.derivation.inputDescription))) return false;
-  return !(value.sourceType === 'manual' && value.sourceId !== undefined && value.sourceId !== 'manual');
+  return optionalString(value.sourceName) && optionalString(value.notes) && validExternalProvenance(value);
 }
 
 function validStandardSize(value: unknown): boolean {
-  return object(value) && requiredStrings(value, ['id', 'profileId', 'category', 'label', 'sizingSystem', 'sizeValue', 'recordedAt', 'createdAt', 'updatedAt']) && value.kind === 'standard_size' && value.visibility === 'private' && sourceTypes.has(String(value.sourceType)) && optionalString(value.sourceName) && optionalString(value.notes);
+  return object(value) && requiredStrings(value, ['id', 'profileId', 'category', 'label', 'sizingSystem', 'sizeValue', 'recordedAt', 'createdAt', 'updatedAt']) && value.kind === 'standard_size' && value.visibility === 'private' && sourceTypes.has(String(value.sourceType)) && optionalString(value.sourceName) && optionalString(value.notes) && validExternalProvenance(value);
 }
 
 function validBrandFit(value: unknown): boolean {
@@ -95,4 +93,10 @@ function validBrandFit(value: unknown): boolean {
 }
 
 function requiredStrings(value: Record<string, unknown>, keys: string[]): boolean { return keys.every((key) => nonEmpty(value[key])); }
+function validExternalProvenance(value:Record<string,unknown>):boolean {
+  if (!optionalString(value.sourceItemId) || !optionalString(value.sourceDevice) || (value.sourceId !== undefined && !sourceIds.has(String(value.sourceId))) || (value.confidence !== undefined && (typeof value.confidence !== 'number' || !Number.isFinite(value.confidence) || value.confidence < 0 || value.confidence > 1))) return false;
+  if ((value.sourceItemId !== undefined && !nonEmpty(value.sourceItemId)) || (value.sourceDevice !== undefined && !nonEmpty(value.sourceDevice))) return false;
+  if (value.derivation !== undefined && (!object(value.derivation) || Object.keys(value.derivation).some(key=>!['kind','method','inputDescription'].includes(key)) || !['direct','derived'].includes(String(value.derivation.kind)) || !optionalString(value.derivation.method) || !optionalString(value.derivation.inputDescription))) return false;
+  return !(value.sourceType === 'manual' && value.sourceId !== undefined && value.sourceId !== 'manual');
+}
 function corrupt(reason: string): MigrationResult { return { status: 'corrupt', reason }; }

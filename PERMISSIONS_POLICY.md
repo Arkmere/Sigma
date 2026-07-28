@@ -20,3 +20,5 @@ No speculative permission declarations or blanket onboarding prompts are allowed
 Sigma now models `contacts`, `camera`, `health_data`, `nearby_devices` and `files` with a complete pre-permission explanation contract: requested access, reason, will access, will not access, alternatives and denial effect. Explanations appear only after a deliberate Sources action. Browser and OS permission APIs are not called.
 
 The static demo records only `not_requested`, `demo_granted` or `demo_denied` under `sigma.permissionDemo.v1`. These are explicitly simulated local decisions, may be reset in Settings, do not affect manual entry, and are not production permission status.
+
+Permission simulation does not weaken the import boundary: allowlisted measurement and standard-size values, source identity and all supplied provenance are validated before preview and individual confirmation.

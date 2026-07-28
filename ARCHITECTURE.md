@@ -32,7 +32,7 @@ The shell controller now has six top-level destinations, including Sources. No U
 
 ## Sources and contextual permissions
 
-`src/sources` owns the typed nine-source registry, explicit stable external-field allowlist, mixed local demo adapter, fail-closed evaluation and confirmed import translation. Manual is the only live source; measurement device is a local demonstration; all other integrations are truthful future states.
+`src/sources` owns the typed nine-source registry, explicit stable external-field allowlist, mixed local demo adapter, fail-closed evaluation and confirmed import translation for physical measurements and standard sizes. Raw source identity, item ID, device, confidence and derivation remain untrusted until runtime evaluation produces a canonical-ready candidate. Manual is the only live source; measurement device is a local demonstration; all other integrations are truthful future states. Brand-fit import remains unsupported.
 
 `src/permissions` owns five permission kinds and the complete explanation contract. Decisions are simulated (`not_requested`, `demo_granted`, `demo_denied`) and stored separately at `sigma.permissionDemo.v1`; they never enter `SigmaData` or backup exports. No real platform API is called. Canonical import mutation still passes through `SigmaService` and its Ticket 4A owner/manager rule.
 
@@ -100,3 +100,4 @@ No backend, hosted database, authentication provider, analytics, telemetry, adve
 20. Ticket 4A integrity: persisted grant, revocation and connection authority/state invariants are runtime validated before data enters the domain.
 21. Ticket 5 schema: retain schema 2 because structured provenance is optional and backward-compatible; validate it at runtime.
 22. Ticket 5 imports: explicit IDs fail closed, preview precedes individual confirmation, and source-item duplicate checks never compare numeric value alone.
+23. Ticket 5A completeness: measurements and standard sizes share optional structured external provenance. Duplicate identity is source ID plus source item ID within the imported record kind; malformed raw provenance never reaches canonical mutation.

@@ -4,6 +4,13 @@ export type ProfileType = 'independent' | 'managed';
 export type SourceType = 'manual' | 'imported_health_platform' | 'imported_device' | 'camera_assisted' | 'body_scan' | 'third_party_service';
 export type SourceId = 'manual' | 'apple_health' | 'health_connect' | 'smart_scale' | 'measurement_device' | 'camera_assisted' | 'body_scan' | 'external_scan' | 'third_party_scanner';
 export interface Derivation { kind: 'direct' | 'derived'; method?: string; inputDescription?: string; }
+export interface ExternalProvenance {
+  sourceId?: SourceId;
+  sourceItemId?: string;
+  sourceDevice?: string;
+  confidence?: number;
+  derivation?: Derivation;
+}
 export type Visibility = 'private';
 
 export interface Profile {
@@ -26,7 +33,7 @@ export interface AdultConnection { id: string; initiatorProfileId: string; recip
 export type SharingScope = { type: 'profile' } | { type: 'category'; category: string } | { type: 'record_kind'; recordKind: 'standard_size' | 'brand_fit' } | { type: 'record'; recordKind: 'measurement' | 'standard_size' | 'brand_fit'; recordId: string };
 export interface SharingGrant { id: string; ownerProfileId: string; recipientProfileId: string; grantedByProfileId: string; scope: SharingScope; status: 'active' | 'revoked'; grantedAt: string; revokedAt?: string; revokedByProfileId?: string; }
 
-export interface MeasurementValue {
+export interface MeasurementValue extends ExternalProvenance {
   id: string;
   value: number;
   unit: string;
@@ -37,11 +44,6 @@ export interface MeasurementValue {
   originalValue: number;
   originalUnit: string;
   acquisitionMethod: SourceType;
-  confidence?: number;
-  sourceId?: SourceId;
-  sourceItemId?: string;
-  sourceDevice?: string;
-  derivation?: Derivation;
   notes?: string;
   createdAt: string;
 }
@@ -59,7 +61,7 @@ export interface PhysicalMeasurement {
   updatedAt: string;
 }
 
-export interface StandardSize {
+export interface StandardSize extends ExternalProvenance {
   id: string;
   profileId: string;
   kind: 'standard_size';

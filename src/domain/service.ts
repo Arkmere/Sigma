@@ -88,6 +88,7 @@ export class SigmaService {
 
   addStandardSize(input: Omit<StandardSize, 'id' | 'kind' | 'visibility' | 'createdAt' | 'updatedAt'>): StandardSize {
     this.ensureWritable();
+    this.validateExternalProvenance(input);
     this.requireManagement(input.profileId); const timestamp = this.now();
     const record: StandardSize = { ...input, id: this.id(), kind: 'standard_size', visibility: 'private', createdAt: timestamp, updatedAt: timestamp };
     this.data.standardSizes.push(record); this.persist(); return structuredClone(record);
@@ -150,7 +151,8 @@ export class SigmaService {
   private addMembershipInternal(familyId:string,profileId:string,addedByProfileId:string,createdAt:string){if(this.data.familyMemberships.some(m=>m.familyId===familyId&&m.profileId===profileId))throw new Error('Profile is already a Family member.');this.data.familyMemberships.push({id:this.id(),familyId,profileId,addedByProfileId,createdAt});}
   private validateScope(ownerId:string,scope:SharingScope){if(scope.type==='category'&&!scope.category.trim())throw new Error('Category is required.');if(scope.type==='record'){const collection=scope.recordKind==='measurement'?this.data.measurements:scope.recordKind==='standard_size'?this.data.standardSizes:this.data.brandFits;if(!collection.some(r=>r.id===scope.recordId&&r.profileId===ownerId))throw new Error('Scoped record does not belong to owner.');}}
   private ensureWritable(): void { if (this.loadResult.status === 'corrupt' || this.loadResult.status === 'unsupported_version') throw new Error('Stored Sigma data must be reset before new data can be saved.'); }
-  private makeValue(input: Omit<MeasurementValue, 'id' | 'createdAt'>, createdAt: string): MeasurementValue { if(input.confidence!==undefined&&(!Number.isFinite(input.confidence)||input.confidence<0||input.confidence>1))throw new Error('Confidence must be between 0 and 1.'); return { ...input, id: this.id(), createdAt }; }
+  private makeValue(input: Omit<MeasurementValue, 'id' | 'createdAt'>, createdAt: string): MeasurementValue { this.validateExternalProvenance(input); return { ...input, id: this.id(), createdAt }; }
+  private validateExternalProvenance(input:Pick<MeasurementValue,'sourceType'|'sourceId'|'sourceItemId'|'sourceDevice'|'confidence'|'derivation'>):void { if(input.confidence!==undefined&&(!Number.isFinite(input.confidence)||input.confidence<0||input.confidence>1))throw new Error('Confidence must be between 0 and 1.');if(input.sourceItemId!==undefined&&!input.sourceItemId.trim())throw new Error('Source item ID must be non-empty.');if(input.sourceDevice!==undefined&&!input.sourceDevice.trim())throw new Error('Source device must be non-empty.');if(input.sourceType==='manual'&&input.sourceId!==undefined&&input.sourceId!=='manual')throw new Error('Manual records cannot claim an external source.'); }
   private persist(): void {
     if (this.loadResult.status === 'corrupt' || this.loadResult.status === 'unsupported_version') throw new Error('Stored Sigma data must be reset before new data can be saved.');
     this.repository.save(this.data);

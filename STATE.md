@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Ticket 5 data-source, allowlisted-import and just-in-time permission architecture completed. Ticket 6 has not started.
+Ticket 5A import completeness and provenance validation correction completed. Ticket 6 has not started.
 
 ## Completed
 
@@ -12,6 +12,9 @@ Ticket 5 data-source, allowlisted-import and just-in-time permission architectur
 - Simulated decisions stored separately at `sigma.permissionDemo.v1`, resettable without deleting records and excluded from backup.
 - Optional source ID, source item, device and direct/derived provenance retained under backward-compatible schema 2, with confidence constrained to 0–1.
 - Duplicate detection limited to identical source ID plus source item ID.
+- Allowlisted standard-size candidates now dispatch to canonical `StandardSize` records with the same optional structured external provenance as measurement values.
+- Raw source item, device, confidence and derivation fields are treated as untrusted and fail closed with `invalid_provenance` before candidate creation.
+- Duplicate identity is source ID plus source item ID for both supported imported record kinds; brand-fit import remains deliberately unsupported.
 
 - Ticket 1/Ticket 1A TypeScript shell, cross-platform Node scripts, local TypeScript, themes and product constitution.
 - Independent and managed local profiles with selection and basic editing.

@@ -2,7 +2,7 @@
 
 Ticket 4 defines schema version 2 for Sigma's canonical single-device local data. Valid version-1 data is deterministically migrated under the unchanged `sigma.data.v1` key.
 
-Ticket 5 retains schema 2. Optional `sourceId`, `sourceItemId`, `sourceDevice` and structured `derivation` (`direct` or `derived`, with optional method/input description) extend measurement-value provenance without changing required collections or existing meaning. Confidence is finite and constrained to 0–1. Runtime loading rejects unknown source IDs and malformed provenance. Legacy records remain lossless and need no fabricated metadata.
+Ticket 5/5A retains schema 2. `MeasurementValue` and `StandardSize` share optional `sourceId`, `sourceItemId`, `sourceDevice`, confidence and structured `derivation` (`direct` or `derived`, with optional method/input description). These fields change no required collection, required field or existing meaning. Confidence is finite and constrained to 0–1. Runtime loading rejects unknown source IDs, empty source identifiers/devices and malformed provenance. Legacy records remain lossless and need no fabricated metadata.
 
 ## Profiles
 
@@ -51,4 +51,4 @@ Every record retains its original owner and private visibility; access is repres
 
 Repository loads distinguish `empty`, `ok`, `corrupt`, and `unsupported_version`. Valid schema-1 data migrates losslessly to schema 2; invalid or authority-impossible data is corrupt and unknown future versions are unsupported. Unsafe raw storage is retained unchanged and mutations remain blocked until explicit reset.
 
-External raw data is not canonical data. A typed explicit field allowlist maps stable IDs to measurement or standard-size concepts and permitted units/systems; unknown fields fail closed. The local demo evaluates mixed data, previews accepted candidates, and creates a canonical measurement only after individual confirmation and the existing owner/manager authorization check. Re-import is rejected only when source ID and source item ID match; equal values from distinct source items remain valid.
+External raw data is not canonical data. A typed explicit field allowlist maps stable IDs to measurement or standard-size concepts and permitted units/systems; unknown fields and malformed provenance fail closed before candidate creation. Individual confirmation creates a physical measurement or standard size through the existing owner/manager authorization check. For standard sizes, the candidate source date maps to `StandardSize.recordedAt`; it is not described as a physical measurement date. Re-import is rejected only when source ID and source item ID match within that record kind; equal values from distinct source items remain valid. Brand-fit import is not implemented.

@@ -15,6 +15,7 @@
 - Export, correction, deletion, selective sharing and revocation must be feasible.
 - External source imports must use explicit allowlists and collect only measurement/fit-relevant data.
 - Unknown, health, activity, sleep, location and medical fields fail closed before an import preview. Every accepted demo fact still requires individual confirmation.
+- External source item IDs, devices, confidence and derivation metadata are runtime-validated before either a measurement or standard size can become canonical.
 
 ## Future requirements
 Future data systems must distinguish current guarantees from planned security. Production concerns include local sensitive-data protection, encrypted backup, key management, remote sharing, authentication, revocation and auditability.

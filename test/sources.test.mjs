@@ -73,3 +73,53 @@ test('schema 2 accepts optional structured provenance and rejects malformed valu
  const badDerivation=structuredClone(valid);badDerivation.measurements[0].values[0].derivation={kind:'guessed'};assert.equal(migrateStoredData(badDerivation).status,'corrupt');
  const badConfidence=structuredClone(valid);badConfidence.measurements[0].values[0].confidence=2;assert.equal(migrateStoredData(badConfidence).status,'corrupt');
 });
+
+test('allowlisted clothing and shoe sizes import as canonical standard sizes with shared provenance',()=>{
+ const clothing=evaluateExternalDatum({externalFieldId:'size.clothing',value:'M',unitOrSystem:'Generic',measuredAt:'2026-07-01',sourceItemId:'size-1',sourceDevice:'Demo wardrobe',confidence:0.9,derivation:{kind:'direct'}});
+ const shoe=evaluateExternalDatum({externalFieldId:'size.shoe',value:'9',unitOrSystem:'UK',measuredAt:'2026-07-02',sourceItemId:'shoe-1'});
+ assert.equal(clothing.status,'accepted');assert.equal(shoe.status,'accepted');assert.equal(clothing.candidate.targetKind,'standard_size');assert.equal(shoe.candidate.targetKind,'standard_size');
+ const {service}=fixture(),profile=service.createProfile({displayName:'Alex',profileType:'independent'});
+ importCandidate(service,profile.id,clothing.candidate);const record=service.snapshot().standardSizes[0];
+ assert.deepEqual({profileId:record.profileId,category:record.category,label:record.label,sizingSystem:record.sizingSystem,sizeValue:record.sizeValue,sourceId:record.sourceId,sourceItemId:record.sourceItemId,sourceDevice:record.sourceDevice,confidence:record.confidence,derivation:record.derivation},{profileId:profile.id,category:'Clothing',label:'Clothing size',sizingSystem:'Generic',sizeValue:'M',sourceId:'measurement_device',sourceItemId:'size-1',sourceDevice:'Demo wardrobe',confidence:0.9,derivation:{kind:'direct',method:undefined,inputDescription:undefined}});
+ assert.equal(record.recordedAt,'2026-07-01');assert.equal(migrateStoredData(service.snapshot()).status,'ok');
+ assert.throws(()=>importCandidate(service,profile.id,clothing.candidate),/already imported/);
+ importCandidate(service,profile.id,{...clothing.candidate,sourceItemId:'size-2'});assert.equal(service.snapshot().standardSizes.length,2);
+ const otherSource=evaluateExternalDatum({...clothing.candidate,sourceItemId:'size-1'},'health_connect');assert.equal(otherSource.status,'accepted');importCandidate(service,profile.id,otherSource.candidate);assert.equal(service.snapshot().standardSizes.length,3);
+ const backup=JSON.stringify(service.exportBackup());assert.match(backup,/Demo wardrobe/);assert.doesNotMatch(backup,/permissionDemo/);
+});
+
+test('standard-size imports enforce Ticket 4A management authority',()=>{
+ const candidate=evaluateExternalDatum({externalFieldId:'size.shoe',value:'9',unitOrSystem:'UK',measuredAt:'2026-07-02',sourceItemId:'shoe-authority'}).candidate;
+ const {service}=fixture(),owner=service.createProfile({displayName:'Owner',profileType:'independent'}),viewer=service.createProfile({displayName:'Viewer',profileType:'independent'});
+ service.selectActor(viewer.id);assert.throws(()=>importCandidate(service,owner.id,candidate),/not authorised/);assert.equal(service.snapshot().standardSizes.length,0);
+});
+
+test('raw malformed provenance fails closed before candidate creation',()=>{
+ const base={externalFieldId:'body.height',value:180,unitOrSystem:'cm',measuredAt:'2026-07-01'};
+ const malformed=[
+  {derivation:{kind:'guessed'}},{derivation:{kind:'derived',method:4}},{derivation:{kind:'derived',method:{}}},{derivation:{kind:'derived',inputDescription:4}},{derivation:{kind:'direct',unexpected:'value'}},{derivation:[]},{derivation:'direct'},
+  {sourceItemId:4},{sourceItemId:{}},{sourceItemId:''},{sourceItemId:'   '},{sourceDevice:4},{sourceDevice:{}},{sourceDevice:''},{sourceDevice:'  '},
+  {confidence:-0.1},{confidence:1.1},{confidence:NaN},{confidence:Infinity},
+ ];
+ for(const extra of malformed){const result=evaluateExternalDatum({...base,...extra});assert.equal(result.status,'rejected');assert.equal(result.reason,'invalid_provenance');}
+});
+
+test('measurement and standard-size imports are immediately valid and remain valid after reload',()=>{
+ const {service,local}=fixture(),profile=service.createProfile({displayName:'Alex',profileType:'independent'});
+ const measurement=evaluateDemoPayload().find(x=>x.status==='accepted').candidate;
+ const size=evaluateExternalDatum({externalFieldId:'size.ring',value:'54',unitOrSystem:'ISO',measuredAt:'2026-07-03',sourceItemId:'ring-54'}).candidate;
+ importCandidate(service,profile.id,measurement);importCandidate(service,profile.id,size);
+ assert.equal(migrateStoredData(service.snapshot()).status,'ok');const reloaded=new SigmaService(new LocalStorageRepository(local));assert.equal(reloaded.storageStatus().status,'ok');assert.equal(reloaded.snapshot().measurements.length,1);assert.equal(reloaded.snapshot().standardSizes.length,1);
+});
+
+test('legacy schema-2 records need no fabricated external provenance',()=>{
+ const {service}=fixture(),profile=service.createProfile({displayName:'Alex',profileType:'independent'});
+ service.addStandardSize({profileId:profile.id,category:'Clothing',label:'Top',sizingSystem:'Generic',sizeValue:'M',recordedAt:'2026-01-01',sourceType:'manual'});
+ const snapshot=service.snapshot();assert.equal(migrateStoredData(snapshot).status,'ok');assert.equal(snapshot.standardSizes[0].sourceId,undefined);assert.equal(snapshot.standardSizes[0].derivation,undefined);
+});
+
+test('schema 2 rejects malformed optional standard-size provenance',()=>{
+ const {service}=fixture(),profile=service.createProfile({displayName:'Alex',profileType:'independent'});
+ service.addStandardSize({profileId:profile.id,category:'Clothing',label:'Top',sizingSystem:'Generic',sizeValue:'M',recordedAt:'2026-01-01',sourceType:'manual'});
+ for(const change of [{sourceId:'unknown'},{sourceItemId:' '},{sourceDevice:{}},{confidence:2},{derivation:{kind:'guessed'}}]){const snapshot=service.snapshot();Object.assign(snapshot.standardSizes[0],change);assert.equal(migrateStoredData(snapshot).status,'corrupt');}
+});
