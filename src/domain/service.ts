@@ -14,24 +14,28 @@ export class SigmaService {
   constructor(private readonly repository: DataRepository, private readonly now: Clock = defaultClock, private readonly id: IdFactory = defaultId) {
     this.loadResult = repository.load();
     this.data = this.loadResult.data;
+    if (this.reconcileActiveProfile() && this.isWritable()) this.persist();
   }
 
   storageStatus(): LoadResult { return structuredClone(this.loadResult); }
   snapshot(): SigmaData { return structuredClone(this.data); }
   activeProfile(): Profile | undefined { return this.data.profiles.find((profile) => profile.id === this.data.activeProfileId); }
+  activeVisibleProfile(): Profile | undefined {
+    const profile = this.activeProfile();
+    return profile && this.profileAccess(profile.id) !== 'hidden' ? profile : undefined;
+  }
   activeActor(): Profile | undefined { return this.data.profiles.find((profile) => profile.id === this.data.activeActorProfileId); }
   profileAccess(profileId: string): 'editable' | 'read_only' | 'hidden' {
     const actor = this.activeActor();
     if (!actor || !this.data.profiles.some((profile) => profile.id === profileId)) return 'hidden';
     if (canManageProfile(this.data, actor.id, profileId)) return 'editable';
-    const records = [...this.data.measurements, ...this.data.standardSizes, ...this.data.brandFits];
-    return records.some((record) => record.profileId === profileId && canViewRecord(this.data, actor.id, record)) ? 'read_only' : 'hidden';
+    return this.data.sharingGrants.some((grant) => grant.status === 'active' && grant.ownerProfileId === profileId && grant.recipientProfileId === actor.id) ? 'read_only' : 'hidden';
   }
   visibleProfiles(): Profile[] {
     return structuredClone(this.data.profiles.filter((profile) => this.profileAccess(profile.id) !== 'hidden'));
   }
-  selectActor(profileId: string): void { this.ensureWritable(); const profile=this.requireProfile(profileId); if(profile.profileType!=='independent') throw new Error('Only an independent profile may act.'); this.data.activeActorProfileId=profileId; this.persist(); }
-  selectProfile(profileId: string): void { this.ensureWritable(); this.requireProfile(profileId); this.data.activeProfileId = profileId; this.persist(); }
+  selectActor(profileId: string): void { this.ensureWritable(); const profile=this.requireProfile(profileId); if(profile.profileType!=='independent') throw new Error('Only an independent profile may act.'); this.data.activeActorProfileId=profileId; this.reconcileActiveProfile(); this.persist(); }
+  selectProfile(profileId: string): void { this.ensureWritable(); this.requireProfile(profileId); if(this.profileAccess(profileId)==='hidden') throw new Error('The acting adult cannot view that profile.'); this.data.activeProfileId = profileId; this.persist(); }
 
   createProfile(input: Pick<Profile, 'displayName' | 'profileType'> & Partial<Pick<Profile, 'relationshipLabel' | 'dateOfBirth' | 'notes'>>): Profile {
     this.ensureWritable();
@@ -54,6 +58,30 @@ export class SigmaService {
   disconnect(id:string):void { this.ensureWritable(); const actor=this.requireActor(); const c=this.requireConnection(id); if(c.status!=='active'||![c.initiatorProfileId,c.recipientProfileId].includes(actor.id)) throw new Error('Only a connected participant may disconnect.'); c.status='disconnected'; c.disconnectedAt=this.now(); c.disconnectedByProfileId=actor.id; this.persist(); }
   grantAccess(ownerProfileId:string, recipientProfileId:string, scope:SharingScope):SharingGrant { this.ensureWritable(); const actor=this.requireActor(); if(!canCreateGrant(this.data,actor.id,ownerProfileId,recipientProfileId)) throw new Error('Actor is not authorised to create this grant.'); this.validateScope(ownerProfileId,scope); if(this.data.sharingGrants.some(g=>g.status==='active'&&g.ownerProfileId===ownerProfileId&&g.recipientProfileId===recipientProfileId&&JSON.stringify(g.scope)===JSON.stringify(scope))) throw new Error('An equivalent active grant exists.'); const g:SharingGrant={id:this.id(),ownerProfileId,recipientProfileId,grantedByProfileId:actor.id,scope,status:'active',grantedAt:this.now()}; this.data.sharingGrants.push(g); this.persist(); return structuredClone(g); }
   revokeGrant(id:string):void { this.ensureWritable(); const actor=this.requireActor(); const g=this.data.sharingGrants.find(x=>x.id===id); if(!g||!canRevokeGrant(this.data,actor.id,g)) throw new Error('Actor is not authorised to revoke this grant.'); g.status='revoked'; g.revokedAt=this.now(); g.revokedByProfileId=actor.id; this.persist(); }
+  authorisedGrantHistory(): Array<{grant:SharingGrant;canRevoke:boolean}> {
+    const actor=this.activeActor();
+    if(!actor)return [];
+    return this.data.sharingGrants.filter((grant)=>grant.ownerProfileId===actor.id||grant.recipientProfileId===actor.id||grant.grantedByProfileId===actor.id||canManageProfile(this.data,actor.id,grant.ownerProfileId)).map((grant)=>({grant:structuredClone(grant),canRevoke:canRevokeGrant(this.data,actor.id,grant)}));
+  }
+  grantableOwners():Profile[] {
+    const actor=this.activeActor();
+    if(!actor)return [];
+    return structuredClone(this.data.profiles.filter((profile)=>canManageProfile(this.data,actor.id,profile.id)));
+  }
+  eligibleGrantRecipients(ownerProfileId:string):Profile[] {
+    const actor=this.activeActor();
+    if(!actor)return [];
+    return structuredClone(this.data.profiles.filter((profile)=>profile.profileType==='independent'&&canCreateGrant(this.data,actor.id,ownerProfileId,profile.id)));
+  }
+  grantableRecords(ownerProfileId:string) {
+    const actor=this.requireActor();
+    if(!canManageProfile(this.data,actor.id,ownerProfileId))throw new Error('The acting adult cannot grant access for that profile.');
+    return {
+      measurements:structuredClone(this.data.measurements.filter((record)=>record.profileId===ownerProfileId)),
+      standardSizes:structuredClone(this.data.standardSizes.filter((record)=>record.profileId===ownerProfileId)),
+      brandFits:structuredClone(this.data.brandFits.filter((record)=>record.profileId===ownerProfileId)),
+    };
+  }
   sharedRecords(actorId=this.data.activeActorProfileId??'') { const all=[...this.data.measurements,...this.data.standardSizes,...this.data.brandFits]; return all.filter(r=>r.profileId!==actorId&&canViewRecord(this.data,actorId,r)); }
   sharedRecordConversions(actorId:string, recordId:string):ConversionResult[] { if(!this.canViewRecord(actorId,recordId)) return []; if(this.data.measurements.some(r=>r.id===recordId)) return this.measurementConversions(recordId); if(this.data.standardSizes.some(r=>r.id===recordId)) return this.standardSizeConversions(recordId); return this.brandFitConversions(recordId); }
   canViewRecord(actorId:string, recordId:string):boolean { const r=[...this.data.measurements,...this.data.standardSizes,...this.data.brandFits].find(x=>x.id===recordId); return !!r&&canViewRecord(this.data,actorId,r); }
@@ -170,6 +198,18 @@ export class SigmaService {
   private addMembershipInternal(familyId:string,profileId:string,addedByProfileId:string,createdAt:string){if(this.data.familyMemberships.some(m=>m.familyId===familyId&&m.profileId===profileId))throw new Error('Profile is already a Family member.');this.data.familyMemberships.push({id:this.id(),familyId,profileId,addedByProfileId,createdAt});}
   private validateScope(ownerId:string,scope:SharingScope){if(scope.type==='category'&&!scope.category.trim())throw new Error('Category is required.');if(scope.type==='record'){const collection=scope.recordKind==='measurement'?this.data.measurements:scope.recordKind==='standard_size'?this.data.standardSizes:this.data.brandFits;if(!collection.some(r=>r.id===scope.recordId&&r.profileId===ownerId))throw new Error('Scoped record does not belong to owner.');}}
   private ensureWritable(): void { if (this.loadResult.status === 'corrupt' || this.loadResult.status === 'unsupported_version') throw new Error('Stored Sigma data must be reset before new data can be saved.'); }
+  private isWritable():boolean { return this.loadResult.status !== 'corrupt' && this.loadResult.status !== 'unsupported_version'; }
+  private reconcileActiveProfile():boolean {
+    const current=this.activeProfile();
+    if(current&&this.profileAccess(current.id)!=='hidden')return false;
+    const actor=this.activeActor();
+    const visible=this.data.profiles.filter((profile)=>this.profileAccess(profile.id)!=='hidden');
+    const fallback=(actor&&visible.find((profile)=>profile.id===actor.id))??visible.find((profile)=>this.profileAccess(profile.id)==='editable')??visible.find((profile)=>this.profileAccess(profile.id)==='read_only');
+    const next=fallback?.id;
+    if(this.data.activeProfileId===next)return false;
+    this.data.activeProfileId=next;
+    return true;
+  }
   private makeValue(input: Omit<MeasurementValue, 'id' | 'createdAt'>, createdAt: string): MeasurementValue { this.validateExternalProvenance(input); return { ...input, id: this.id(), createdAt }; }
   private validateExternalProvenance(input:Pick<MeasurementValue,'sourceType'|'sourceId'|'sourceItemId'|'sourceDevice'|'confidence'|'derivation'>):void { if(input.confidence!==undefined&&(!Number.isFinite(input.confidence)||input.confidence<0||input.confidence>1))throw new Error('Confidence must be between 0 and 1.');if(input.sourceItemId!==undefined&&!input.sourceItemId.trim())throw new Error('Source item ID must be non-empty.');if(input.sourceDevice!==undefined&&!input.sourceDevice.trim())throw new Error('Source device must be non-empty.');if(input.sourceType==='manual'&&input.sourceId!==undefined&&input.sourceId!=='manual')throw new Error('Manual records cannot claim an external source.'); }
   private persist(): void {

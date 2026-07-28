@@ -19,10 +19,10 @@ test('creates independent profiles and persists active actor and viewed selectio
   const { service, storage } = serviceFixture();
   const personal = service.createProfile({ displayName: 'Alex', profileType: 'independent' });
   const jordan = service.createProfile({ displayName: 'Jordan', profileType: 'independent' });
-  service.selectProfile(jordan.id); service.selectActor(personal.id);
+  service.selectActor(jordan.id); service.selectProfile(jordan.id);
   const reloaded = new SigmaService(new LocalStorageRepository(storage));
   assert.deepEqual(reloaded.snapshot().profiles.map((profile) => profile.profileType), ['independent', 'independent']);
-  assert.equal(reloaded.activeProfile()?.id, jordan.id); assert.equal(reloaded.activeActor()?.id,personal.id);
+  assert.equal(reloaded.activeProfile()?.id, jordan.id); assert.equal(reloaded.activeActor()?.id,jordan.id);
   assert.equal(personal.displayName, 'Alex');
 });
 

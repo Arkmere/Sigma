@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Ticket 6 integrated UX implementation completed. Ticket 7 audit and formal demo deliverables have not started.
+Ticket 6 implementation is functionally corrected through Ticket 6A; final visual acceptance remains pending manual browser verification. Ticket 7 has not started.
 
 ## Completed
 
@@ -15,6 +15,10 @@ Ticket 6 integrated UX implementation completed. Ticket 7 audit and formal demo 
 - Typed transient notices with an accessible live region and controlled expected-error presentation.
 - Dominant corrupt/unsupported storage state that suppresses ordinary page content and export until confirmed reset.
 - Responsive six-destination mobile navigation, wrapping context controls, one-column forms and reduced-motion-aware interactions.
+- Actor-relative viewed-profile reconciliation retains an authorised view or persists a safe own/editable/read-only fallback.
+- Shared-profile visibility derives from active grants even when the granted scope currently contains no matching records.
+- Actor-authorised grant history and owner-relative, scope-sensitive sharing composition prevent unrelated audit or record disclosure.
+- Sharing previews describe the actual owner, recipient and scope; specific-record controls use only the selected owner's eligible records.
 
 - Sixth Sources destination with a typed nine-source registry; manual is live, measurement device is a local demo, and every other integration is a truthful future state.
 - Explicit stable external-field allowlist, fail-closed unknown fields, mixed demo filtering, individual confirmation and Ticket 4A-authorized targets.
@@ -90,7 +94,6 @@ Ticket 6 integrated UX implementation completed. Ticket 7 audit and formal demo 
 - The public ISO catalogue does not expose footwear table contents, so only the specification-supplied adult row is encoded; other rows and child conversions return no result.
 - Clothing, hat, glove, regional ring and specialist/equipment conversions are deliberately unsupported rather than guessed.
 - Consent is a same-device simulation, not authenticated remote consent; there is no cloud sync, real accounts/payments, external integration, production child-law policy or cryptography.
-- The compact sharing form exposes all broad scopes; specific-record scope is supported by domain/service APIs and represented in audit views, with richer record-picker UX deferred to Ticket 6 polish.
 
 ## Important Decisions Made
 
@@ -111,6 +114,7 @@ Ticket 7: validation, audit, formal demo guide and completion report.
 
 ## Ticket 6 verification
 
-- Automated: `pnpm run typecheck` passed; `pnpm run build` passed; Node test runner passed 61/61; `git diff --check` passed.
-- Baseline before implementation: 58/58 tests passed. Type-check/build initially required execution outside the restricted filesystem sandbox because the installed TypeScript binary returned `EPERM`.
-- Manual browser: pending. The local server returned HTTP 200, but the bundled browser-control runtime failed to initialise (`Cannot redefine property: process`), so 360/768/1024/1440 px, theme, keyboard-only and reduced-motion visual checks were not claimed.
+- Automated Ticket 6A verification: `pnpm run typecheck` passed; `pnpm run build` passed; `pnpm test` passed 69/69; `git diff --check` passed. Generated output contains 35 local files, no source maps or new runtime dependencies, and only the existing static NIST/ISO conversion-reference URLs.
+- Ticket 6A baseline before correction: type-check and build passed; 61/61 tests passed. Verification requires execution outside the restricted filesystem sandbox because the installed TypeScript binary otherwise returns `EPERM`.
+- Manual browser: pending. The bundled browser-control runtime again failed to initialise (`Cannot redefine property: process`), so responsive or visual acceptance is not claimed.
+- Manual verification steps: run `npm run dev`; check 360 px light and dark, then 768, 1024 and 1440 px; verify all six mobile destinations, context wrapping, actor/view selectors, progressive Records entry, long provenance, owner/scope composer changes, mobile record selectors, live grant preview, recipient read-only view, revocation fallback, Sources permission/candidate stages and corrupt-storage warning. Repeat the main route flow keyboard-only, then with reduced-motion emulation enabled.
