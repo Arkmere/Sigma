@@ -1,4 +1,4 @@
-export type RouteId = 'profiles' | 'measurements' | 'family' | 'privacy' | 'settings';
+export type RouteId = 'profiles' | 'measurements' | 'family' | 'sources' | 'privacy' | 'settings';
 
 export type PageContent = {
   kicker: string;
@@ -19,11 +19,12 @@ export const navigationItems: ReadonlyArray<{
   { id: 'profiles', label: 'Profiles', shortLabel: 'Profiles', icon: '◌' },
   { id: 'measurements', label: 'Measurements & Sizes', shortLabel: 'Sizes', icon: '⌁' },
   { id: 'family', label: 'Family', shortLabel: 'Family', icon: '⌂' },
+  { id: 'sources', label: 'Sources', shortLabel: 'Sources', icon: '⊕' },
   { id: 'privacy', label: 'Privacy', shortLabel: 'Privacy', icon: '◇' },
   { id: 'settings', label: 'Settings', shortLabel: 'Settings', icon: '⚙' },
 ];
 
-export const pages: Record<Exclude<RouteId, 'settings'>, PageContent> = {
+export const pages: Partial<Record<RouteId, PageContent>> = {
   profiles: {
     kicker: 'Person first',
     title: 'Profiles',

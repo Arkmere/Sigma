@@ -2,6 +2,8 @@
 
 Ticket 4 defines schema version 2 for Sigma's canonical single-device local data. Valid version-1 data is deterministically migrated under the unchanged `sigma.data.v1` key.
 
+Ticket 5 retains schema 2. Optional `sourceId`, `sourceItemId`, `sourceDevice` and structured `derivation` (`direct` or `derived`, with optional method/input description) extend measurement-value provenance without changing required collections or existing meaning. Confidence is finite and constrained to 0–1. Runtime loading rejects unknown source IDs and malformed provenance. Legacy records remain lossless and need no fabricated metadata.
+
 ## Profiles
 
 Profiles are either `independent` or `managed`. Independent profiles may act as simulated local adult authorities. `activeActorProfileId` is separate from viewed `activeProfileId`. Managed profiles use explicit manager IDs and a child/dependant kind. New managed profiles require a manager and Family; migrated legacy managed profiles remain unassigned rather than fabricating authority.
@@ -48,3 +50,5 @@ Every record retains its original owner and private visibility; access is repres
 `migrateStoredData` validates schema version 1 at runtime rather than trusting a TypeScript assertion. Schema-2 validation additionally checks grant/revocation authority, active child Family eligibility, manager independence, and connection status-specific metadata before persisted relationships enter the domain.
 
 Repository loads distinguish `empty`, `ok`, `corrupt`, and `unsupported_version`. Valid schema-1 data migrates losslessly to schema 2; invalid or authority-impossible data is corrupt and unknown future versions are unsupported. Unsafe raw storage is retained unchanged and mutations remain blocked until explicit reset.
+
+External raw data is not canonical data. A typed explicit field allowlist maps stable IDs to measurement or standard-size concepts and permitted units/systems; unknown fields fail closed. The local demo evaluates mixed data, previews accepted candidates, and creates a canonical measurement only after individual confirmation and the existing owner/manager authorization check. Re-import is rejected only when source ID and source item ID match; equal values from distinct source items remain valid.

@@ -2,6 +2,8 @@ export const DATA_SCHEMA_VERSION = 2;
 
 export type ProfileType = 'independent' | 'managed';
 export type SourceType = 'manual' | 'imported_health_platform' | 'imported_device' | 'camera_assisted' | 'body_scan' | 'third_party_service';
+export type SourceId = 'manual' | 'apple_health' | 'health_connect' | 'smart_scale' | 'measurement_device' | 'camera_assisted' | 'body_scan' | 'external_scan' | 'third_party_scanner';
+export interface Derivation { kind: 'direct' | 'derived'; method?: string; inputDescription?: string; }
 export type Visibility = 'private';
 
 export interface Profile {
@@ -36,6 +38,10 @@ export interface MeasurementValue {
   originalUnit: string;
   acquisitionMethod: SourceType;
   confidence?: number;
+  sourceId?: SourceId;
+  sourceItemId?: string;
+  sourceDevice?: string;
+  derivation?: Derivation;
   notes?: string;
   createdAt: string;
 }

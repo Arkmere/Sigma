@@ -11,13 +11,19 @@ import { renderPrivacy, renderSettings } from './ui/status.js';
 import { renderFamily as renderFamilyScreen } from './ui/family.js';
 import { readDemoEntitlement, writeDemoEntitlement, type DemoEntitlement } from '../lib/entitlement.js';
 import { unitsForDimension, type Dimension } from '../conversion/registry.js';
+import { PermissionDemoService } from '../permissions/service.js';
+import type { PermissionKind } from '../permissions/model.js';
+import { evaluateDemoPayload, importCandidate } from '../sources/import.js';
+import type { ImportCandidate } from '../sources/model.js';
+import { renderSources } from './ui/sources.js';
 
 export function mountApp(root: HTMLElement, service = new SigmaService(new LocalStorageRepository(globalThis.localStorage))): void {
   let route: RouteId = 'profiles'; let theme = readThemePreference(); let entitlement=readDemoEntitlement(); let mode: RecordMode = 'measurement'; let search = ''; let category = ''; let editingProfileId = '';
+  const permissions=new PermissionDemoService(globalThis.localStorage); let permissionFlow:PermissionKind|undefined; let importCandidates:ImportCandidate[]=[]; let excluded=0;
   const render = () => {
     const resolved = resolveTheme(theme, globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false);
     document.documentElement.dataset.theme = resolved; document.documentElement.dataset.themePreference = theme; writeThemePreference(theme);
-    const content = route === 'profiles' ? renderProfiles(service, editingProfileId) : route === 'measurements' ? renderRecords(service, mode, search, category) : route === 'privacy' ? renderPrivacy(service) : route === 'settings' ? renderSettings(service, theme, resolved, entitlement) : renderFamilyScreen(service, entitlement);
+    const content = route === 'profiles' ? renderProfiles(service, editingProfileId) : route === 'measurements' ? renderRecords(service, mode, search, category) : route === 'sources' ? renderSources(service,permissions,permissionFlow,importCandidates,excluded) : route === 'privacy' ? renderPrivacy(service,permissions) : route === 'settings' ? renderSettings(service, theme, resolved, entitlement,permissions) : renderFamilyScreen(service, entitlement);
     root.innerHTML = renderShell(route, service, content);
     bind(root, '[data-route]', 'click', (element) => { route = element.dataset.route as RouteId; render(); });
     bind(root, '[data-select-profile]', 'click', (element) => { service.selectProfile(element.dataset.selectProfile!); route = 'measurements'; render(); });
@@ -46,6 +52,11 @@ export function mountApp(root: HTMLElement, service = new SigmaService(new Local
     root.querySelector<HTMLSelectElement>('#measurement-type')?.addEventListener('change', (event) => { const option = (event.currentTarget as HTMLSelectElement).selectedOptions[0]; const unit = root.querySelector<HTMLSelectElement>('#measurement-unit'); if (unit) unit.innerHTML = unitChoices(option?.dataset.dimension as Dimension | undefined); });
     bind(root, '#export-data', 'click', () => downloadBackup(service));
     bind(root, '#reset-data', 'click', () => { if (globalThis.confirm('Delete all Sigma profiles and records stored in this browser?')) { service.reset(); route = 'profiles'; render(); } });
+    bind(root,'[data-source-action]','click',(el)=>{const source=el.dataset.sourceAction; if(source==='measurement_device')permissionFlow='health_data';else if(source==='camera_assisted'||source==='body_scan')permissionFlow='camera';else if(source==='external_scan')permissionFlow='files';else if(source==='smart_scale')permissionFlow='nearby_devices';render();});
+    bind(root,'[data-permission-allow]','click',(el)=>{const kind=el.dataset.permissionAllow as PermissionKind;permissions.set(kind,'demo_granted');permissionFlow=undefined;if(kind==='health_data'){const results=evaluateDemoPayload();importCandidates=results.flatMap(x=>x.status==='accepted'?[x.candidate]:[]);excluded=results.filter(x=>x.status==='rejected').length;}render();});
+    bind(root,'[data-permission-decline]','click',(el)=>{permissions.set(el.dataset.permissionDecline as PermissionKind,'demo_denied');permissionFlow=undefined;importCandidates=[];excluded=0;render();});
+    bind(root,'[data-import-candidate]','click',(el)=>{const target=root.querySelector<HTMLSelectElement>('#import-target')?.value;if(target){importCandidate(service,target,importCandidates[Number(el.dataset.importCandidate)]);importCandidates.splice(Number(el.dataset.importCandidate),1);render();}});
+    bind(root,'#reset-permission-demos','click',()=>{permissions.reset();permissionFlow=undefined;importCandidates=[];excluded=0;render();});
   };
   render();
 }

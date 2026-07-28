@@ -6,6 +6,7 @@ export type MigrationResult =
   | { status: 'unsupported_version'; version: unknown };
 
 const sourceTypes = new Set(['manual', 'imported_health_platform', 'imported_device', 'camera_assisted', 'body_scan', 'third_party_service']);
+const sourceIds = new Set(['manual','apple_health','health_connect','smart_scale','measurement_device','camera_assisted','body_scan','external_scan','third_party_scanner']);
 const object = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 const string = (value: unknown): value is string => typeof value === 'string';
 const nonEmpty = (value: unknown): value is string => string(value) && value.trim().length > 0;
@@ -80,7 +81,9 @@ function validateVersionOne(root: Record<string, unknown>): string | undefined {
 
 function validMeasurementValue(value: unknown): boolean {
   if (!object(value) || !requiredStrings(value, ['id', 'unit', 'measuredAt', 'recordedAt', 'originalUnit', 'createdAt']) || typeof value.value !== 'number' || !Number.isFinite(value.value) || typeof value.originalValue !== 'number' || !Number.isFinite(value.originalValue) || !sourceTypes.has(String(value.sourceType)) || !sourceTypes.has(String(value.acquisitionMethod))) return false;
-  return optionalString(value.sourceName) && optionalString(value.notes) && (value.confidence === undefined || (typeof value.confidence === 'number' && Number.isFinite(value.confidence)));
+  if (!optionalString(value.sourceName) || !optionalString(value.notes) || !optionalString(value.sourceItemId) || !optionalString(value.sourceDevice) || (value.sourceId !== undefined && !sourceIds.has(String(value.sourceId))) || (value.confidence !== undefined && (typeof value.confidence !== 'number' || !Number.isFinite(value.confidence) || value.confidence < 0 || value.confidence > 1))) return false;
+  if (value.derivation !== undefined && (!object(value.derivation) || !['direct','derived'].includes(String(value.derivation.kind)) || !optionalString(value.derivation.method) || !optionalString(value.derivation.inputDescription))) return false;
+  return !(value.sourceType === 'manual' && value.sourceId !== undefined && value.sourceId !== 'manual');
 }
 
 function validStandardSize(value: unknown): boolean {

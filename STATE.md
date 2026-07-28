@@ -2,9 +2,16 @@
 
 ## Current Phase
 
-Ticket 4A authorization and schema-integrity correction completed. Ticket 5 has not started.
+Ticket 5 data-source, allowlisted-import and just-in-time permission architecture completed. Ticket 6 has not started.
 
 ## Completed
+
+- Sixth Sources destination with a typed nine-source registry; manual is live, measurement device is a local demo, and every other integration is a truthful future state.
+- Explicit stable external-field allowlist, fail-closed unknown fields, mixed demo filtering, individual confirmation and Ticket 4A-authorized targets.
+- Contextual explanation contracts for contacts, camera, health data, nearby devices and files with no real browser or OS permission calls.
+- Simulated decisions stored separately at `sigma.permissionDemo.v1`, resettable without deleting records and excluded from backup.
+- Optional source ID, source item, device and direct/derived provenance retained under backward-compatible schema 2, with confidence constrained to 0–1.
+- Duplicate detection limited to identical source ID plus source item ID.
 
 - Ticket 1/Ticket 1A TypeScript shell, cross-platform Node scripts, local TypeScript, themes and product constitution.
 - Independent and managed local profiles with selection and basic editing.
