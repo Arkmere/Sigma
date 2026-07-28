@@ -102,3 +102,6 @@ No backend, hosted database, authentication provider, analytics, telemetry, adve
 22. Ticket 5 imports: explicit IDs fail closed, preview precedes individual confirmation, and source-item duplicate checks never compare numeric value alone.
 23. Ticket 5A completeness: measurements and standard sizes share optional structured external provenance. Duplicate identity is source ID plus source item ID within the imported record kind; malformed raw provenance never reaches canonical mutation.
 24. Ticket 5B policy: the source registry is enforced at candidate creation and defensive confirmation. Current source capability is import-time policy; stored source provenance remains historical fact and does not become invalid if registry availability later changes.
+25. Ticket 6 authorised views: `SigmaService.visibleProfiles`, `profileAccess`, and `authorisedRecords` supply UI-safe views. Templates do not reconstruct grant or management rules.
+26. Ticket 6 UI state: route, record-entry disclosure, source stage, filters, and typed notices remain transient in `app.ts` and never enter canonical persistence.
+27. Ticket 6 layout: the dependency-free render modules remain screen-focused; the shell context bar and compact component vocabulary support desktop and six-item mobile navigation without a framework.

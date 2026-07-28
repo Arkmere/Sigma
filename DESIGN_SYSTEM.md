@@ -12,6 +12,12 @@ Light theme uses off-white surfaces, charcoal text and muted teal accents. Dark 
 - Card: rounded surface, fine border, subtle shadow and generous spacing.
 - Empty state: truthful purpose statement, no lorem ipsum, no fake functionality, no manipulative upsell.
 - Navigation: person-first primary destinations: Profiles, Measurements & Sizes, Family, Privacy, Settings. Desktop uses a side rail; phone view uses bottom navigation.
+- Context bar: states the viewed profile, same-device acting adult and editable/read-only state.
+- Form panel: record entry opens deliberately and can be cancelled without hiding retrieval.
+- Notice: typed feedback appears in an `aria-live` region and never relies on colour alone.
+- Status and metadata: concise wording distinguishes live/demo/future, current/history, recorded/converted and editable/read-only.
 
 ## Interaction and accessibility
 Visible focus states, semantic buttons/inputs, keyboard-operable navigation, touch-friendly controls, contrast-aware themes, no information conveyed only by colour, and reduced-motion respect for transitions. Hover/pressed states are restrained; disabled/error/success states should use semantic tokens when later forms arrive.
+
+At narrow widths, forms and source grids collapse to one column, context controls wrap, long provenance breaks safely, and all six destinations remain available in the bottom navigation.

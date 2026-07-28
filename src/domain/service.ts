@@ -20,6 +20,16 @@ export class SigmaService {
   snapshot(): SigmaData { return structuredClone(this.data); }
   activeProfile(): Profile | undefined { return this.data.profiles.find((profile) => profile.id === this.data.activeProfileId); }
   activeActor(): Profile | undefined { return this.data.profiles.find((profile) => profile.id === this.data.activeActorProfileId); }
+  profileAccess(profileId: string): 'editable' | 'read_only' | 'hidden' {
+    const actor = this.activeActor();
+    if (!actor || !this.data.profiles.some((profile) => profile.id === profileId)) return 'hidden';
+    if (canManageProfile(this.data, actor.id, profileId)) return 'editable';
+    const records = [...this.data.measurements, ...this.data.standardSizes, ...this.data.brandFits];
+    return records.some((record) => record.profileId === profileId && canViewRecord(this.data, actor.id, record)) ? 'read_only' : 'hidden';
+  }
+  visibleProfiles(): Profile[] {
+    return structuredClone(this.data.profiles.filter((profile) => this.profileAccess(profile.id) !== 'hidden'));
+  }
   selectActor(profileId: string): void { this.ensureWritable(); const profile=this.requireProfile(profileId); if(profile.profileType!=='independent') throw new Error('Only an independent profile may act.'); this.data.activeActorProfileId=profileId; this.persist(); }
   selectProfile(profileId: string): void { this.ensureWritable(); this.requireProfile(profileId); this.data.activeProfileId = profileId; this.persist(); }
 
@@ -116,12 +126,21 @@ export class SigmaService {
   }
 
   records(profileId: string, query = '', category = '') {
+    return this.filterRecords(profileId, query, category, false);
+  }
+  authorisedRecords(profileId: string, query = '', category = '') {
+    return this.filterRecords(profileId, query, category, true);
+  }
+  private filterRecords(profileId: string, query: string, category: string, enforceAccess: boolean) {
+    const actor = this.activeActor();
+    const access = this.profileAccess(profileId);
     const needle = query.trim().toLowerCase();
     const matches = (parts: Array<string | undefined>, itemCategory: string) => (!category || itemCategory === category) && (!needle || parts.some((part) => part?.toLowerCase().includes(needle)));
+    const visible = (record: PhysicalMeasurement | StandardSize | BrandFit) => !enforceAccess || access === 'editable' || (!!actor && canViewRecord(this.data, actor.id, record));
     return {
-      measurements: this.data.measurements.filter((r) => r.profileId === profileId && matches([r.label, r.measurementType, r.category], r.category)),
-      standardSizes: this.data.standardSizes.filter((r) => r.profileId === profileId && matches([r.label, r.category, r.sizingSystem, r.sizeValue], r.category)),
-      brandFits: this.data.brandFits.filter((r) => r.profileId === profileId && matches([r.brand, r.productName, r.productLine, r.category, r.sizingSystem, r.sizeValue], r.category)),
+      measurements: this.data.measurements.filter((r) => r.profileId === profileId && visible(r) && matches([r.label, r.measurementType, r.category], r.category)),
+      standardSizes: this.data.standardSizes.filter((r) => r.profileId === profileId && visible(r) && matches([r.label, r.category, r.sizingSystem, r.sizeValue], r.category)),
+      brandFits: this.data.brandFits.filter((r) => r.profileId === profileId && visible(r) && matches([r.brand, r.productName, r.productLine, r.category, r.sizingSystem, r.sizeValue], r.category)),
     };
   }
 

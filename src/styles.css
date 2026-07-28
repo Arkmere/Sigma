@@ -50,7 +50,9 @@ body {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
 }
 
@@ -284,7 +286,7 @@ nav button.active {
   }
 
   nav ul {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 0.25rem;
   }
 
@@ -339,6 +341,39 @@ nav button.active {
   margin-bottom: var(--space-5);
   background: var(--surface);
 }
+.context-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3) var(--space-5);
+  padding: var(--space-4);
+  margin-bottom: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.context-bar > div { display: grid; gap: .15rem; }
+.context-bar span, .context-bar small { color: var(--text-muted); font-size: .78rem; }
+.context-bar label { min-width: 10rem; font-size: .78rem; }
+.context-bar small { flex-basis: 100%; }
+.status-badge { border: 1px solid var(--border); border-radius: 999px; padding: .4rem .65rem; color: var(--text) !important; }
+.app-notice:empty { display: none; }
+.app-notice { border-left: 3px solid var(--accent); background: var(--surface); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-4); }
+.app-notice.error { border-color: var(--error); }
+.first-use, .family-overview, .notice {
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  margin-bottom: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.first-use h2, .family-overview h2 { font-size: clamp(1.7rem, 4vw, 3rem); margin: .25rem 0 1rem; }
+.summary-row { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.summary-row span { padding: .65rem .8rem; border: 1px solid var(--border); border-radius: .75rem; }
+.future-source-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--space-4); }
+.value-label { display: block; color: var(--text-muted); font-size: .75rem; text-align: right; }
+.form-panel { margin-bottom: var(--space-5); }
+.filter-state { color: var(--text-muted); overflow-wrap: anywhere; }
 .page-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) minmax(18rem, .8fr);
@@ -446,6 +481,16 @@ button.quiet {
   background: transparent;
   color: var(--accent-strong);
 }
+.first-use button,
+#open-record-form,
+.form-panel button[type='submit'] {
+  border: 1px solid var(--text);
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--bg);
+  padding: .72rem 1.1rem;
+  cursor: pointer;
+}
 
 button.danger {
   color: var(--error);
@@ -547,4 +592,9 @@ summary {
   .record-value {
     text-align: left;
   }
+  .value-label { text-align: left; }
+  .future-source-grid { grid-template-columns: 1fr; }
+  .context-bar { align-items: stretch; }
+  .context-bar label { width: 100%; }
+  .content { overflow-wrap: anywhere; }
 }

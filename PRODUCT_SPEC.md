@@ -1,5 +1,11 @@
 # Product Specification
 
+## Integrated demonstration experience
+
+Ticket 6 begins with an account-free, local personal-profile path. The shell distinguishes the viewed person from the independent adult acting in the same-device demonstration. Retrieval precedes creation; recorded facts, transient conversions, history and provenance remain separately labelled.
+
+Family is organised as overview, membership, managed people, adult connections and explicit sharing. Membership and connection visibly grant zero access. Sources distinguish live manual entry, the local measurement-device demo and non-operational future integrations. Unsafe storage replaces ordinary route content until explicitly reset.
+
 Sigma is a private, local-first personal and family measurement vault. It records what the user knows; it does not tell the user what should fit.
 
 ## In scope product concepts

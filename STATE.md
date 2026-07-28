@@ -2,9 +2,19 @@
 
 ## Current Phase
 
-Ticket 5B source capability and availability enforcement completed. Ticket 6 has not started.
+Ticket 6 integrated UX implementation completed. Ticket 7 audit and formal demo deliverables have not started.
 
 ## Completed
+
+- Persistent application context bar for viewed profile, same-device acting adult, and service-derived editable/read-only state.
+- Account-free first-use guidance, authorised profile summaries and direct record/Family cross-navigation.
+- Retrieval-first Measurements & Sizes with explicit fact-type switching, filters, progressive entry, recorded/current/history hierarchy and transient conversion labelling.
+- Guided Family overview, membership, managed-person, connection and explicit read-only sharing sections.
+- Ordinary person-first discovery of service-authorised shared profiles and granular read-only facts; revocation removes them on rerender.
+- Staged Sources hierarchy for live manual entry, the local measurement-device demonstration and compact future integrations.
+- Typed transient notices with an accessible live region and controlled expected-error presentation.
+- Dominant corrupt/unsupported storage state that suppresses ordinary page content and export until confirmed reset.
+- Responsive six-destination mobile navigation, wrapping context controls, one-column forms and reduced-motion-aware interactions.
 
 - Sixth Sources destination with a typed nine-source registry; manual is live, measurement device is a local demo, and every other integration is a truthful future state.
 - Explicit stable external-field allowlist, fail-closed unknown fields, mixed demo filtering, individual confirmation and Ticket 4A-authorized targets.
@@ -76,6 +86,7 @@ Ticket 5B source capability and availability enforcement completed. Ticket 6 has
 - Tests use a lightweight DOM harness, not a full browser or native mobile runtime.
 - The development server builds once and does not watch files.
 - No real linter is configured.
+- Browser visual verification is limited to the viewports and themes recorded below; there has been no formal accessibility or WCAG audit.
 - The public ISO catalogue does not expose footwear table contents, so only the specification-supplied adult row is encoded; other rows and child conversions return no result.
 - Clothing, hat, glove, regional ring and specialist/equipment conversions are deliberately unsupported rather than guessed.
 - Consent is a same-device simulation, not authenticated remote consent; there is no cloud sync, real accounts/payments, external integration, production child-law policy or cryptography.
@@ -96,4 +107,10 @@ Ticket 5B source capability and availability enforcement completed. Ticket 6 has
 
 ## Next Planned Work
 
-Ticket 5: data sources, just-in-time permissions and future measurement acquisition.
+Ticket 7: validation, audit, formal demo guide and completion report.
+
+## Ticket 6 verification
+
+- Automated: `pnpm run typecheck` passed; `pnpm run build` passed; Node test runner passed 61/61; `git diff --check` passed.
+- Baseline before implementation: 58/58 tests passed. Type-check/build initially required execution outside the restricted filesystem sandbox because the installed TypeScript binary returned `EPERM`.
+- Manual browser: pending. The local server returned HTTP 200, but the bundled browser-control runtime failed to initialise (`Cannot redefine property: process`), so 360/768/1024/1440 px, theme, keyboard-only and reduced-motion visual checks were not claimed.

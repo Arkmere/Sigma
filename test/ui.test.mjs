@@ -91,3 +91,26 @@ test('ordinary profile editing cannot change type and read-only viewers see no m
 test('imported standard-size cards show structured provenance without measured language',()=>{const local=storage();const service=new SigmaService(new LocalStorageRepository(local),()=> '2026-07-15T12:00:00Z',()=>crypto.randomUUID());const profile=service.createProfile({displayName:'Alex',profileType:'independent'});service.addStandardSize({profileId:profile.id,category:'Clothing',label:'Clothing size',sizingSystem:'Generic',sizeValue:'M',recordedAt:'2026-07-01',sourceType:'imported_device',sourceName:'Measurement device',sourceId:'measurement_device',sourceItemId:'size-1',sourceDevice:'Demo wardrobe',confidence:0.9,derivation:{kind:'derived',method:'demo'}});const html=renderRecords(service,'standard_size','','');assert.match(html,/Derived · imported device · Measurement device · device Demo wardrobe · confidence 0.9 · recorded/);assert.doesNotMatch(html,/measured 1 Jul 2026/);});
 
 test('simulated permission cannot activate a future source',()=>{const local=storage();globalThis.localStorage=local;globalThis.matchMedia=()=>({matches:false});globalThis.document={documentElement:{dataset:{}}};const service=new SigmaService(new LocalStorageRepository(local));const root=new Root();mountApp(root,service);root.querySelectorAll('[data-route]').find(item=>item.dataset.route==='sources').click();assert.match(root.textContent,/Future integration/);root.querySelectorAll('[data-source-action]').find(item=>item.dataset.sourceAction==='smart_scale').click();assert.match(root.textContent,/Simulate allow/);root.querySelectorAll('[data-permission-allow]')[0].click();assert.match(root.textContent,/not implemented in the current local demo/);assert.match(root.textContent,/does not activate it/);assert.equal(service.snapshot().measurements.length,0);});
+
+test('Ticket 6 first use includes account-free guidance and an accessible live notice region',()=>{
+  const local=storage();globalThis.localStorage=local;globalThis.matchMedia=()=>({matches:false});globalThis.document={documentElement:{dataset:{}}};
+  const root=new Root();mountApp(root,new SigmaService(new LocalStorageRepository(local)));
+  assert.match(root.textContent,/stores physical measurements and practical sizes locally/i);
+  assert.match(root.textContent,/No account is required/);
+  assert.match(root.innerHTML,/aria-live="polite"/);
+  assert.match(root.innerHTML,/data-start-profile/);
+});
+
+test('Ticket 6 record entry is progressively disclosed and filters can be cleared',()=>{
+  const local=storage();
+  const service=new SigmaService(new LocalStorageRepository(local));service.createProfile({displayName:'Alex',profileType:'independent'});
+  assert.doesNotMatch(renderRecords(service,'measurement','','',false),/id="record-form"/);
+  const open=renderRecords(service,'measurement','','',true);assert.match(open,/id="record-form"/);assert.match(open,/Cancel/);
+  const filtered=renderRecords(service,'measurement','waist','Upper body',false);assert.match(filtered,/Clear filters/);assert.match(filtered,/No recorded facts match these filters/);
+});
+
+test('Ticket 6 unsafe storage suppresses ordinary route content and export',()=>{
+  const local=storage();local.setItem('sigma.data.v1','{broken');globalThis.localStorage=local;globalThis.matchMedia=()=>({matches:false});globalThis.document={documentElement:{dataset:{}}};
+  const root=new Root();mountApp(root,new SigmaService(new LocalStorageRepository(local)));
+  for(const route of ['profiles','measurements','settings']){root.querySelectorAll('[data-route]').find(item=>item.dataset.route===route).click();assert.match(root.textContent,/raw stored value remains untouched/i);assert.doesNotMatch(root.innerHTML,/id="export-data"/);}
+});

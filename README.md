@@ -10,9 +10,9 @@ Sigma is not a fitness tracker, health-analysis app, weight-loss app, medical di
 
 ## Current implementation status
 
-Ticket 2A is complete. Sigma provides independent and managed local profiles, physical measurements with non-destructive history and provenance, standard sizes, brand/product fit facts, profile-aware search and browsing, validated versioned local persistence, and JSON backup. The UI is split into focused dependency-free TypeScript modules.
+Tickets 1–6 are implemented. Sigma presents local profiles, record history, deterministic conversions, Family management, explicit read-only sharing, and allowlisted source demonstrations as one guided journey. A context bar distinguishes the viewed person from the same-device acting adult; record creation uses progressive disclosure; Family and Sources are staged; significant actions use an accessible transient notice.
 
-It does not contain conversions, recommendations, Family relationships or sharing, payments, cloud sync, accounts, external integrations, OS permissions or camera measurement.
+Sigma still has no real accounts, authentication, payments, cloud sync, remote sharing, external integrations, production permissions, telemetry, recommendations, or camera measurement.
 
 ## Commands
 
