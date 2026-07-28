@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Ticket 5A import completeness and provenance validation correction completed. Ticket 6 has not started.
+Ticket 5B source capability and availability enforcement completed. Ticket 6 has not started.
 
 ## Completed
 
@@ -15,6 +15,9 @@ Ticket 5A import completeness and provenance validation correction completed. Ti
 - Allowlisted standard-size candidates now dispatch to canonical `StandardSize` records with the same optional structured external provenance as measurement values.
 - Raw source item, device, confidence and derivation fields are treated as untrusted and fail closed with `invalid_provenance` before candidate creation.
 - Duplicate identity is source ID plus source item ID for both supported imported record kinds; brand-fit import remains deliberately unsupported.
+- The registry is an enforced import-policy boundary: global allowlist, source field capability, source record-kind capability and demo availability must all pass.
+- `measurement_device` is the sole external demo source and supports height, weight, waist circumference, foot length, shoe size and ring size across measurement and standard-size records.
+- Future sources remain explanatory only; simulated permission never makes them operational. Persisted provenance remains historical and is not reinterpreted through current availability.
 
 - Ticket 1/Ticket 1A TypeScript shell, cross-platform Node scripts, local TypeScript, themes and product constitution.
 - Independent and managed local profiles with selection and basic editing.

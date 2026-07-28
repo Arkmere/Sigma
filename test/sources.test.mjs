@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { sourceRegistry } from '../dist/sources/registry.js';
 import { externalFieldAllowlist } from '../dist/sources/allowlist.js';
-import { demoPayload, evaluateDemoPayload, evaluateExternalDatum, importCandidate } from '../dist/sources/import.js';
+import { demoPayload, evaluateDemoPayload, evaluateExternalDatum, evaluateSourcePolicy, importCandidate, inspectSourceDatumCapability } from '../dist/sources/import.js';
 import { PermissionDemoService, PERMISSION_DEMO_STORAGE_KEY, permissionExplanations } from '../dist/permissions/service.js';
 import { LocalStorageRepository, DATA_STORAGE_KEY } from '../dist/data/repository.js';
 import { SigmaService } from '../dist/domain/service.js';
@@ -74,18 +74,45 @@ test('schema 2 accepts optional structured provenance and rejects malformed valu
  const badConfidence=structuredClone(valid);badConfidence.measurements[0].values[0].confidence=2;assert.equal(migrateStoredData(badConfidence).status,'corrupt');
 });
 
-test('allowlisted clothing and shoe sizes import as canonical standard sizes with shared provenance',()=>{
- const clothing=evaluateExternalDatum({externalFieldId:'size.clothing',value:'M',unitOrSystem:'Generic',measuredAt:'2026-07-01',sourceItemId:'size-1',sourceDevice:'Demo wardrobe',confidence:0.9,derivation:{kind:'direct'}});
+test('declared shoe and ring sizes import through the operational demo source with shared provenance',()=>{
+ const clothing=evaluateExternalDatum({externalFieldId:'size.shoe',value:'9',unitOrSystem:'UK',measuredAt:'2026-07-01',sourceItemId:'size-1',sourceDevice:'Demo sizing device',confidence:0.9,derivation:{kind:'direct'}});
  const shoe=evaluateExternalDatum({externalFieldId:'size.shoe',value:'9',unitOrSystem:'UK',measuredAt:'2026-07-02',sourceItemId:'shoe-1'});
  assert.equal(clothing.status,'accepted');assert.equal(shoe.status,'accepted');assert.equal(clothing.candidate.targetKind,'standard_size');assert.equal(shoe.candidate.targetKind,'standard_size');
  const {service}=fixture(),profile=service.createProfile({displayName:'Alex',profileType:'independent'});
  importCandidate(service,profile.id,clothing.candidate);const record=service.snapshot().standardSizes[0];
- assert.deepEqual({profileId:record.profileId,category:record.category,label:record.label,sizingSystem:record.sizingSystem,sizeValue:record.sizeValue,sourceId:record.sourceId,sourceItemId:record.sourceItemId,sourceDevice:record.sourceDevice,confidence:record.confidence,derivation:record.derivation},{profileId:profile.id,category:'Clothing',label:'Clothing size',sizingSystem:'Generic',sizeValue:'M',sourceId:'measurement_device',sourceItemId:'size-1',sourceDevice:'Demo wardrobe',confidence:0.9,derivation:{kind:'direct',method:undefined,inputDescription:undefined}});
+ assert.deepEqual({profileId:record.profileId,category:record.category,label:record.label,sizingSystem:record.sizingSystem,sizeValue:record.sizeValue,sourceId:record.sourceId,sourceItemId:record.sourceItemId,sourceDevice:record.sourceDevice,confidence:record.confidence,derivation:record.derivation},{profileId:profile.id,category:'Footwear',label:'Shoe size',sizingSystem:'UK',sizeValue:'9',sourceId:'measurement_device',sourceItemId:'size-1',sourceDevice:'Demo sizing device',confidence:0.9,derivation:{kind:'direct',method:undefined,inputDescription:undefined}});
  assert.equal(record.recordedAt,'2026-07-01');assert.equal(migrateStoredData(service.snapshot()).status,'ok');
  assert.throws(()=>importCandidate(service,profile.id,clothing.candidate),/already imported/);
  importCandidate(service,profile.id,{...clothing.candidate,sourceItemId:'size-2'});assert.equal(service.snapshot().standardSizes.length,2);
- const otherSource=evaluateExternalDatum({...clothing.candidate,sourceItemId:'size-1'},'health_connect');assert.equal(otherSource.status,'accepted');importCandidate(service,profile.id,otherSource.candidate);assert.equal(service.snapshot().standardSizes.length,3);
- const backup=JSON.stringify(service.exportBackup());assert.match(backup,/Demo wardrobe/);assert.doesNotMatch(backup,/permissionDemo/);
+ const ring=evaluateExternalDatum({externalFieldId:'size.ring',value:'54',unitOrSystem:'ISO',measuredAt:'2026-07-03',sourceItemId:'ring-1'});assert.equal(ring.status,'accepted');importCandidate(service,profile.id,ring.candidate);assert.equal(service.snapshot().standardSizes.length,3);
+ const backup=JSON.stringify(service.exportBackup());assert.match(backup,/Demo sizing device/);assert.doesNotMatch(backup,/permissionDemo/);
+});
+
+test('source registry capabilities and availability are enforced with distinct reasons',()=>{
+ const raw=(externalFieldId,value,unitOrSystem)=>({externalFieldId,value,unitOrSystem,measuredAt:'2026-07-01'});
+ for(const field of ['body.height','body.weight','body.waist_circumference','foot.length'])assert.equal(evaluateExternalDatum(raw(field,field==='body.weight'?70:170,field==='body.weight'?'kg':field==='foot.length'?'mm':'cm')).status,'accepted');
+ const healthHeight=inspectSourceDatumCapability(raw('body.height',180,'cm'),'health_connect');assert.equal(healthHeight.status,'supported');assert.equal('candidate' in healthHeight,false);assert.equal(inspectSourceDatumCapability(raw('body.weight',70,'kg'),'health_connect').status,'supported');
+ for(const [source,field,value,unit,reason] of [
+  ['health_connect','size.clothing','M','Generic','field_not_supported_by_source'],['health_connect','size.ring','54','ISO','field_not_supported_by_source'],
+  ['apple_health','foot.length',270,'mm','field_not_supported_by_source'],['smart_scale','body.waist_circumference',84,'cm','field_not_supported_by_source'],
+  ['camera_assisted','body.weight',70,'kg','field_not_supported_by_source'],
+ ])assert.equal(evaluateExternalDatum(raw(field,value,unit),source).reason,reason);
+ assert.equal(inspectSourceDatumCapability(raw('body.weight',70,'kg'),'smart_scale').status,'supported');
+ assert.equal(inspectSourceDatumCapability(raw('body.waist_circumference',84,'cm'),'camera_assisted').status,'supported');
+ assert.equal(evaluateExternalDatum(raw('body.height',180,'cm'),'health_connect').reason,'source_not_available');
+ assert.equal(evaluateExternalDatum(raw('body.weight',70,'kg'),'smart_scale').reason,'source_not_available');
+ const sizeField=externalFieldAllowlist.find(field=>field.id==='size.shoe'),measurementOnly={...sourceRegistry.find(source=>source.id==='measurement_device'),supportedRecordKinds:['measurement']};
+ assert.equal(evaluateSourcePolicy(measurementOnly,sizeField,false),'record_kind_not_supported_by_source');
+});
+
+test('confirmed import defensively rejects forged source capability and availability',()=>{
+ const {service}=fixture(),profile=service.createProfile({displayName:'Alex',profileType:'independent'}),valid=evaluateDemoPayload().find(x=>x.status==='accepted').candidate;
+ const forgeries=[
+  {...valid,sourceId:'health_connect'}, {...valid,externalFieldId:'body.neck_circumference'}, {...valid,targetKind:'standard_size'},
+  {...valid,externalFieldId:'size.shoe'}, {...valid,sourceId:'unknown'}, {...valid,sourceItemId:' '},
+ ];
+ for(const candidate of forgeries)assert.throws(()=>importCandidate(service,profile.id,candidate),/invalid/);
+ assert.equal(service.snapshot().measurements.length,0);assert.equal(service.snapshot().standardSizes.length,0);
 });
 
 test('standard-size imports enforce Ticket 4A management authority',()=>{

@@ -16,6 +16,7 @@
 - External source imports must use explicit allowlists and collect only measurement/fit-relevant data.
 - Unknown, health, activity, sleep, location and medical fields fail closed before an import preview. Every accepted demo fact still requires individual confirmation.
 - External source item IDs, devices, confidence and derivation metadata are runtime-validated before either a measurement or standard size can become canonical.
+- A globally allowed fact is still rejected unless the selected operational source explicitly declares that field and record kind. Future-source permission simulations cannot activate canonical import.
 
 ## Future requirements
 Future data systems must distinguish current guarantees from planned security. Production concerns include local sensitive-data protection, encrypted backup, key management, remote sharing, authentication, revocation and auditability.

@@ -1,8 +1,8 @@
 import type { SigmaService } from '../domain/service.js';
 import type { Derivation, SourceId } from '../domain/model.js';
-import { externalField } from './allowlist.js';
+import { externalField, type ExternalFieldDefinition } from './allowlist.js';
 import { sourceRegistry } from './registry.js';
-import type { ImportCandidate, ImportEvaluation, RawExternalDatum } from './model.js';
+import type { ImportCandidate, ImportEvaluation, ImportRejectionReason, RawExternalDatum, SourceDefinition } from './model.js';
 export const demoPayload:readonly RawExternalDatum[] = [
  {externalFieldId:'body.height',value:178,unitOrSystem:'cm',measuredAt:'2026-07-20',sourceItemId:'demo-height-1',sourceDevice:'Sigma demo device',confidence:0.99,derivation:{kind:'direct'}},
  {externalFieldId:'body.weight',value:76.4,unitOrSystem:'kg',measuredAt:'2026-07-21',sourceItemId:'demo-weight-1',sourceDevice:'Sigma demo device',confidence:0.98,derivation:{kind:'direct'}},
@@ -10,15 +10,20 @@ export const demoPayload:readonly RawExternalDatum[] = [
  {externalFieldId:'foot.length',value:272,unitOrSystem:'mm',measuredAt:'2026-07-22',sourceItemId:'demo-foot-1',sourceDevice:'Sigma demo scanner',confidence:0.88,derivation:{kind:'derived',method:'local demo geometry',inputDescription:'Simulated device points'}},
  {externalFieldId:'health.heart_rate',value:70,unitOrSystem:'bpm'},{externalFieldId:'activity.steps',value:8000,unitOrSystem:'count'},{externalFieldId:'sleep.duration',value:8,unitOrSystem:'h'},{externalFieldId:'location.gps_distance',value:4,unitOrSystem:'km'},
 ];
-export function evaluateExternalDatum(raw:RawExternalDatum,sourceId:SourceId='measurement_device'):ImportEvaluation {
+export function evaluateExternalDatum(raw:RawExternalDatum,sourceId:SourceId='measurement_device'):ImportEvaluation { return evaluate(raw,sourceId,true); }
+function evaluate(raw:RawExternalDatum,sourceId:SourceId,enforceAvailability:boolean):ImportEvaluation {
  const definition=externalField(raw.externalFieldId); if(!definition)return{status:'rejected',externalFieldId:raw.externalFieldId,reason:'not_allowlisted'};
- if(!sourceRegistry.some(source=>source.id===sourceId))return{status:'rejected',externalFieldId:raw.externalFieldId,reason:'invalid_provenance'};
+ const source=sourceRegistry.find(item=>item.id===sourceId);if(!source)return{status:'rejected',externalFieldId:raw.externalFieldId,reason:'invalid_provenance'};
+ const policy=evaluateSourcePolicy(source,definition,enforceAvailability);if(policy)return{status:'rejected',externalFieldId:raw.externalFieldId,reason:policy};
  if(raw.unitOrSystem===undefined||raw.measuredAt===undefined)return{status:'rejected',externalFieldId:raw.externalFieldId,reason:'missing_required_field'};
  if(typeof raw.unitOrSystem!=='string'||typeof raw.measuredAt!=='string'||!raw.unitOrSystem.trim()||!raw.measuredAt.trim())return{status:'rejected',externalFieldId:raw.externalFieldId,reason:'invalid_value'};
  if(!definition.allowedUnitsOrSystems.includes(raw.unitOrSystem))return{status:'rejected',externalFieldId:raw.externalFieldId,reason:'unsupported_unit'};
  if(definition.targetKind==='measurement'?(typeof raw.value!=='number'||!Number.isFinite(raw.value)):(typeof raw.value!=='string'||!raw.value.trim()))return{status:'rejected',externalFieldId:raw.externalFieldId,reason:'invalid_value'};
  const provenance=validatedProvenance(raw);if(!provenance)return{status:'rejected',externalFieldId:raw.externalFieldId,reason:'invalid_provenance'};
  return{status:'accepted',candidate:{sourceId,externalFieldId:definition.id,targetKind:definition.targetKind,measurementType:definition.measurementType,category:definition.category,label:definition.defaultLabel,value:raw.value as number|string,unitOrSystem:raw.unitOrSystem,measuredAt:raw.measuredAt,...provenance}};
+}
+export function inspectSourceDatumCapability(raw:RawExternalDatum,sourceId:SourceId):{status:'supported';targetKind:ImportCandidate['targetKind']}|Extract<ImportEvaluation,{status:'rejected'}> {
+ const result=evaluate(raw,sourceId,false);return result.status==='accepted'?{status:'supported',targetKind:result.candidate.targetKind}:result;
 }
 export const evaluateDemoPayload=()=>demoPayload.map(raw=>evaluateExternalDatum(raw));
 export function importCandidate(service:SigmaService,profileId:string,candidate:ImportCandidate):void {
@@ -37,3 +42,4 @@ function validatedProvenance(raw:RawExternalDatum):{sourceItemId?:string;sourceD
 }
 function hasImportedSourceItem(service:SigmaService,sourceId:SourceId,itemId:string,kind:ImportCandidate['targetKind']):boolean { const data=service.snapshot();return kind==='measurement'?data.measurements.some(r=>r.values.some(v=>v.sourceId===sourceId&&v.sourceItemId===itemId)):data.standardSizes.some(r=>r.sourceId===sourceId&&r.sourceItemId===itemId); }
 function assertCandidate(candidate:ImportCandidate):void { const evaluation=evaluateExternalDatum({externalFieldId:candidate.externalFieldId,value:candidate.value,unitOrSystem:candidate.unitOrSystem,measuredAt:candidate.measuredAt,sourceItemId:candidate.sourceItemId,sourceDevice:candidate.sourceDevice,confidence:candidate.confidence,derivation:candidate.derivation},candidate.sourceId);if(evaluation.status!=='accepted'||evaluation.candidate.targetKind!==candidate.targetKind)throw new Error('Import candidate is invalid.'); }
+export function evaluateSourcePolicy(source:SourceDefinition,field:ExternalFieldDefinition,enforceAvailability=true):Extract<ImportRejectionReason,'field_not_supported_by_source'|'record_kind_not_supported_by_source'|'source_not_available'>|undefined { if(!source.allowedExternalFields.includes(field.id))return 'field_not_supported_by_source';if(!source.supportedRecordKinds.includes(field.targetKind))return 'record_kind_not_supported_by_source';if(enforceAvailability&&source.availability!=='demo')return 'source_not_available';return undefined; }

@@ -22,3 +22,5 @@ Sigma now models `contacts`, `camera`, `health_data`, `nearby_devices` and `file
 The static demo records only `not_requested`, `demo_granted` or `demo_denied` under `sigma.permissionDemo.v1`. These are explicitly simulated local decisions, may be reset in Settings, do not affect manual entry, and are not production permission status.
 
 Permission simulation does not weaken the import boundary: allowlisted measurement and standard-size values, source identity and all supplied provenance are validated before preview and individual confirmation.
+
+A simulated permission grant never changes source availability. Future integrations remain non-operational and show a truthful not-implemented result; only the local measurement-and-sizing device demo can produce external import candidates.
