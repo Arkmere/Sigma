@@ -6,10 +6,10 @@ import { SigmaService } from '../dist/domain/service.js';
 function storage(initial) { const values = new Map(initial === undefined ? [] : [[DATA_STORAGE_KEY, initial]]); return { values, getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, String(value)), removeItem: (key) => values.delete(key) }; }
 function validData() { return { schemaVersion: 1, activeProfileId: 'p1', profiles: [{ id: 'p1', displayName: 'Alex', profileType: 'independent', createdAt: '2026-01-01', updatedAt: '2026-01-01' }], measurements: [], standardSizes: [], brandFits: [] }; }
 
-test('empty storage is distinguished and valid schema-1 data migrates to schema 2', () => {
+test('empty storage is distinguished and valid schema-1 data migrates to schema 3', () => {
   assert.equal(new LocalStorageRepository(storage()).load().status, 'empty');
   const result = new LocalStorageRepository(storage(JSON.stringify(validData()))).load();
-  assert.equal(result.status, 'ok'); assert.equal(result.data.schemaVersion, 2); assert.equal(result.data.profiles[0].displayName, 'Alex'); assert.equal(result.data.activeActorProfileId,'p1'); assert.deepEqual(result.data.sharingGrants,[]);
+  assert.equal(result.status, 'ok'); assert.equal(result.data.schemaVersion, 3); assert.equal(result.data.profiles[0].displayName, 'Alex'); assert.equal(result.data.activeActorProfileId,'p1'); assert.deepEqual(result.data.sharingGrants,[]);
 });
 
 test('invalid JSON and structurally invalid version-one data are corrupt', () => {

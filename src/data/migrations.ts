@@ -21,13 +21,17 @@ export function migrateStoredData(raw: unknown): MigrationResult {
     const actor = migrated.profiles.find((p) => p.profileType === 'independent'); if (actor) migrated.activeActorProfileId = actor.id;
     return { status: 'ok', data: migrated };
   }
+  if (raw.schemaVersion === 2) {
+    const reason=validateVersionTwo(raw,false);if(reason)return corrupt(reason);
+    return {status:'ok',data:{...structuredClone(raw),schemaVersion:DATA_SCHEMA_VERSION} as unknown as SigmaData};
+  }
   if (raw.schemaVersion !== DATA_SCHEMA_VERSION) return { status: 'unsupported_version', version: raw.schemaVersion };
-  const reason = validateVersionTwo(raw);
+  const reason = validateVersionTwo(raw,true);
   return reason ? corrupt(reason) : { status: 'ok', data: structuredClone(raw as unknown as SigmaData) };
 }
 
-function validateVersionTwo(root: Record<string, unknown>): string | undefined {
-  const base = validateVersionOne(root); if (base) return base;
+function validateVersionTwo(root: Record<string, unknown>,allowCorrections=false): string | undefined {
+  const base = validateVersionOne(root,allowCorrections); if (base) return base;
   if (![root.families, root.familyMemberships, root.adultConnections, root.sharingGrants].every(Array.isArray)) return 'Ticket 4 collections must be arrays.';
   if (!optionalString(root.activeActorProfileId)) return 'activeActorProfileId must be a string when present.';
   const profiles = root.profiles as Record<string, unknown>[]; const profile = (id: unknown) => profiles.find((p) => p.id === id);
@@ -60,7 +64,7 @@ function validateVersionTwo(root: Record<string, unknown>): string | undefined {
   return undefined;
 }
 
-function validateVersionOne(root: Record<string, unknown>): string | undefined {
+function validateVersionOne(root: Record<string, unknown>,allowCorrections=false): string | undefined {
   if (!Array.isArray(root.profiles) || !Array.isArray(root.measurements) || !Array.isArray(root.standardSizes) || !Array.isArray(root.brandFits)) return 'Required record collections must be arrays.';
   if (!optionalString(root.activeProfileId)) return 'activeProfileId must be a string when present.';
   for (const profile of root.profiles) {
@@ -69,7 +73,7 @@ function validateVersionOne(root: Record<string, unknown>): string | undefined {
   }
   for (const record of root.measurements) {
     if (!object(record) || !requiredStrings(record, ['id', 'profileId', 'measurementType', 'category', 'label', 'createdAt', 'updatedAt']) || record.kind !== 'measurement' || record.visibility !== 'private' || !Array.isArray(record.values)) return 'A physical measurement has an invalid required field.';
-    for (const value of record.values) if (!validMeasurementValue(value)) return 'A physical measurement value has an invalid field.';
+    for (const value of record.values) if (!validMeasurementValue(value,allowCorrections,root.profiles as Record<string,unknown>[])) return 'A physical measurement value has an invalid field.';
   }
   for (const record of root.standardSizes) if (!validStandardSize(record)) return 'A standard-size record has an invalid field.';
   for (const record of root.brandFits) if (!validBrandFit(record)) return 'A brand-fit record has an invalid field.';
@@ -79,8 +83,12 @@ function validateVersionOne(root: Record<string, unknown>): string | undefined {
   return undefined;
 }
 
-function validMeasurementValue(value: unknown): boolean {
+function validMeasurementValue(value: unknown,allowCorrection=false,profiles:Record<string,unknown>[]=[]): boolean {
   if (!object(value) || !requiredStrings(value, ['id', 'unit', 'measuredAt', 'recordedAt', 'originalUnit', 'createdAt']) || typeof value.value !== 'number' || !Number.isFinite(value.value) || typeof value.originalValue !== 'number' || !Number.isFinite(value.originalValue) || !sourceTypes.has(String(value.sourceType)) || !sourceTypes.has(String(value.acquisitionMethod))) return false;
+  if(value.correction!==undefined){
+    const correction=value.correction;
+    if(!allowCorrection||!object(correction)||correction.status!=='voided'||!nonEmpty(correction.correctedAt)||!nonEmpty(correction.correctedByProfileId)||!profiles.some((profile)=>profile.id===correction.correctedByProfileId&&profile.profileType==='independent')||!optionalString(correction.reason))return false;
+  }
   return optionalString(value.sourceName) && optionalString(value.notes) && validExternalProvenance(value);
 }
 

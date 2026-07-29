@@ -1,6 +1,6 @@
 # Data Model
 
-Ticket 4 defines schema version 2 for Sigma's canonical single-device local data. Valid version-1 data is deterministically migrated under the unchanged `sigma.data.v1` key.
+Ticket 6B defines schema version 3 for Sigma's canonical single-device local data. Valid version-1 and version-2 data is deterministically migrated under the unchanged `sigma.data.v1` key.
 
 Ticket 5/5A retains schema 2. `MeasurementValue` and `StandardSize` share optional `sourceId`, `sourceItemId`, `sourceDevice`, confidence and structured `derivation` (`direct` or `derived`, with optional method/input description). These fields change no required collection, required field or existing meaning. Confidence is finite and constrained to 0–1. Runtime loading rejects unknown source IDs, empty source identifiers/devices and malformed provenance. Legacy records remain lossless and need no fabricated metadata.
 
@@ -10,7 +10,7 @@ Profiles are either `independent` or `managed`. Independent profiles may act as 
 
 ## Physical measurements
 
-A physical measurement groups immutable value entries under a profile, type, category, and label. Each value preserves its numeric value, unit, original value/unit, measured and recorded timestamps, source type/name, acquisition method, optional confidence/notes, and creation timestamp. The current value is the entry with the latest measured date (then recorded date); older entries remain visible as history.
+A physical measurement groups immutable value entries under a profile, type, category, and label. Each value preserves its numeric value, unit, original value/unit, measured and recorded timestamps, source type/name, acquisition method, optional confidence/notes, and creation timestamp. Schema 3 may add correction metadata (`voided`, correction actor/time and optional reason). Correction is non-destructive: the entry remains in history but is excluded from current-value selection and conversions. The current valid value is the entry with the latest measured date, then latest recorded timestamp.
 
 Only manual acquisition is active. The source vocabulary anticipates `imported_health_platform`, `imported_device`, `camera_assisted`, `body_scan`, and `third_party_service` without accessing those sources.
 
@@ -47,8 +47,8 @@ Every record retains its original owner and private visibility; access is repres
 
 ## Validation and migration boundary
 
-`migrateStoredData` validates schema version 1 at runtime rather than trusting a TypeScript assertion. Schema-2 validation additionally checks grant/revocation authority, active child Family eligibility, manager independence, and connection status-specific metadata before persisted relationships enter the domain.
+`migrateStoredData` validates all supported versions at runtime rather than trusting a TypeScript assertion. Schema-3 validation includes schema-2 authority checks and also requires correction actors to be existing independent profiles with valid correction metadata.
 
-Repository loads distinguish `empty`, `ok`, `corrupt`, and `unsupported_version`. Valid schema-1 data migrates losslessly to schema 2; invalid or authority-impossible data is corrupt and unknown future versions are unsupported. Unsafe raw storage is retained unchanged and mutations remain blocked until explicit reset.
+Repository loads distinguish `empty`, `ok`, `corrupt`, and `unsupported_version`. Valid schema-1 and schema-2 data migrates losslessly to schema 3; invalid or authority-impossible data is corrupt and unknown future versions are unsupported. Unsafe raw storage is retained unchanged and mutations remain blocked until explicit reset.
 
-External raw data is not canonical data. A typed explicit field allowlist maps stable IDs to measurement or standard-size concepts and permitted units/systems; unknown fields and malformed provenance fail closed before candidate creation. A separate source-policy check requires that the resolved registry source is operational, declares the field, and supports its mapped record kind. Individual confirmation defensively repeats this evaluation before the existing owner/manager authorization check. For standard sizes, the candidate source date maps to `StandardSize.recordedAt`; it is not described as a physical measurement date. Re-import is rejected only when source ID and source item ID match within that record kind; equal values from distinct source items remain valid. Schema remains version 2 because this is import-time policy, not a persisted-shape change. Historical canonical provenance validates by stable vocabulary rather than current source availability. Brand-fit import is not implemented.
+External raw data is not canonical data. A typed explicit field allowlist maps stable IDs to measurement or standard-size concepts and permitted units/systems; unknown fields and malformed provenance fail closed before candidate creation. A separate source-policy check requires that the resolved registry source is operational, declares the field, and supports its mapped record kind. Individual confirmation defensively repeats this evaluation before the existing owner/manager authorization check. For standard sizes, the candidate source date maps to `StandardSize.recordedAt`; it is not described as a physical measurement date. Re-import is rejected only when source ID and source item ID match within that record kind; equal values from distinct source items remain valid. Historical canonical provenance validates by stable vocabulary rather than current source availability. Brand-fit import is not implemented.

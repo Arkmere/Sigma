@@ -17,7 +17,7 @@ export const navigationItems: ReadonlyArray<{
   icon: string;
 }> = [
   { id: 'profiles', label: 'Profiles', shortLabel: 'Profiles', icon: '◌' },
-  { id: 'measurements', label: 'Measurements & Sizes', shortLabel: 'Sizes', icon: '⌁' },
+  { id: 'measurements', label: 'Measurements & Sizes', shortLabel: 'Records', icon: '⌁' },
   { id: 'family', label: 'Family', shortLabel: 'Family', icon: '⌂' },
   { id: 'sources', label: 'Sources', shortLabel: 'Sources', icon: '⊕' },
   { id: 'privacy', label: 'Privacy', shortLabel: 'Privacy', icon: '◇' },

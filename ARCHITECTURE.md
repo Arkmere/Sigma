@@ -13,7 +13,7 @@ Alternatives considered: React Native/Expo offers stronger native deployment but
 - `src/app/content.ts`: route identifiers, navigation metadata and page copy for the Ticket 1 shell.
 - `src/app/app.ts`: top-level route/theme state, render selection and event-binding orchestration.
 - `src/app/ui`: focused shell, profile, record, status, form-action and shared HTML modules.
-- `src/domain/model.ts`: schema-2 canonical entities and current-measurement selection.
+- `src/domain/model.ts`: schema-3 canonical entities, non-destructive correction and current-measurement selection.
 - `src/domain/sharing.ts`: deterministic sharing scopes, access and grant authority.
 - `src/domain/service.ts`: profile, record, history, search and export operations.
 - `src/domain/taxonomy.ts`: initial browse taxonomy.
@@ -28,7 +28,7 @@ Alternatives considered: React Native/Expo offers stronger native deployment but
 
 ## State and routing
 
-The shell controller now has six top-level destinations, including Sources. No URL router is introduced because there are no nested data routes.
+The shell controller has six top-level destinations. Profile/record creation and Family stages are transient disclosures rather than routes. Family renders only the selected operational stage. Record search restores focus and caret after the dependency-free full render.
 
 ## Sources and contextual permissions
 
@@ -40,9 +40,9 @@ The shell was split into content metadata and rendering code during Ticket 1A. T
 
 ## Local persistence
 
-Theme preference is stored separately through `src/lib/preferences.ts`. Canonical schema-2 data uses `LocalStorageRepository`, a typed versioned adapter over browser localStorage. Domain and UI code do not access the storage key directly. The service saves after each authorized mutation and can export a complete versioned JSON snapshot. Conversion operations are read-only service methods derived at render time and are never persisted.
+Theme preference is stored separately through `src/lib/preferences.ts`. Canonical schema-3 data uses `LocalStorageRepository`, a typed versioned adapter over browser localStorage. Domain and UI code do not access the storage key directly. The service saves after each authorized mutation and can export a complete versioned JSON snapshot. Conversion operations are read-only service methods derived from the current valid value at render time and are never persisted.
 
-Loads produce `empty`, `ok`, `corrupt`, or `unsupported_version`. Version 1 is validated and migrated; schema 2 validates referential and authorization invariants, including grant/revocation actors and connection state metadata. Corrupt/unsupported raw storage is preserved and mutations remain blocked until explicit reset.
+Loads produce `empty`, `ok`, `corrupt`, or `unsupported_version`. Versions 1 and 2 are validated and migrated; schema 3 validates referential and authorization invariants plus correction metadata. Corrupt/unsupported raw storage is preserved and mutations remain blocked until explicit reset.
 
 LocalStorage keeps the static foundation dependency-free and makes deterministic persistence tests straightforward. Its trade-offs are synchronous access, browser-specific capacity/retention and no Sigma-provided encryption. The repository interface allows a future IndexedDB adapter without changing domain operations.
 
@@ -106,3 +106,5 @@ No backend, hosted database, authentication provider, analytics, telemetry, adve
 26. Ticket 6/6A UI state: route, record-entry disclosure, source stage, filters, typed notices, and owner/recipient/scope/category/record sharing-composer selections remain transient in `app.ts` and never enter canonical persistence.
 27. Ticket 6 layout: the dependency-free render modules remain screen-focused; the shell context bar and compact component vocabulary support desktop and six-item mobile navigation without a framework.
 28. Ticket 6A sharing reads: `authorisedGrantHistory` limits audit history to owner, recipient, grantor, or current manager relationships and returns revoke authority with each view. `grantableOwners`, `eligibleGrantRecipients`, and `grantableRecords` provide owner-relative composer data without bypassing final scope validation.
+29. Ticket 6B correction: schema 3 records an authorised actor/time/reason marker instead of deleting a measurement value. Current-value and conversion selectors ignore corrected entries.
+30. Ticket 6B operational UI: compact default layers, explicit disclosures, adaptive context and one Family stage at a time remain dependency-free transient presentation state.

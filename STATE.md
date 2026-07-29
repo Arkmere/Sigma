@@ -2,9 +2,15 @@
 
 ## Current Phase
 
-Ticket 6 implementation is functionally corrected through Ticket 6A; final visual acceptance remains pending manual browser verification. Ticket 7 has not started.
+Ticket 6B is implemented and automated verification is complete; final responsive visual acceptance remains pending manual browser verification. Ticket 7 has not started.
 
 ## Completed
+
+- Mobile-first operational hierarchy with compact context, shorter Records navigation, staged creation, collapsed record detail and safe-area-aware bottom navigation.
+- One-stage-at-a-time Family overview for Families/members, managed people, connections and explicit sharing; the shell is the single acting/viewed context surface.
+- Non-destructive measurement-value correction under schema 3. Incorrect entries remain in audit history but cannot become current or feed conversions.
+- Equal measured dates resolve to the most recently recorded valid entry; the UI explains the tie only when it occurs.
+- Record search restores focus and selection after each render, with a sequential-input interaction test.
 
 - Persistent application context bar for viewed profile, same-device acting adult, and service-derived editable/read-only state.
 - Account-free first-use guidance, authorised profile summaries and direct record/Family cross-navigation.
@@ -73,7 +79,7 @@ Ticket 6 implementation is functionally corrected through Ticket 6A; final visua
 - Domain: `src/domain` owns the schema, taxonomy, history rules and record service.
 - Persistence: `src/data/repository.ts` owns explicit load states; `src/data/migrations.ts` validates and dispatches schema versions.
 - UI: `src/app/app.ts` orchestrates state/events while focused modules under `src/app/ui` render screens and translate forms.
-- Data scope: local records plus schema-2 Families, memberships, adult connections and sharing grants.
+- Data scope: schema-3 local records, correction metadata, Families, memberships, adult connections and sharing grants.
 - Source scope: manual entry is active; future source types are schema vocabulary only.
 - Privacy: no account, cloud, telemetry, analytics, advertising, external service or permission request.
 - Testing: Node built-in test runner with domain, reload/persistence and lightweight DOM interaction coverage.
@@ -83,7 +89,7 @@ Ticket 6 implementation is functionally corrected through Ticket 6A; final visua
 
 - localStorage is synchronous, browser-scoped, capacity-limited and not encrypted by Sigma.
 - JSON backup download is export-only; import/restore is not implemented.
-- Physical values support append-only history, but the UI does not yet correct/delete individual history entries.
+- Physical values support append-only history and non-destructive correction; irreversible deletion of individual entries is deliberately unavailable.
 - Standard-size and brand-fit records can be edited, but those edits do not yet create a separate audit history.
 - The expanded taxonomy remains a starter catalogue rather than exhaustive; custom labels remain available.
 - Corrupt/unsupported storage has no recovery, raw export, import or restore path; only confirmed reset is available.
@@ -106,13 +112,39 @@ Ticket 6 implementation is functionally corrected through Ticket 6A; final visua
 - Invalid JSON, invalid version-1 structures and broken profile references are surfaced as corrupt without modifying raw storage.
 - Unknown schema versions are surfaced as unsupported and routed through a dedicated migration boundary.
 - Unsafe repository states are read-only until reset so creating a profile cannot overwrite unreadable personal data.
-- Schema version is 2. Version-1 facts migrate unchanged; legacy managed profiles remain unassigned. Conversion results remain transient and never enter storage or backups.
+- Schema version is 3. Version-1 and version-2 facts migrate unchanged; legacy managed profiles remain unassigned. Conversion results remain transient and never enter storage or backups.
 
 ## Next Planned Work
 
 Ticket 7: validation, audit, formal demo guide and completion report.
 
+## Ticket 6B manual-inspection findings
+
+- MI-01 — canonical fact creation is insufficiently constrained: **deferred**. A canonical hierarchical picker and optional anatomy discovery need a separate product/data-design ticket.
+- MI-02 — Brand/product terminology inconsistency: **resolved** as “Brand & product facts” in operational Records UI.
+- MI-03 — filter persistence needs deliberate treatment: **resolved**. Filters persist across record-type and route renders in the current session, clear explicitly, and reset when the acting adult changes.
+- MI-04 — technical conversion metadata density: **resolved** through one quick conversion and collapsed conversion/source details.
+- MI-05 — equal-date current-value rule: **resolved** with recorded-time tie-breaking and contextual explanation.
+- MI-06 — update-value action hidden under history: **resolved** with a prominent per-record “Update value” disclosure.
+- MI-07 — intermediate-width compression: **resolved** with the 820 px navigation breakpoint, narrower desktop rail and single-column forms.
+- MI-08 — individual measurement entries cannot be corrected: **resolved** by schema-3 non-destructive correction.
+- MI-09 — search loses focus after each character: **resolved** with focus/caret restoration and sequential-input coverage.
+- MI-10 — launch interface too busy for a phone-first product: **resolved** with compact first-use and hidden creation forms.
+- MI-11 — mobile record-type selector wrapping: **resolved** with one compact select at narrow widths.
+- MI-12 — excessive default record-card detail: **resolved** with value/date/one conversion as the default layer.
+- MI-13 — oversized context presentation: **resolved** with an adaptive single-row context bar.
+- MI-14 — repeated profile context: **resolved**; Family no longer repeats an actor card.
+- MI-15 — bottom-navigation content competition: **resolved** with compact labels and safe-area/content clearance.
+- MI-16 — misleading mobile `Sizes` label: **resolved** as `Records`.
+- MI-17 — marketing-style hierarchy overwhelms operational UI: **resolved** with smaller typography, tighter spacing and action-first copy.
+
+Deferred future work: canonical hierarchical fact picker; automatic category/default-label derivation; explicit custom-record path; optional anatomy navigator; search and category browsing over the same canonical taxonomy; accessible text and keyboard alternatives for anatomy navigation.
+
 ## Ticket 6 verification
+
+- Ticket 6B automated verification: `pnpm run typecheck` passed; `pnpm run build` passed; direct Node suite passed 78/78; `git diff --check` passed. The bundled runtime does not expose `npm`, so the package's `npm test` wrapper could not run there; its exact build and `node --test test/*.test.mjs` stages were run separately.
+- Ticket 6B manual browser: pending. Browser control failed before page launch with `Cannot redefine property: process`, so responsive or visual acceptance is not claimed.
+- Ticket 6B manual checklist: run `npm run dev`; inspect light and dark at 360, 768, 1024 and 1440 px; verify six-destination navigation and safe-area clearance, compact/adaptive context, hidden profile creation, the record-type selector, multi-character search, compact record disclosures, update and correction confirmation/history, equal-date note, each focused Family stage, sharing eligibility/revocation, staged Sources and long-content overflow. Repeat the core journey keyboard-only and with reduced motion.
 
 - Automated Ticket 6A verification: `pnpm run typecheck` passed; `pnpm run build` passed; `pnpm test` passed 69/69; `git diff --check` passed. Generated output contains 35 local files, no source maps or new runtime dependencies, and only the existing static NIST/ISO conversion-reference URLs.
 - Ticket 6A baseline before correction: type-check and build passed; 61/61 tests passed. Verification requires execution outside the restricted filesystem sandbox because the installed TypeScript binary otherwise returns `EPERM`.

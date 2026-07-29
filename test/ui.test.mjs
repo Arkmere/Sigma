@@ -7,16 +7,25 @@ import { renderRecords } from '../dist/app/ui/records.js';
 import { renderProfiles } from '../dist/app/ui/profiles.js';
 
 class Control {
-  constructor(attributes) { this.dataset = attributes; this.value = ''; this.listeners = new Map(); }
+  constructor(attributes, value='') { this.dataset = attributes; this.value = value; this.listeners = new Map(); this.selectionStart=value.length; this.selectionEnd=value.length; this.focused=false; }
   addEventListener(type, listener) { this.listeners.set(type, listener); }
   click() { this.listeners.get('click')?.({ currentTarget: this }); }
+  input(value) { this.value=value; this.selectionStart=value.length; this.selectionEnd=value.length; this.listeners.get('input')?.({currentTarget:this}); }
+  focus() { this.focused=true; }
+  setSelectionRange(start,end) { this.selectionStart=start; this.selectionEnd=end; }
 }
 
 class Root {
   set innerHTML(value) { this.html = value; this.controls = new Map(); }
   get innerHTML() { return this.html; }
   get textContent() { return this.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(); }
-  querySelector() { return null; }
+  querySelector(selector) {
+    if(selector==='#record-search'){
+      if(this.controls.has(selector))return this.controls.get(selector)[0]??null;
+      const match=this.html.match(/id="record-search" value="([^"]*)"/);const controls=match?[new Control({},match[1])]:[];this.controls.set(selector,controls);return controls[0]??null;
+    }
+    return null;
+  }
   querySelectorAll(selector) {
     if (this.controls.has(selector)) return this.controls.get(selector);
     const controls = [];
@@ -37,8 +46,8 @@ test('shell renders truthful empty states and switches every primary route witho
   globalThis.document = { documentElement: { dataset: {} } };
   const root = new Root();
   mountApp(root, new SigmaService(new LocalStorageRepository(globalThis.localStorage)));
-  assert.match(root.textContent, /Start with a person, not an account/);
-  for (const [route, expected] of [['profiles', /Profiles/], ['measurements', /No profile is available to the acting adult/], ['family', /Family workflows are locked/], ['sources', /Nothing enters Sigma merely because/], ['privacy', /Who can see profiles/], ['settings', /Family entitlement/]]) {
+  assert.match(root.textContent, /Create my profile/);
+  for (const [route, expected] of [['profiles', /People/], ['measurements', /No profile is available to the acting adult/], ['family', /Family workflows are locked/], ['sources', /Import boundaries/], ['privacy', /Who can see profiles/], ['settings', /Family entitlement/]]) {
     const button = root.querySelectorAll('[data-route]').find((item) => item.dataset.route === route);
     assert.ok(button); button.click(); assert.match(root.textContent, expected);
   }
@@ -63,7 +72,7 @@ test('profile-aware UI shows physical, standard-size and brand-fit records with 
   globalThis.localStorage = local; globalThis.matchMedia = () => ({ matches: false }); globalThis.document = { documentElement: { dataset: {} } };
   const root = new Root(); mountApp(root, service);
   root.querySelectorAll('[data-route]').find((item) => item.dataset.route === 'measurements').click();
-  assert.match(root.textContent, /96 cm/); assert.match(root.textContent, /History & provenance \(2\)/); assert.match(root.textContent, /Standard sizes/); assert.match(root.textContent, /Brand & product/);
+  assert.match(root.textContent, /96 cm/); assert.match(root.textContent, /History \(2\)/); assert.match(root.textContent, /Standard sizes/); assert.match(root.textContent, /Brand &amp; product facts/);
 });
 
 test('record cards distinguish recorded facts, exact conversions, standard equivalents and sources', () => {
@@ -75,7 +84,7 @@ test('record cards distinguish recorded facts, exact conversions, standard equiv
   const physical = renderRecords(service, 'measurement', '', '');
   assert.match(physical, /Recorded directly/); assert.match(physical, /16.14 in/); assert.match(physical, /Exact conversion/); assert.match(physical, /National Institute of Standards and Technology/);
   const sizes = renderRecords(service, 'standard_size', '', '');
-  assert.match(sizes, /Standard equivalents/); assert.match(sizes, /Approximate standard equivalent/); assert.match(sizes, /ISO 19407:2023/); assert.match(sizes, /No supported deterministic conversion/);
+  assert.match(sizes, /Standard equivalents/); assert.match(sizes, /Approximate standard equivalent/); assert.match(sizes, /ISO 19407:2023/); assert.match(sizes, /T-shirt/);
 });
 
 test('new-record taxonomy marks categorical sizes without a length dimension selector', () => {
@@ -86,19 +95,19 @@ test('new-record taxonomy marks categorical sizes without a length dimension sel
   assert.doesNotMatch(html, /<option value="General shoe size"[^>]*data-dimension="length"/);
 });
 
-test('ordinary profile editing cannot change type and genuinely shared viewers see no mutation controls',()=>{const local=storage();let n=0;const service=new SigmaService(new LocalStorageRepository(local),()=> '2026-07-15T12:00:00Z',()=>`id-${++n}`);const alex=service.createProfile({displayName:'Alex',profileType:'independent'});service.addMeasurement({profileId:alex.id,measurementType:'Waist',category:'Upper body',label:'Waist',value:90,unit:'cm',originalValue:90,originalUnit:'cm',measuredAt:'2026-07-15',recordedAt:'2026-07-15',sourceType:'manual',acquisitionMethod:'manual'});const jordan=service.createProfile({displayName:'Jordan',profileType:'independent'});const profileHtml=renderProfiles(service,jordan.id);assert.match(profileHtml,/Profile type cannot be changed/);assert.doesNotMatch(profileHtml,/name="profileType"/);const request=service.requestConnection(jordan.id);service.selectActor(jordan.id);service.respondConnection(request.id,true);service.selectActor(alex.id);service.grantAccess(alex.id,jordan.id,{type:'profile'});service.selectActor(jordan.id);service.selectProfile(alex.id);const recordsHtml=renderRecords(service,'measurement','','');assert.match(recordsHtml,/Read-only/);assert.doesNotMatch(recordsHtml,/id="record-form"|data-history-form|data-edit-measurement-form/);});
+test('ordinary profile editing cannot change type and genuinely shared viewers see no mutation controls',()=>{const local=storage();let n=0;const service=new SigmaService(new LocalStorageRepository(local),()=> '2026-07-15T12:00:00Z',()=>`id-${++n}`);const alex=service.createProfile({displayName:'Alex',profileType:'independent'});service.addMeasurement({profileId:alex.id,measurementType:'Waist',category:'Upper body',label:'Waist',value:90,unit:'cm',originalValue:90,originalUnit:'cm',measuredAt:'2026-07-15',recordedAt:'2026-07-15',sourceType:'manual',acquisitionMethod:'manual'});const jordan=service.createProfile({displayName:'Jordan',profileType:'independent'});const profileHtml=renderProfiles(service,alex.id,true);assert.match(profileHtml,/Profile type cannot be changed/);assert.doesNotMatch(profileHtml,/name="profileType"/);const request=service.requestConnection(jordan.id);service.selectActor(jordan.id);service.respondConnection(request.id,true);service.selectActor(alex.id);service.grantAccess(alex.id,jordan.id,{type:'profile'});service.selectActor(jordan.id);service.selectProfile(alex.id);const recordsHtml=renderRecords(service,'measurement','','');assert.match(recordsHtml,/read-only/i);assert.doesNotMatch(recordsHtml,/id="record-form"|data-history-form|data-edit-measurement-form/);});
 
-test('imported standard-size cards show structured provenance without measured language',()=>{const local=storage();const service=new SigmaService(new LocalStorageRepository(local),()=> '2026-07-15T12:00:00Z',()=>crypto.randomUUID());const profile=service.createProfile({displayName:'Alex',profileType:'independent'});service.addStandardSize({profileId:profile.id,category:'Clothing',label:'Clothing size',sizingSystem:'Generic',sizeValue:'M',recordedAt:'2026-07-01',sourceType:'imported_device',sourceName:'Measurement device',sourceId:'measurement_device',sourceItemId:'size-1',sourceDevice:'Demo wardrobe',confidence:0.9,derivation:{kind:'derived',method:'demo'}});const html=renderRecords(service,'standard_size','','');assert.match(html,/Derived · imported device · Measurement device · device Demo wardrobe · confidence 0.9 · recorded/);assert.doesNotMatch(html,/measured 1 Jul 2026/);});
+test('imported standard-size cards show source details without measured language',()=>{const local=storage();const service=new SigmaService(new LocalStorageRepository(local),()=> '2026-07-15T12:00:00Z',()=>crypto.randomUUID());const profile=service.createProfile({displayName:'Alex',profileType:'independent'});service.addStandardSize({profileId:profile.id,category:'Clothing',label:'Clothing size',sizingSystem:'Generic',sizeValue:'M',recordedAt:'2026-07-01',sourceType:'imported_device',sourceName:'Measurement device',sourceId:'measurement_device',sourceItemId:'size-1',sourceDevice:'Demo wardrobe',confidence:0.9,derivation:{kind:'derived',method:'demo'}});const html=renderRecords(service,'standard_size','','');assert.match(html,/Source details/);assert.match(html,/imported device · Measurement device/);assert.doesNotMatch(html,/measured 1 Jul 2026/);});
 
 test('simulated permission cannot activate a future source',()=>{const local=storage();globalThis.localStorage=local;globalThis.matchMedia=()=>({matches:false});globalThis.document={documentElement:{dataset:{}}};const service=new SigmaService(new LocalStorageRepository(local));const root=new Root();mountApp(root,service);root.querySelectorAll('[data-route]').find(item=>item.dataset.route==='sources').click();assert.match(root.textContent,/Future integration/);root.querySelectorAll('[data-source-action]').find(item=>item.dataset.sourceAction==='smart_scale').click();assert.match(root.textContent,/Simulate allow/);root.querySelectorAll('[data-permission-allow]')[0].click();assert.match(root.textContent,/not implemented in the current local demo/);assert.match(root.textContent,/does not activate it/);assert.equal(service.snapshot().measurements.length,0);});
 
 test('Ticket 6 first use includes account-free guidance and an accessible live notice region',()=>{
   const local=storage();globalThis.localStorage=local;globalThis.matchMedia=()=>({matches:false});globalThis.document={documentElement:{dataset:{}}};
   const root=new Root();mountApp(root,new SigmaService(new LocalStorageRepository(local)));
-  assert.match(root.textContent,/stores physical measurements and practical sizes locally/i);
+  assert.match(root.textContent,/useful measurements and sizes on this device/i);
   assert.match(root.textContent,/No account is required/);
   assert.match(root.innerHTML,/aria-live="polite"/);
-  assert.match(root.innerHTML,/data-start-profile/);
+  assert.match(root.innerHTML,/id="open-profile-form"/);
 });
 
 test('Ticket 6 record entry is progressively disclosed and filters can be cleared',()=>{
@@ -106,7 +115,17 @@ test('Ticket 6 record entry is progressively disclosed and filters can be cleare
   const service=new SigmaService(new LocalStorageRepository(local));service.createProfile({displayName:'Alex',profileType:'independent'});
   assert.doesNotMatch(renderRecords(service,'measurement','','',false),/id="record-form"/);
   const open=renderRecords(service,'measurement','','',true);assert.match(open,/id="record-form"/);assert.match(open,/Cancel/);
-  const filtered=renderRecords(service,'measurement','waist','Upper body',false);assert.match(filtered,/Clear filters/);assert.match(filtered,/No recorded facts match these filters/);
+  const filtered=renderRecords(service,'measurement','waist','Upper body',false);assert.match(filtered,/>Clear</);assert.match(filtered,/No matching records/);
+});
+
+test('record search preserves focus, caret and sequential input across rerenders',()=>{
+  const local=storage();const service=new SigmaService(new LocalStorageRepository(local));service.createProfile({displayName:'Alex',profileType:'independent'});
+  globalThis.localStorage=local;globalThis.matchMedia=()=>({matches:false});globalThis.document={documentElement:{dataset:{}}};
+  const root=new Root();mountApp(root,service);root.querySelectorAll('[data-route]').find(item=>item.dataset.route==='measurements').click();
+  for(const value of ['w','wa','wai','wais','waist']){
+    const input=root.querySelector('#record-search');input.input(value);
+    const replacement=root.querySelector('#record-search');assert.equal(replacement.value,value);assert.equal(replacement.focused,true);assert.equal(replacement.selectionStart,value.length);
+  }
 });
 
 test('Ticket 6 unsafe storage suppresses ordinary route content and export',()=>{

@@ -8,7 +8,7 @@ import { renderProfiles } from './ui/profiles.js';
 import { renderRecords, type RecordMode } from './ui/records.js';
 import { renderShell, type AppNotice } from './ui/shell.js';
 import { renderPrivacy, renderSettings } from './ui/status.js';
-import { emptyGrantComposerState, renderFamily as renderFamilyScreen, type GrantComposerState, type GrantScopeChoice } from './ui/family.js';
+import { emptyGrantComposerState, renderFamily as renderFamilyScreen, type FamilyView, type GrantComposerState, type GrantScopeChoice } from './ui/family.js';
 import { readDemoEntitlement, writeDemoEntitlement, type DemoEntitlement } from '../lib/entitlement.js';
 import { unitsForDimension, type Dimension } from '../conversion/registry.js';
 import { PermissionDemoService } from '../permissions/service.js';
@@ -19,23 +19,26 @@ import type { SourceId } from '../domain/model.js';
 import { renderSources } from './ui/sources.js';
 
 export function mountApp(root: HTMLElement, service = new SigmaService(new LocalStorageRepository(globalThis.localStorage))): void {
-  let route: RouteId = 'profiles'; let theme = readThemePreference(); let entitlement=readDemoEntitlement(); let mode: RecordMode = 'measurement'; let search = ''; let category = ''; let editingProfileId = ''; let recordFormOpen=false; let notice:AppNotice|undefined;
+  let route: RouteId = 'profiles'; let theme = readThemePreference(); let entitlement=readDemoEntitlement(); let mode: RecordMode = 'measurement'; let search = ''; let category = ''; let editingProfileId = ''; let profileFormOpen=false; let recordFormOpen=false; let familyView:FamilyView='overview'; let notice:AppNotice|undefined;
   const permissions=new PermissionDemoService(globalThis.localStorage); let permissionFlow:PermissionKind|undefined; let selectedSourceId:SourceId|undefined; let sourceNotice=''; let importCandidates:ImportCandidate[]=[]; let excluded=0;
   let grantComposer:GrantComposerState=emptyGrantComposerState();
   const render = () => {
     const resolved = resolveTheme(theme, globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false);
     document.documentElement.dataset.theme = resolved; document.documentElement.dataset.themePreference = theme; writeThemePreference(theme);
-    const content = route === 'profiles' ? renderProfiles(service, editingProfileId) : route === 'measurements' ? renderRecords(service, mode, search, category,recordFormOpen) : route === 'sources' ? renderSources(service,permissions,permissionFlow,importCandidates,excluded,sourceNotice) : route === 'privacy' ? renderPrivacy(service,permissions) : route === 'settings' ? renderSettings(service, theme, resolved, entitlement,permissions) : renderFamilyScreen(service, entitlement,grantComposer);
+    const content = route === 'profiles' ? renderProfiles(service, editingProfileId,profileFormOpen) : route === 'measurements' ? renderRecords(service, mode, search, category,recordFormOpen) : route === 'sources' ? renderSources(service,permissions,permissionFlow,importCandidates,excluded,sourceNotice) : route === 'privacy' ? renderPrivacy(service,permissions) : route === 'settings' ? renderSettings(service, theme, resolved, entitlement,permissions) : renderFamilyScreen(service, entitlement,grantComposer,familyView);
     root.innerHTML = renderShell(route, service, content,notice);
     const run=(action:()=>void,message?:string)=>{try{action();if(message)notice={kind:'success',message};render();}catch(error){if(error instanceof Error){notice={kind:'error',message:error.message};render();return;}throw error;}};
     bind(root, '[data-route]', 'click', (element) => { route = element.dataset.route as RouteId; render(); });
     bind(root, '[data-select-profile]', 'click', (element) => run(()=>{ service.selectProfile(element.dataset.selectProfile!); route = 'measurements'; }));
-    bind(root, '[data-edit-profile]', 'click', (element) => { editingProfileId = element.dataset.editProfile!; render(); });
-    bind(root, '[data-start-profile]', 'click', () => root.querySelector<HTMLInputElement>('#profile-form input[name="displayName"]')?.focus());
+    bind(root, '[data-edit-profile]', 'click', (element) => { editingProfileId = element.dataset.editProfile!; profileFormOpen=true; render(); });
+    bind(root, '#open-profile-form', 'click', () => { profileFormOpen=true; render(); root.querySelector<HTMLInputElement>('#profile-form input[name="displayName"]')?.focus(); });
+    bind(root, '#cancel-profile-form', 'click', () => { profileFormOpen=false; editingProfileId=''; render(); });
     bind(root, '[data-record-mode]', 'click', (element) => { mode = element.dataset.recordMode as RecordMode; recordFormOpen=false; render(); });
+    root.querySelector<HTMLSelectElement>('#record-mode-select')?.addEventListener('change',(event)=>{mode=(event.currentTarget as HTMLSelectElement).value as RecordMode;recordFormOpen=false;render();});
+    bind(root,'[data-family-view]','click',(element)=>{familyView=element.dataset.familyView as FamilyView;route='family';render();});
     root.querySelectorAll<HTMLInputElement>('input[name="theme"]').forEach((input) => input.addEventListener('change', () => { theme = input.value as ThemePreference; render(); }));
     root.querySelector<HTMLSelectElement>('#entitlement-select')?.addEventListener('change',(event)=>{entitlement=(event.currentTarget as HTMLSelectElement).value as DemoEntitlement;writeDemoEntitlement(entitlement);render();});
-    root.querySelectorAll<HTMLSelectElement>('#actor-select,#context-actor-select').forEach(select=>select.addEventListener('change',(event)=>run(()=>{service.selectActor((event.currentTarget as HTMLSelectElement).value);grantComposer=emptyGrantComposerState();search='';category='';recordFormOpen=false;},'Acting local adult switched.')));
+    root.querySelectorAll<HTMLSelectElement>('#actor-select,#context-actor-select').forEach(select=>select.addEventListener('change',(event)=>run(()=>{service.selectActor((event.currentTarget as HTMLSelectElement).value);grantComposer=emptyGrantComposerState();familyView='overview';search='';category='';recordFormOpen=false;},'Acting local adult switched.')));
     root.querySelector<HTMLSelectElement>('#context-profile-select')?.addEventListener('change',(event)=>run(()=>service.selectProfile((event.currentTarget as HTMLSelectElement).value)));
     onForm(root,'#family-form',(form)=>run(()=>service.createFamily(field(new FormData(form),'name')),'Family created.'));
     onForm(root,'#connection-form',(form)=>run(()=>service.requestConnection(field(new FormData(form),'recipientId')),'Connection request sent. No records were shared.'));
@@ -51,13 +54,22 @@ export function mountApp(root: HTMLElement, service = new SigmaService(new Local
     bind(root,'[data-respond]','click',(el)=>run(()=>service.respondConnection(el.dataset.respond!,el.dataset.accept==='true'),el.dataset.accept==='true'?'Connection accepted. No records were shared.':'Connection declined.'));
     bind(root,'[data-disconnect]','click',(el)=>run(()=>service.disconnect(el.dataset.disconnect!),'Adult connection disconnected.'));
     bind(root,'[data-revoke-grant]','click',(el)=>{if(globalThis.confirm('Revoke this read-only access now? The underlying records will not be deleted.'))run(()=>service.revokeGrant(el.dataset.revokeGrant!),'Sharing access revoked.');});
-    onForm(root, '#profile-form', (form) => run(()=>{ saveProfile(service, new FormData(form), editingProfileId); editingProfileId = ''; },editingProfileId?'Profile details saved.':'Profile created. You can now add a recorded fact.'));
+    onForm(root, '#profile-form', (form) => run(()=>{ saveProfile(service, new FormData(form), editingProfileId); editingProfileId = ''; profileFormOpen=false; },editingProfileId?'Profile details saved.':'Profile created.'));
     onForm(root, '#record-form', (form) => run(()=>{ saveRecord(service, mode, new FormData(form)); recordFormOpen=false; },'Recorded fact added.'));
     forms(root, '[data-history-form]', (form, data) => addHistory(service, form.dataset.historyForm!, data), render);
+    forms(root, '[data-correct-value-form]', (form, data) => {
+      if(globalThis.confirm('Mark this recorded value as incorrect? It will remain in history and stop affecting the current value and conversions.')) {
+        service.correctMeasurementValue(form.dataset.correctValueForm!,form.dataset.valueId!,field(data,'reason')||undefined);
+        notice={kind:'success',message:'Recorded value marked incorrect and retained in history.'};
+      }
+    }, render);
     forms(root, '[data-edit-measurement-form]', (form, data) => service.updateMeasurement(form.dataset.editMeasurementForm!, { label: field(data, 'label'), measurementType: field(data, 'measurementType'), category: field(data, 'category') }), render);
     forms(root, '[data-edit-size-form]', (form, data) => service.updateStandardSize(form.dataset.editSizeForm!, { label: field(data, 'label'), category: field(data, 'category'), sizingSystem: field(data, 'sizingSystem'), sizeValue: field(data, 'sizeValue'), notes: field(data, 'notes') || undefined }), render);
     forms(root, '[data-edit-brand-form]', (form, data) => service.updateBrandFit(form.dataset.editBrandForm!, { category: field(data, 'category'), brand: field(data, 'brand'), productName: field(data, 'productName') || undefined, productLine: field(data, 'productLine') || undefined, sizingSystem: field(data, 'sizingSystem'), sizeValue: field(data, 'sizeValue'), fitNotes: field(data, 'fitNotes') || undefined }), render);
-    root.querySelector<HTMLInputElement>('#record-search')?.addEventListener('input', (event) => { search = (event.currentTarget as HTMLInputElement).value; render(); });
+    root.querySelector<HTMLInputElement>('#record-search')?.addEventListener('input', (event) => {
+      const input=event.currentTarget as HTMLInputElement; search=input.value; const start=input.selectionStart??search.length,end=input.selectionEnd??start; render();
+      const replacement=root.querySelector<HTMLInputElement>('#record-search'); replacement?.focus(); replacement?.setSelectionRange(start,end);
+    });
     root.querySelector<HTMLSelectElement>('#category-filter')?.addEventListener('change', (event) => { category = (event.currentTarget as HTMLSelectElement).value; render(); });
     bind(root,'#clear-record-filters','click',()=>{search='';category='';render();});
     bind(root,'#open-record-form','click',()=>{recordFormOpen=true;render();root.querySelector<HTMLElement>('#record-form-panel')?.focus();});

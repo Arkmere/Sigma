@@ -54,7 +54,7 @@ test('granular grant scopes expose only their intended canonical records',()=>{
 
 test('managed-owner composer uses only the selected child records and creates a valid specific grant',()=>{
   const{service,alex,jordan}=fixture();const family=service.createFamily('Home');service.addFamilyMember(family.id,jordan.id);const child=service.createManagedProfile({displayName:'Sam',managedKind:'child',familyId:family.id});const adultRecord=measurement(service,alex.id,'Adult waist');const childRecord=measurement(service,child.id,'Child waist');
-  const html=renderFamily(service,'full',{ownerId:child.id,recipientId:jordan.id,scope:'record:measurement',category:'Footwear',recordId:childRecord.id});
+  const html=renderFamily(service,'full',{ownerId:child.id,recipientId:jordan.id,scope:'record:measurement',category:'Footwear',recordId:childRecord.id},'sharing');
   assert.match(html,/Child waist/);assert.doesNotMatch(html,/Adult waist/);assert.match(html,/Share Sam’s “Child waist” record with Jordan/);
   const options=service.grantableRecords(child.id);assert.deepEqual(options.measurements.map(record=>record.id),[childRecord.id]);assert.ok(!options.measurements.some(record=>record.id===adultRecord.id));
   service.grantAccess(child.id,jordan.id,{type:'record',recordKind:'measurement',recordId:childRecord.id});service.selectActor(jordan.id);service.selectProfile(child.id);assert.deepEqual(service.authorisedRecords(child.id).measurements.map(record=>record.id),[childRecord.id]);

@@ -116,6 +116,15 @@ export class SigmaService {
     this.requireManagement(record.profileId);
     record.values.push(this.makeValue(input, this.now())); record.updatedAt = this.now(); this.persist(); return structuredClone(record);
   }
+  correctMeasurementValue(recordId:string,valueId:string,reason?:string):PhysicalMeasurement {
+    this.ensureWritable();
+    const record=this.data.measurements.find((item)=>item.id===recordId);if(!record)throw new Error('Measurement not found.');
+    this.requireManagement(record.profileId);const actor=this.requireActor();
+    const value=record.values.find((item)=>item.id===valueId);if(!value)throw new Error('Measurement value not found.');
+    if(value.correction)throw new Error('Measurement value is already marked as corrected.');
+    value.correction={status:'voided',correctedAt:this.now(),correctedByProfileId:actor.id,reason:clean(reason)};
+    record.updatedAt=this.now();this.persist();return structuredClone(record);
+  }
 
   updateMeasurement(recordId: string, input: Pick<PhysicalMeasurement, 'label' | 'category' | 'measurementType'>): PhysicalMeasurement {
     this.ensureWritable();

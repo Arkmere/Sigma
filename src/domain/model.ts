@@ -1,4 +1,4 @@
-export const DATA_SCHEMA_VERSION = 2;
+export const DATA_SCHEMA_VERSION = 3;
 
 export type ProfileType = 'independent' | 'managed';
 export type SourceType = 'manual' | 'imported_health_platform' | 'imported_device' | 'camera_assisted' | 'body_scan' | 'third_party_service';
@@ -45,6 +45,12 @@ export interface MeasurementValue extends ExternalProvenance {
   originalUnit: string;
   acquisitionMethod: SourceType;
   notes?: string;
+  correction?: {
+    status: 'voided';
+    correctedAt: string;
+    correctedByProfileId: string;
+    reason?: string;
+  };
   createdAt: string;
 }
 
@@ -129,5 +135,5 @@ export const emptySigmaData = (): SigmaData => ({
 });
 
 export function currentMeasurementValue(record: PhysicalMeasurement): MeasurementValue | undefined {
-  return [...record.values].sort((a, b) => b.measuredAt.localeCompare(a.measuredAt) || b.recordedAt.localeCompare(a.recordedAt))[0];
+  return record.values.filter((value) => !value.correction).sort((a, b) => b.measuredAt.localeCompare(a.measuredAt) || b.recordedAt.localeCompare(a.recordedAt))[0];
 }
