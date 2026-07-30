@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Ticket 6B1 visual and interaction refinement is implemented; final responsive visual acceptance remains pending product-owner browser review. Ticket 7 has not started.
+Ticket 6B2 expanded-record disclosure layout is implemented; final responsive visual acceptance remains pending product-owner browser review. Ticket 7 has not started.
 
 ## Completed
 
@@ -10,6 +10,7 @@ Ticket 6B1 visual and interaction refinement is implemented; final responsive vi
 - Local gender-neutral anatomical line art for first-use and physical-measurement empty states; no interactive anatomy or body-shape inference.
 - Deterministic notice lifecycle: actions replace notices and unrelated route/Family-stage navigation clears stale messages.
 - Coherent responsive measurement-history blocks, compact profile totals, one-sentence Family framing and structured source-candidate provenance.
+- Open record disclosures span the full action grid at desktop and intermediate widths while collapsed actions retain their compact row and mobile actions retain single-column stacking.
 - Sources now prioritise manual entry and the named Sigma demo device, disclose import filtering later, and label future actions as previews or planned capabilities.
 
 - Mobile-first operational hierarchy with compact context, shorter Records navigation, staged creation, collapsed record detail and safe-area-aware bottom navigation.
@@ -146,7 +147,8 @@ Ticket 7: validation, audit, formal demo guide and completion report.
 - MI-18 — remaining Brand/product terminology inconsistency: **resolved**. Operational modes, headings, empty states and sharing controls use “Brand & product facts”; `brand_fit` remains the internal identifier.
 - MI-19 — success notices persist across unrelated navigation: **resolved** with deterministic route/stage clearing and action replacement tests.
 - MI-20 — interactive anatomy navigator: **deferred** with MI-01. Ticket 6B1 adds only a small local, gender-neutral line-art vocabulary for future extension.
-- MI-21 — active buttons resemble disabled controls: **resolved** with semantic primary, secondary and genuine disabled states.
+- MI-21 — expanded record disclosures remain constrained to a narrow desktop action column: **resolved in implementation** by spanning open semantic disclosures across the complete record-action grid; final browser confirmation remains required.
+- The previously accepted active/disabled button-state correction remains resolved with semantic primary, secondary and genuine disabled states.
 - MI-22 — desktop measurement history becomes malformed: **resolved** with coherent value/status blocks, labelled metadata and an attached correction form.
 - MI-23 — mobile profile header and record totals wrap poorly: **resolved** with separated People/count/action structure and concise total-record wording.
 - MI-24 — Family overview retains redundant framing: **resolved** with one privacy statement, status counts and four focused actions.
@@ -162,6 +164,8 @@ Deferred future work: canonical hierarchical fact picker; automatic category/def
 
 ## Ticket 6 verification
 
+- Ticket 6B2 automated verification: `pnpm run typecheck`, `pnpm run build`, `pnpm test` and `git diff --check` pass; the suite contains 91 passing tests. Coverage verifies semantic disclosures for every record kind, full-grid placement for open disclosures, coherent history/correction grouping, absence of fixed open-content widths and retained single-column mobile stacking.
+- Ticket 6B2 browser evidence: pending. Final browser confirmation remains required; no visual acceptance claim is made by the implementation tests.
 - Ticket 6B1 automated verification: `pnpm run typecheck`, `pnpm run build`, portable `pnpm test` and `git diff --check` pass; the suite contains 87 passing tests. Coverage includes notice clearing/replacement, semantic active/disabled states, coherent correction history, compact Profiles and Family framing, truthful Sources actions, structured provenance, six-destination navigation, local anatomical-asset output and reduced-motion CSS.
 - Ticket 6B1 browser evidence: unavailable. The required browser-control runtime failed before page launch with `Cannot redefine property: process`; therefore no screenshot or visual claim is made for 360 × 800, 768, 1024 or 1440 px in light/dark mode.
 - Ticket 6B1 keyboard evidence: automated markup and interaction checks confirm semantic controls, visible-focus CSS, multi-character search focus/caret restoration, correction-card focus restoration and absence of timer-driven notice removal. A real-browser keyboard-only traversal of navigation, forms, disclosures, confirmations, Family, Sources, Settings and backup could not be executed because the browser never initialised.
