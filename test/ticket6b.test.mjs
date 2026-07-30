@@ -53,7 +53,7 @@ test('compact renderers hide creation and Family stages until explicitly selecte
   assert.doesNotMatch(renderProfiles(service),/id="profile-form"/);assert.match(renderProfiles(service),/Add profile/);
   const records=renderRecords(service,'brand_fit','','',false);assert.match(records,/id="record-mode-select"/);assert.match(records,/Brand &amp; product facts/);assert.doesNotMatch(records,/Brand &amp; product fit/);
   const physical=renderRecords(service,'measurement','','',false);assert.match(physical,/Update value/);
-  const overview=renderFamily(service,'full');assert.match(overview,/Family overview/);assert.doesNotMatch(overview,/id="family-form"|id="connection-form"|id="grant-form"/);
+  const overview=renderFamily(service,'full');assert.match(overview,/class="family-overview"/);assert.doesNotMatch(overview,/id="family-form"|id="connection-form"|id="grant-form"/);
   assert.match(renderFamily(service,'full',undefined,'families'),/id="family-form"/);
   assert.doesNotMatch(renderFamily(service,'full',undefined,'families'),/id="connection-form"|id="grant-form"/);
 });

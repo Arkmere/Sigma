@@ -6,6 +6,8 @@ Ticket 6 begins with an account-free, local personal-profile path. The shell dis
 
 Ticket 6B makes this an operational mobile-first journey: creation stays behind explicit actions, record cards default to one scannable fact layer, Family exposes one stage at a time, and Sources separates live, demo and future capabilities. Incorrect measurement entries are retained as corrected audit history and no longer affect current values or conversions.
 
+Ticket 6B1 refines that accepted structure without returning to a landing-page hierarchy. Active controls, disabled controls, notices, history entries, profile summaries and source previews must remain visually and semantically distinct. A small local anatomical outline establishes a future visual language only; it is not an anatomy navigator and does not classify or judge body shape.
+
 Family is organised as overview, membership, managed people, adult connections and explicit sharing. Membership and connection visibly grant zero access. Sources distinguish live manual entry, the local measurement-device demo and non-operational future integrations. Unsafe storage replaces ordinary route content until explicitly reset.
 
 Sigma is a private, local-first personal and family measurement vault. It records what the user knows; it does not tell the user what should fit.

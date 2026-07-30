@@ -11,6 +11,7 @@ class Control {
   addEventListener(type, listener) { this.listeners.set(type, listener); }
   click() { this.listeners.get('click')?.({ currentTarget: this }); }
   input(value) { this.value=value; this.selectionStart=value.length; this.selectionEnd=value.length; this.listeners.get('input')?.({currentTarget:this}); }
+  change(value) { this.value=value; this.listeners.get('change')?.({currentTarget:this}); }
   focus() { this.focused=true; }
   setSelectionRange(start,end) { this.selectionStart=start; this.selectionEnd=end; }
 }
@@ -32,6 +33,7 @@ class Root {
     if (selector === '[data-route]') for (const match of this.html.matchAll(/data-route="([^"]+)"/g)) controls.push(new Control({ route: match[1] }));
     if (selector === '[data-source-action]') for (const match of this.html.matchAll(/data-source-action="([^"]+)"/g)) controls.push(new Control({ sourceAction: match[1] }));
     if (selector === '[data-permission-allow]') for (const match of this.html.matchAll(/data-permission-allow="([^"]+)"/g)) controls.push(new Control({ permissionAllow: match[1] }));
+    if (selector === '#actor-select,#context-actor-select' && this.html.includes('id="context-actor-select"')) controls.push(new Control({}));
     if (selector === '#reset-data' && this.html.includes('id="reset-data"')) controls.push(new Control({}));
     this.controls.set(selector, controls);
     return controls;
@@ -47,7 +49,7 @@ test('shell renders truthful empty states and switches every primary route witho
   const root = new Root();
   mountApp(root, new SigmaService(new LocalStorageRepository(globalThis.localStorage)));
   assert.match(root.textContent, /Create my profile/);
-  for (const [route, expected] of [['profiles', /People/], ['measurements', /No profile is available to the acting adult/], ['family', /Family workflows are locked/], ['sources', /Import boundaries/], ['privacy', /Who can see profiles/], ['settings', /Family entitlement/]]) {
+  for (const [route, expected] of [['profiles', /People/], ['measurements', /No profile is available to the acting adult/], ['family', /Family workflows are locked/], ['sources', /How imports are filtered/], ['privacy', /Who can see profiles/], ['settings', /Family entitlement/]]) {
     const button = root.querySelectorAll('[data-route]').find((item) => item.dataset.route === route);
     assert.ok(button); button.click(); assert.match(root.textContent, expected);
   }
@@ -126,6 +128,15 @@ test('record search preserves focus, caret and sequential input across rerenders
     const input=root.querySelector('#record-search');input.input(value);
     const replacement=root.querySelector('#record-search');assert.equal(replacement.value,value);assert.equal(replacement.focused,true);assert.equal(replacement.selectionStart,value.length);
   }
+});
+
+test('notices clear on route navigation and a new action replaces the previous notice',()=>{
+  const local=storage();const service=new SigmaService(new LocalStorageRepository(local));service.createProfile({displayName:'Alex',profileType:'independent'});const jordan=service.createProfile({displayName:'Jordan',profileType:'independent'});
+  globalThis.localStorage=local;globalThis.matchMedia=()=>({matches:false});globalThis.document={documentElement:{dataset:{}}};
+  const root=new Root();mountApp(root,service);
+  root.querySelectorAll('#actor-select,#context-actor-select')[0].change(jordan.id);assert.match(root.textContent,/Acting local adult switched/);
+  root.querySelectorAll('#actor-select,#context-actor-select')[0].change('missing');assert.doesNotMatch(root.textContent,/Acting local adult switched/);assert.match(root.textContent,/Profile not found/);
+  root.querySelectorAll('[data-route]').find(item=>item.dataset.route==='sources').click();assert.doesNotMatch(root.textContent,/Profile not found/);
 });
 
 test('Ticket 6 unsafe storage suppresses ordinary route content and export',()=>{

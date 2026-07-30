@@ -2,9 +2,15 @@
 
 ## Current Phase
 
-Ticket 6B is implemented and automated verification is complete; final responsive visual acceptance remains pending manual browser verification. Ticket 7 has not started.
+Ticket 6B1 visual and interaction refinement is implemented; final responsive visual acceptance remains pending product-owner browser review. Ticket 7 has not started.
 
 ## Completed
+
+- Refined warm-light/charcoal-dark visual system with restrained teal active states, semantic primary/secondary/disabled controls and minimal dark-mode shadow.
+- Local gender-neutral anatomical line art for first-use and physical-measurement empty states; no interactive anatomy or body-shape inference.
+- Deterministic notice lifecycle: actions replace notices and unrelated route/Family-stage navigation clears stale messages.
+- Coherent responsive measurement-history blocks, compact profile totals, one-sentence Family framing and structured source-candidate provenance.
+- Sources now prioritise manual entry and the named Sigma demo device, disclose import filtering later, and label future actions as previews or planned capabilities.
 
 - Mobile-first operational hierarchy with compact context, shorter Records navigation, staged creation, collapsed record detail and safe-area-aware bottom navigation.
 - One-stage-at-a-time Family overview for Families/members, managed people, connections and explicit sharing; the shell is the single acting/viewed context surface.
@@ -137,11 +143,29 @@ Ticket 7: validation, audit, formal demo guide and completion report.
 - MI-15 — bottom-navigation content competition: **resolved** with compact labels and safe-area/content clearance.
 - MI-16 — misleading mobile `Sizes` label: **resolved** as `Records`.
 - MI-17 — marketing-style hierarchy overwhelms operational UI: **resolved** with smaller typography, tighter spacing and action-first copy.
+- MI-18 — remaining Brand/product terminology inconsistency: **resolved**. Operational modes, headings, empty states and sharing controls use “Brand & product facts”; `brand_fit` remains the internal identifier.
+- MI-19 — success notices persist across unrelated navigation: **resolved** with deterministic route/stage clearing and action replacement tests.
+- MI-20 — interactive anatomy navigator: **deferred** with MI-01. Ticket 6B1 adds only a small local, gender-neutral line-art vocabulary for future extension.
+- MI-21 — active buttons resemble disabled controls: **resolved** with semantic primary, secondary and genuine disabled states.
+- MI-22 — desktop measurement history becomes malformed: **resolved** with coherent value/status blocks, labelled metadata and an attached correction form.
+- MI-23 — mobile profile header and record totals wrap poorly: **resolved** with separated People/count/action structure and concise total-record wording.
+- MI-24 — Family overview retains redundant framing: **resolved** with one privacy statement, status counts and four focused actions.
+- MI-25 — Sources policy precedes routine actions and future cards are too large: **resolved** by prioritising manual/demo sources, moving policy into a disclosure and using a denser future list/grid.
+- MI-26 — future-source actions and device naming imply operations or overlap: **resolved** with preview/planned wording and source-specific Sigma demo versus planned smart-scale names.
+- MI-27 — candidate provenance is difficult to scan: **resolved** with labelled Recorded, Source, Device, Confidence and Method fields.
+- MI-28 — mobile navigation active state and safe-area treatment need refinement: **resolved in implementation** with teal semantic active state, six labels and retained safe-area clearance; final visual confirmation remains pending.
+- MI-29 — light theme controls lack sufficient operational distinction: **resolved in implementation** with warm surfaces, charcoal text and distinct teal active controls; final visual confirmation remains pending.
 
-Deferred future work: canonical hierarchical fact picker; automatic category/default-label derivation; explicit custom-record path; optional anatomy navigator; search and category browsing over the same canonical taxonomy; accessible text and keyboard alternatives for anatomy navigation.
+The supplied mood boards are recorded as visual-direction references for palette, typography, icon restraint, card treatment and anatomical line language. Their promotional compositions, hero hierarchy and feature panels are explicitly not the structure of Sigma’s operational application.
+
+Deferred future work: canonical hierarchical fact picker; automatic category/default-label derivation; explicit custom-record path; optional anatomy navigator extending the Ticket 6B1 line-art language; search and category browsing over the same canonical taxonomy; accessible text and keyboard alternatives for anatomy navigation.
 
 ## Ticket 6 verification
 
+- Ticket 6B1 automated verification: `pnpm run typecheck`, `pnpm run build`, portable `pnpm test` and `git diff --check` pass; the suite contains 87 passing tests. Coverage includes notice clearing/replacement, semantic active/disabled states, coherent correction history, compact Profiles and Family framing, truthful Sources actions, structured provenance, six-destination navigation, local anatomical-asset output and reduced-motion CSS.
+- Ticket 6B1 browser evidence: unavailable. The required browser-control runtime failed before page launch with `Cannot redefine property: process`; therefore no screenshot or visual claim is made for 360 × 800, 768, 1024 or 1440 px in light/dark mode.
+- Ticket 6B1 keyboard evidence: automated markup and interaction checks confirm semantic controls, visible-focus CSS, multi-character search focus/caret restoration, correction-card focus restoration and absence of timer-driven notice removal. A real-browser keyboard-only traversal of navigation, forms, disclosures, confirmations, Family, Sources, Settings and backup could not be executed because the browser never initialised.
+- Ticket 6B1 reduced-motion evidence: implementation and build output include an explicit `prefers-reduced-motion: reduce` rule that suppresses non-essential transition/animation duration, and an automated test verifies it. Real-browser emulation remains pending with the short product-owner visual review.
 - Ticket 6B automated verification: `pnpm run typecheck` passed; `pnpm run build` passed; direct Node suite passed 78/78; `git diff --check` passed. The bundled runtime does not expose `npm`, so the package's `npm test` wrapper could not run there; its exact build and `node --test test/*.test.mjs` stages were run separately.
 - Ticket 6B manual browser: pending. Browser control failed before page launch with `Cannot redefine property: process`, so responsive or visual acceptance is not claimed.
 - Ticket 6B manual checklist: run `npm run dev`; inspect light and dark at 360, 768, 1024 and 1440 px; verify six-destination navigation and safe-area clearance, compact/adaptive context, hidden profile creation, the record-type selector, multi-character search, compact record disclosures, update and correction confirmation/history, equal-date note, each focused Family stage, sharing eligibility/revocation, staged Sources and long-content overflow. Repeat the core journey keyboard-only and with reduced motion.

@@ -6,6 +6,7 @@ const outDir = 'dist';
 try {
   await mkdir(outDir, { recursive: true });
   await copyFile(join('src', 'styles.css'), join(outDir, 'styles.css'));
+  await copyFile(join('src', 'assets', 'body-outline.svg'), join(outDir, 'body-outline.svg'));
   const html = await readFile('index.html', 'utf8');
   const productionHtml = html
     .replace('/src/main.ts', '/main.js')

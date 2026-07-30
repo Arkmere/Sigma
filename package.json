@@ -7,7 +7,7 @@
     "dev": "node scripts/dev.mjs",
     "build": "tsc -p tsconfig.build.json && node scripts/build.mjs",
     "typecheck": "tsc -p tsconfig.json --pretty false",
-    "test": "npm run build && node --test test/*.test.mjs"
+    "test": "tsc -p tsconfig.build.json && node scripts/build.mjs && node --test test/*.test.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.3"

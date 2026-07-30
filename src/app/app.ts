@@ -28,14 +28,14 @@ export function mountApp(root: HTMLElement, service = new SigmaService(new Local
     const content = route === 'profiles' ? renderProfiles(service, editingProfileId,profileFormOpen) : route === 'measurements' ? renderRecords(service, mode, search, category,recordFormOpen) : route === 'sources' ? renderSources(service,permissions,permissionFlow,importCandidates,excluded,sourceNotice) : route === 'privacy' ? renderPrivacy(service,permissions) : route === 'settings' ? renderSettings(service, theme, resolved, entitlement,permissions) : renderFamilyScreen(service, entitlement,grantComposer,familyView);
     root.innerHTML = renderShell(route, service, content,notice);
     const run=(action:()=>void,message?:string)=>{try{action();if(message)notice={kind:'success',message};render();}catch(error){if(error instanceof Error){notice={kind:'error',message:error.message};render();return;}throw error;}};
-    bind(root, '[data-route]', 'click', (element) => { route = element.dataset.route as RouteId; render(); });
-    bind(root, '[data-select-profile]', 'click', (element) => run(()=>{ service.selectProfile(element.dataset.selectProfile!); route = 'measurements'; }));
+    bind(root, '[data-route]', 'click', (element) => { notice=undefined; route = element.dataset.route as RouteId; render(); });
+    bind(root, '[data-select-profile]', 'click', (element) => {notice=undefined;run(()=>{ service.selectProfile(element.dataset.selectProfile!); route = 'measurements'; });});
     bind(root, '[data-edit-profile]', 'click', (element) => { editingProfileId = element.dataset.editProfile!; profileFormOpen=true; render(); });
     bind(root, '#open-profile-form', 'click', () => { profileFormOpen=true; render(); root.querySelector<HTMLInputElement>('#profile-form input[name="displayName"]')?.focus(); });
     bind(root, '#cancel-profile-form', 'click', () => { profileFormOpen=false; editingProfileId=''; render(); });
     bind(root, '[data-record-mode]', 'click', (element) => { mode = element.dataset.recordMode as RecordMode; recordFormOpen=false; render(); });
     root.querySelector<HTMLSelectElement>('#record-mode-select')?.addEventListener('change',(event)=>{mode=(event.currentTarget as HTMLSelectElement).value as RecordMode;recordFormOpen=false;render();});
-    bind(root,'[data-family-view]','click',(element)=>{familyView=element.dataset.familyView as FamilyView;route='family';render();});
+    bind(root,'[data-family-view]','click',(element)=>{notice=undefined;familyView=element.dataset.familyView as FamilyView;route='family';render();});
     root.querySelectorAll<HTMLInputElement>('input[name="theme"]').forEach((input) => input.addEventListener('change', () => { theme = input.value as ThemePreference; render(); }));
     root.querySelector<HTMLSelectElement>('#entitlement-select')?.addEventListener('change',(event)=>{entitlement=(event.currentTarget as HTMLSelectElement).value as DemoEntitlement;writeDemoEntitlement(entitlement);render();});
     root.querySelectorAll<HTMLSelectElement>('#actor-select,#context-actor-select').forEach(select=>select.addEventListener('change',(event)=>run(()=>{service.selectActor((event.currentTarget as HTMLSelectElement).value);grantComposer=emptyGrantComposerState();familyView='overview';search='';category='';recordFormOpen=false;},'Acting local adult switched.')));
@@ -57,12 +57,14 @@ export function mountApp(root: HTMLElement, service = new SigmaService(new Local
     onForm(root, '#profile-form', (form) => run(()=>{ saveProfile(service, new FormData(form), editingProfileId); editingProfileId = ''; profileFormOpen=false; },editingProfileId?'Profile details saved.':'Profile created.'));
     onForm(root, '#record-form', (form) => run(()=>{ saveRecord(service, mode, new FormData(form)); recordFormOpen=false; },'Recorded fact added.'));
     forms(root, '[data-history-form]', (form, data) => addHistory(service, form.dataset.historyForm!, data), render);
-    forms(root, '[data-correct-value-form]', (form, data) => {
+    root.querySelectorAll<HTMLFormElement>('[data-correct-value-form]').forEach((form)=>form.addEventListener('submit',(event)=>{
+      event.preventDefault();const recordId=form.dataset.correctValueForm!;
       if(globalThis.confirm('Mark this recorded value as incorrect? It will remain in history and stop affecting the current value and conversions.')) {
-        service.correctMeasurementValue(form.dataset.correctValueForm!,form.dataset.valueId!,field(data,'reason')||undefined);
-        notice={kind:'success',message:'Recorded value marked incorrect and retained in history.'};
+        service.correctMeasurementValue(recordId,form.dataset.valueId!,field(new FormData(form),'reason')||undefined);
+        notice={kind:'success',message:'Recorded value marked incorrect and retained in history.'};render();
+        root.querySelector<HTMLElement>(`#record-${recordId}`)?.focus();
       }
-    }, render);
+    }));
     forms(root, '[data-edit-measurement-form]', (form, data) => service.updateMeasurement(form.dataset.editMeasurementForm!, { label: field(data, 'label'), measurementType: field(data, 'measurementType'), category: field(data, 'category') }), render);
     forms(root, '[data-edit-size-form]', (form, data) => service.updateStandardSize(form.dataset.editSizeForm!, { label: field(data, 'label'), category: field(data, 'category'), sizingSystem: field(data, 'sizingSystem'), sizeValue: field(data, 'sizeValue'), notes: field(data, 'notes') || undefined }), render);
     forms(root, '[data-edit-brand-form]', (form, data) => service.updateBrandFit(form.dataset.editBrandForm!, { category: field(data, 'category'), brand: field(data, 'brand'), productName: field(data, 'productName') || undefined, productLine: field(data, 'productLine') || undefined, sizingSystem: field(data, 'sizingSystem'), sizeValue: field(data, 'sizeValue'), fitNotes: field(data, 'fitNotes') || undefined }), render);
@@ -77,7 +79,7 @@ export function mountApp(root: HTMLElement, service = new SigmaService(new Local
     root.querySelector<HTMLSelectElement>('#measurement-type')?.addEventListener('change', (event) => { const option = (event.currentTarget as HTMLSelectElement).selectedOptions[0]; const unit = root.querySelector<HTMLSelectElement>('#measurement-unit'); if (unit) unit.innerHTML = unitChoices(option?.dataset.dimension as Dimension | undefined); });
     bind(root, '#export-data', 'click', () => downloadBackup(service));
     bind(root, '#reset-data', 'click', () => { if (globalThis.confirm('Delete every Sigma profile, record, Family, connection and sharing grant stored in this browser? This cannot be undone.')) { service.reset(); route = 'profiles'; notice={kind:'success',message:'Local Sigma data reset. You can start again.'}; render(); } });
-    bind(root,'[data-source-action]','click',(el)=>{const source=el.dataset.sourceAction as SourceId;selectedSourceId=source;sourceNotice='';if(source==='measurement_device')permissionFlow='health_data';else if(source==='camera_assisted'||source==='body_scan')permissionFlow='camera';else if(source==='external_scan')permissionFlow='files';else if(source==='smart_scale')permissionFlow='nearby_devices';render();});
+    bind(root,'[data-source-action]','click',(el)=>{const source=el.dataset.sourceAction as SourceId;selectedSourceId=source;sourceNotice='';if(['measurement_device','apple_health','health_connect'].includes(source))permissionFlow='health_data';else if(source==='camera_assisted'||source==='body_scan')permissionFlow='camera';else if(source==='external_scan')permissionFlow='files';else if(source==='smart_scale')permissionFlow='nearby_devices';render();});
     bind(root,'[data-permission-allow]','click',(el)=>{const kind=el.dataset.permissionAllow as PermissionKind;permissions.set(kind,'demo_granted');permissionFlow=undefined;if(selectedSourceId==='measurement_device'){const results=evaluateDemoPayload();importCandidates=results.flatMap(x=>x.status==='accepted'?[x.candidate]:[]);excluded=results.filter(x=>x.status==='rejected').length;sourceNotice='Local demo access simulated. No external service was contacted.';}else{importCandidates=[];excluded=0;sourceNotice='This integration is not implemented in the current local demo. Simulated permission does not activate it.'}render();});
     bind(root,'[data-permission-decline]','click',(el)=>{permissions.set(el.dataset.permissionDecline as PermissionKind,'demo_denied');permissionFlow=undefined;importCandidates=[];excluded=0;notice={kind:'info',message:'Demo permission declined. Nothing was imported; manual entry remains available.'};render();});
     bind(root,'[data-import-candidate]','click',(el)=>{const target=root.querySelector<HTMLSelectElement>('#import-target')?.value;if(target){run(()=>{importCandidate(service,target,importCandidates[Number(el.dataset.importCandidate)]);importCandidates.splice(Number(el.dataset.importCandidate),1);},'Candidate imported with its provenance.');}});

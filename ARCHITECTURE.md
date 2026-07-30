@@ -28,7 +28,7 @@ Alternatives considered: React Native/Expo offers stronger native deployment but
 
 ## State and routing
 
-The shell controller has six top-level destinations. Profile/record creation and Family stages are transient disclosures rather than routes. Family renders only the selected operational stage. Record search restores focus and caret after the dependency-free full render.
+The shell controller has six top-level destinations. Profile/record creation and Family stages are transient disclosures rather than routes. Family renders only the selected operational stage. Record search restores focus and caret after the dependency-free full render. Notices are action-owned transient state: the immediate action render preserves or replaces them, while ordinary route and focused-stage navigation clears stale messages.
 
 ## Sources and contextual permissions
 
@@ -108,3 +108,5 @@ No backend, hosted database, authentication provider, analytics, telemetry, adve
 28. Ticket 6A sharing reads: `authorisedGrantHistory` limits audit history to owner, recipient, grantor, or current manager relationships and returns revoke authority with each view. `grantableOwners`, `eligibleGrantRecipients`, and `grantableRecords` provide owner-relative composer data without bypassing final scope validation.
 29. Ticket 6B correction: schema 3 records an authorised actor/time/reason marker instead of deleting a measurement value. Current-value and conversion selectors ignore corrected entries.
 30. Ticket 6B operational UI: compact default layers, explicit disclosures, adaptive context and one Family stage at a time remain dependency-free transient presentation state.
+31. Ticket 6B1 notice lifecycle: a new action replaces the prior notice; route and Family-stage navigation clear unrelated notices without using an inaccessible timer.
+32. Ticket 6B1 visual asset: the local `body-outline.svg` is copied with static build assets. It is decorative or meaningfully labelled according to context and introduces no runtime request or interactive anatomy behaviour.
