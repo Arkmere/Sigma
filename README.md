@@ -4,6 +4,10 @@ Sigma is a private, local-first personal and family measurement vault. It is int
 
 Sigma records what the user knows. It does not tell the user what should fit.
 
+## Development data safety
+
+Manual development and acceptance may use the product owner's genuine primary profile only in browser-local storage or an explicit local backup. Personal names, measurements, dates, notes and product records must never enter source, fixtures, documentation, publishable screenshots or diagnostic output. Automated tests, examples and demo-source payloads use invented data. Sigma does not alter an existing local profile merely because the application is upgraded.
+
 ## What Sigma is not
 
 Sigma is not a fitness tracker, health-analysis app, weight-loss app, medical diagnosis system, fashion recommendation engine, fit recommendation engine or social network.

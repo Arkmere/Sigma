@@ -1,4 +1,4 @@
-export const DATA_SCHEMA_VERSION = 3;
+export const DATA_SCHEMA_VERSION = 4;
 
 export type ProfileType = 'independent' | 'managed';
 export type SourceType = 'manual' | 'imported_health_platform' | 'imported_device' | 'camera_assisted' | 'body_scan' | 'third_party_service';
@@ -61,6 +61,7 @@ export interface PhysicalMeasurement {
   measurementType: string;
   category: string;
   label: string;
+  canonicalFactId?: string;
   values: MeasurementValue[];
   visibility: Visibility;
   createdAt: string;
@@ -73,6 +74,7 @@ export interface StandardSize extends ExternalProvenance {
   kind: 'standard_size';
   category: string;
   label: string;
+  canonicalFactId?: string;
   sizingSystem: string;
   sizeValue: string;
   recordedAt: string;
@@ -89,6 +91,7 @@ export interface BrandFit {
   profileId: string;
   kind: 'brand_fit';
   category: string;
+  canonicalFactId?: string;
   brand: string;
   productName?: string;
   productLine?: string;

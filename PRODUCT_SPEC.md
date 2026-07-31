@@ -30,3 +30,11 @@ Tickets 1–2 provide the app shell and a single-device local record-keeping eng
 - User-entered data belongs to the user and must remain exportable/deletable by future design.
 - Family membership or adult connection must never imply automatic visibility.
 - Recorded facts and converted display values must never be silently collapsed.
+
+## Canonical fact creation (Ticket 6C)
+
+Ordinary creation begins with a canonical fact picker for physical measurements, standard sizes, or the underlying fact of a brand/product record. Selection fixes its stable identifier, label, category, measurement type or size context, and permitted units/systems. A secondary custom path remains for uncommon facts; custom facts have no canonical identifier and may have fewer conversion and discovery conveniences.
+
+Physical canonical facts form one ongoing history per profile. Standard sizes and brand/product facts may coexist where context differs and are never silently merged. Anatomy paths prepare later discovery but are not an interactive navigator.
+
+Manual acceptance may use a genuine local primary profile. Such data remains browser-local or in an explicit local backup and never enters repository files, fixtures, documentation, published screenshots or diagnostic output. Tests and demo payloads remain synthetic.

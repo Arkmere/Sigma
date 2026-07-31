@@ -2,6 +2,7 @@ import { currentMeasurementValue, DATA_SCHEMA_VERSION, type AdultConnection, typ
 import { activeConnection, canCreateGrant, canManageProfile, canRevokeGrant, canViewRecord, profilesShareFamily } from './sharing.js';
 import type { DataRepository, LoadResult } from '../data/repository.js';
 import { convertUnit, footwearConversions, measurementSemantics, resolveUnit, unitsForDimension, type ConversionResult, type FootwearContext } from '../conversion/registry.js';
+import { canonicalFactById } from './canonical-facts.js';
 
 type Clock = () => string;
 type IdFactory = () => string;
@@ -104,9 +105,12 @@ export class SigmaService {
 
   addMeasurement(input: Omit<PhysicalMeasurement, 'id' | 'kind' | 'values' | 'visibility' | 'createdAt' | 'updatedAt'> & Omit<MeasurementValue, 'id' | 'createdAt'>): PhysicalMeasurement {
     this.ensureWritable();
+    this.validateCanonical(input.canonicalFactId,'measurement',input.category,input.measurementType,undefined,input.unit);
+    if(input.canonicalFactId&&this.data.measurements.some((record)=>record.profileId===input.profileId&&record.canonicalFactId===input.canonicalFactId)) throw new Error('This standard fact already exists. Update its value instead.');
     this.requireManagement(input.profileId); const timestamp = this.now();
+    const definition=input.canonicalFactId?canonicalFactById(input.canonicalFactId):undefined;
     const value = this.makeValue(input, timestamp);
-    const record: PhysicalMeasurement = { id: this.id(), profileId: input.profileId, kind: 'measurement', measurementType: input.measurementType, category: input.category, label: input.label, values: [value], visibility: 'private', createdAt: timestamp, updatedAt: timestamp };
+    const record: PhysicalMeasurement = { id: this.id(), profileId: input.profileId, kind: 'measurement', measurementType: definition?.measurement?.measurementType??input.measurementType, category: definition?.category??input.category, label: definition?.label??input.label, canonicalFactId:input.canonicalFactId, values: [value], visibility: 'private', createdAt: timestamp, updatedAt: timestamp };
     this.data.measurements.push(record); this.persist(); return structuredClone(record);
   }
 
@@ -114,6 +118,7 @@ export class SigmaService {
     this.ensureWritable();
     const record = this.data.measurements.find((item) => item.id === recordId); if (!record) throw new Error('Measurement not found.');
     this.requireManagement(record.profileId);
+    this.validateCanonical(record.canonicalFactId,'measurement',record.category,record.measurementType,undefined,input.unit);
     record.values.push(this.makeValue(input, this.now())); record.updatedAt = this.now(); this.persist(); return structuredClone(record);
   }
   correctMeasurementValue(recordId:string,valueId:string,reason?:string):PhysicalMeasurement {
@@ -130,11 +135,13 @@ export class SigmaService {
     this.ensureWritable();
     const record = this.data.measurements.find((item) => item.id === recordId); if (!record) throw new Error('Measurement not found.');
     this.requireManagement(record.profileId);
-    Object.assign(record, input, { updatedAt: this.now() }); this.persist(); return structuredClone(record);
+    this.validateCanonical(record.canonicalFactId,'measurement',input.category,input.measurementType);
+    Object.assign(record, record.canonicalFactId?{updatedAt:this.now()}:{...input,updatedAt:this.now()}); this.persist(); return structuredClone(record);
   }
 
   addStandardSize(input: Omit<StandardSize, 'id' | 'kind' | 'visibility' | 'createdAt' | 'updatedAt'>): StandardSize {
     this.ensureWritable();
+    this.validateCanonical(input.canonicalFactId,'standard_size',input.category,undefined,input.sizingSystem);
     this.validateExternalProvenance(input);
     this.requireManagement(input.profileId); const timestamp = this.now();
     const record: StandardSize = { ...input, id: this.id(), kind: 'standard_size', visibility: 'private', createdAt: timestamp, updatedAt: timestamp };
@@ -150,6 +157,7 @@ export class SigmaService {
 
   addBrandFit(input: Omit<BrandFit, 'id' | 'kind' | 'visibility' | 'createdAt' | 'updatedAt'>): BrandFit {
     this.ensureWritable();
+    this.validateCanonical(input.canonicalFactId,'brand_product_fact',input.category,undefined,input.sizingSystem);
     this.requireManagement(input.profileId); const timestamp = this.now();
     const record: BrandFit = { ...input, id: this.id(), kind: 'brand_fit', visibility: 'private', createdAt: timestamp, updatedAt: timestamp };
     this.data.brandFits.push(record); this.persist(); return structuredClone(record);
@@ -172,16 +180,34 @@ export class SigmaService {
     const actor = this.activeActor();
     const access = this.profileAccess(profileId);
     const needle = query.trim().toLowerCase();
-    const matches = (parts: Array<string | undefined>, itemCategory: string) => (!category || itemCategory === category) && (!needle || parts.some((part) => part?.toLowerCase().includes(needle)));
+    const matches = (parts: Array<string | undefined>, itemCategory: string, canonicalFactId?:string) => {
+      const definition=canonicalFactId?canonicalFactById(canonicalFactId):undefined;
+      return (!category || itemCategory === category) && (!needle || [...parts,definition?.label,definition?.description,...(definition?.aliases??[])].some((part) => part?.toLowerCase().includes(needle)));
+    };
     const visible = (record: PhysicalMeasurement | StandardSize | BrandFit) => !enforceAccess || access === 'editable' || (!!actor && canViewRecord(this.data, actor.id, record));
     return {
-      measurements: this.data.measurements.filter((r) => r.profileId === profileId && visible(r) && matches([r.label, r.measurementType, r.category], r.category)),
-      standardSizes: this.data.standardSizes.filter((r) => r.profileId === profileId && visible(r) && matches([r.label, r.category, r.sizingSystem, r.sizeValue], r.category)),
-      brandFits: this.data.brandFits.filter((r) => r.profileId === profileId && visible(r) && matches([r.brand, r.productName, r.productLine, r.category, r.sizingSystem, r.sizeValue], r.category)),
+      measurements: this.data.measurements.filter((r) => r.profileId === profileId && visible(r) && matches([r.label, r.measurementType, r.category], r.category,r.canonicalFactId)),
+      standardSizes: this.data.standardSizes.filter((r) => r.profileId === profileId && visible(r) && matches([r.label, r.category, r.sizingSystem, r.sizeValue], r.category,r.canonicalFactId)),
+      brandFits: this.data.brandFits.filter((r) => r.profileId === profileId && visible(r) && matches([r.brand, r.productName, r.productLine, r.category, r.sizingSystem, r.sizeValue], r.category,r.canonicalFactId)),
     };
   }
 
   exportBackup(): SigmaBackup { return { product: 'Sigma', exportedAt: this.now(), ...this.snapshot(), schemaVersion: DATA_SCHEMA_VERSION }; }
+  existingCanonicalMeasurement(profileId:string,canonicalFactId:string):PhysicalMeasurement|undefined {
+    const record=this.data.measurements.find((item)=>item.profileId===profileId&&item.canonicalFactId===canonicalFactId);
+    return record?structuredClone(record):undefined;
+  }
+  private validateCanonical(id:string|undefined,kind:'measurement'|'standard_size'|'brand_product_fact',category:string,measurementType?:string,system?:string,unit?:string):void {
+    if(!id)return;
+    const definition=canonicalFactById(id);
+    if(!definition)throw new Error('Unknown canonical fact identifier.');
+    if(definition.recordKind!==kind)throw new Error('Canonical fact record kind does not match.');
+    if(definition.category!==category)throw new Error('Canonical fact category does not match.');
+    if(kind==='measurement'&&definition.measurement?.measurementType!==measurementType)throw new Error('Canonical measurement type does not match.');
+    if(unit&&definition.measurement&&!definition.measurement.permittedUnits.includes(unit))throw new Error('Unit is not permitted for this canonical fact.');
+    const systems=definition.standardSize?.permittedSystems??definition.brandProduct?.permittedSystems;
+    if(system&&systems&&!systems.includes(system))throw new Error('Sizing system is not permitted for this canonical fact.');
+  }
   reset(): void { this.repository.clear(); this.loadResult = this.repository.load(); this.data = this.loadResult.data; }
   currentValue(record: PhysicalMeasurement) { return currentMeasurementValue(record); }
   measurementConversions(recordId: string): ConversionResult[] {

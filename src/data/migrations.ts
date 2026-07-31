@@ -1,4 +1,5 @@
 import { DATA_SCHEMA_VERSION, type SigmaData } from '../domain/model.js';
+import { canonicalFactById } from '../domain/canonical-facts.js';
 
 export type MigrationResult =
   | { status: 'ok'; data: SigmaData }
@@ -25,8 +26,20 @@ export function migrateStoredData(raw: unknown): MigrationResult {
     const reason=validateVersionTwo(raw,false);if(reason)return corrupt(reason);
     return {status:'ok',data:{...structuredClone(raw),schemaVersion:DATA_SCHEMA_VERSION} as unknown as SigmaData};
   }
+  if (raw.schemaVersion === 3) {
+    const reason=validateVersionTwo(raw,true);if(reason)return corrupt(reason);
+    const migrated=structuredClone(raw) as Record<string,unknown>;
+    migrated.schemaVersion=DATA_SCHEMA_VERSION;
+    applySafeCanonicalMappings(migrated);
+    const canonicalReason=validateCanonicalRecords(migrated);if(canonicalReason)return corrupt(canonicalReason);
+    return {status:'ok',data:migrated as unknown as SigmaData};
+  }
   if (raw.schemaVersion !== DATA_SCHEMA_VERSION) return { status: 'unsupported_version', version: raw.schemaVersion };
   const reason = validateVersionTwo(raw,true);
+  if(!reason){
+    const canonicalReason=validateCanonicalRecords(raw);
+    if(canonicalReason)return corrupt(canonicalReason);
+  }
   return reason ? corrupt(reason) : { status: 'ok', data: structuredClone(raw as unknown as SigmaData) };
 }
 
@@ -98,6 +111,44 @@ function validStandardSize(value: unknown): boolean {
 
 function validBrandFit(value: unknown): boolean {
   return object(value) && requiredStrings(value, ['id', 'profileId', 'category', 'brand', 'sizingSystem', 'sizeValue', 'recordedAt', 'createdAt', 'updatedAt']) && value.kind === 'brand_fit' && value.visibility === 'private' && sourceTypes.has(String(value.sourceType)) && [value.productName, value.productLine, value.fitNotes, value.sourceName].every(optionalString);
+}
+
+const safeMappings = new Map([
+  ['measurement|Height|General body dimensions|Height','measurement.height'],
+  ['measurement|Weight|General body dimensions|Weight','measurement.weight'],
+  ['measurement|Waist circumference|Upper body|Waist circumference','measurement.waist-circumference'],
+  ['measurement|Foot length|Feet|Foot length','measurement.foot-length'],
+  ['standard_size|Shoe size|Footwear','size.shoe-size'],
+  ['standard_size|Ring size|Jewellery','size.ring-size'],
+]);
+function applySafeCanonicalMappings(root:Record<string,unknown>):void {
+  for(const record of root.measurements as Record<string,unknown>[]) {
+    const id=safeMappings.get(`measurement|${record.measurementType}|${record.category}|${record.label}`);
+    if(id)record.canonicalFactId=id;
+  }
+  for(const record of root.standardSizes as Record<string,unknown>[]) {
+    const id=safeMappings.get(`standard_size|${record.label}|${record.category}`);
+    const definition=id?canonicalFactById(id):undefined;
+    if(id&&definition?.standardSize?.permittedSystems.includes(String(record.sizingSystem)))record.canonicalFactId=id;
+  }
+}
+function validateCanonicalRecords(root:Record<string,unknown>):string|undefined {
+  for(const record of root.measurements as Record<string,unknown>[]) {
+    if(record.canonicalFactId===undefined)continue;
+    if(!nonEmpty(record.canonicalFactId))return 'A canonical fact identifier is invalid.';
+    const definition=canonicalFactById(record.canonicalFactId);
+    if(!definition||definition.recordKind!=='measurement'||definition.category!==record.category||definition.measurement?.measurementType!==record.measurementType)return 'A physical measurement has inconsistent canonical metadata.';
+    for(const value of record.values as Record<string,unknown>[])if(!definition.measurement!.permittedUnits.includes(String(value.unit)))return 'A canonical measurement uses an invalid unit.';
+  }
+  for(const [collection,kind] of [[root.standardSizes,'standard_size'],[root.brandFits,'brand_product_fact']] as const) {
+    for(const record of collection as Record<string,unknown>[]) {
+      if(record.canonicalFactId===undefined)continue;
+      if(!nonEmpty(record.canonicalFactId))return 'A canonical fact identifier is invalid.';
+      const definition=canonicalFactById(record.canonicalFactId);
+      const systems=definition?.standardSize?.permittedSystems??definition?.brandProduct?.permittedSystems;
+      if(!definition||definition.recordKind!==kind||definition.category!==record.category||(systems&&!systems.includes(String(record.sizingSystem))))return 'A size record has inconsistent canonical metadata.';
+    }
+  }
 }
 
 function requiredStrings(value: Record<string, unknown>, keys: string[]): boolean { return keys.every((key) => nonEmpty(value[key])); }

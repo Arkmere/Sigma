@@ -1,6 +1,10 @@
 # Data Model
 
-Ticket 6B defines schema version 3 for Sigma's canonical single-device local data. Valid version-1 and version-2 data is deterministically migrated under the unchanged `sigma.data.v1` key.
+Ticket 6C defines schema version 4 for Sigma's canonical single-device local data. Valid version-1 through version-3 data is deterministically migrated under the unchanged `sigma.data.v1` key.
+
+## Canonical fact definitions
+
+`src/domain/canonical-facts.ts` is a static, dependency-free registry separate from user records. Its 118 definitions provide stable IDs, labels, aliases, categories, record kinds, semantics, permitted units or sizing systems, and controlled anatomy paths. Records may persist `canonicalFactId`; custom and uncertain legacy records omit it. Validation rejects unknown IDs and metadata drift. Canonical physical measurements are unique by profile and fact ID; standard sizes and brand/product facts remain context-specific and may coexist.
 
 Ticket 5/5A retains schema 2. `MeasurementValue` and `StandardSize` share optional `sourceId`, `sourceItemId`, `sourceDevice`, confidence and structured `derivation` (`direct` or `derived`, with optional method/input description). These fields change no required collection, required field or existing meaning. Confidence is finite and constrained to 0–1. Runtime loading rejects unknown source IDs, empty source identifiers/devices and malformed provenance. Legacy records remain lossless and need no fabricated metadata.
 
@@ -49,6 +53,6 @@ Every record retains its original owner and private visibility; access is repres
 
 `migrateStoredData` validates all supported versions at runtime rather than trusting a TypeScript assertion. Schema-3 validation includes schema-2 authority checks and also requires correction actors to be existing independent profiles with valid correction metadata.
 
-Repository loads distinguish `empty`, `ok`, `corrupt`, and `unsupported_version`. Valid schema-1 and schema-2 data migrates losslessly to schema 3; invalid or authority-impossible data is corrupt and unknown future versions are unsupported. Unsafe raw storage is retained unchanged and mutations remain blocked until explicit reset.
+Repository loads distinguish `empty`, `ok`, `corrupt`, and `unsupported_version`. Valid schema-1 and schema-2 data migrates losslessly to schema 4. Schema 3 also migrates losslessly; automatic canonical mapping is limited to exact allowlisted Height, Weight, Waist circumference, Foot length, Shoe size and Ring size combinations. Labels are never rewritten. Ambiguous records retain no canonical ID. IDs, history, corrections, provenance and grants are preserved. Invalid or authority-impossible data is corrupt and unknown future versions are unsupported. Unsafe raw storage is retained unchanged and mutations remain blocked until explicit reset.
 
 External raw data is not canonical data. A typed explicit field allowlist maps stable IDs to measurement or standard-size concepts and permitted units/systems; unknown fields and malformed provenance fail closed before candidate creation. A separate source-policy check requires that the resolved registry source is operational, declares the field, and supports its mapped record kind. Individual confirmation defensively repeats this evaluation before the existing owner/manager authorization check. For standard sizes, the candidate source date maps to `StandardSize.recordedAt`; it is not described as a physical measurement date. Re-import is rejected only when source ID and source item ID match within that record kind; equal values from distinct source items remain valid. Historical canonical provenance validates by stable vocabulary rather than current source availability. Brand-fit import is not implemented.

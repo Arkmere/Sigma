@@ -689,6 +689,10 @@ Acceptance criteria
 
 A new tester should be able to understand what Sigma is, use the principal features, and experience the intended privacy model without needing explanation from the developer.
 
+## Ticket 6C — Canonical fact picker and real-profile development workflow
+
+Implemented between Tickets 6 and 7: schema-4 canonical identifiers, a typed registry, constrained guided creation, a custom escape hatch, conservative schema-3 migration, duplicate physical-history handling, anatomy-ready metadata and local-only real-profile development guidance. Interactive anatomy remains deferred as MI-20.
+
 ## Ticket 7 — Independent whole-project audit and demo release
 
 I would absolutely include this, even though it is not an implementation ticket in the conventional sense.

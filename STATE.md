@@ -2,9 +2,16 @@
 
 ## Current Phase
 
-Ticket 6B2 expanded-record disclosure layout is implemented; final responsive visual acceptance remains pending product-owner browser review. Ticket 7 has not started.
+Ticket 6C canonical fact creation is implemented. MI-01 is resolved in code and automated verification. MI-20 interactive anatomy navigation remains deferred. Ticket 7 has not started.
 
 ## Completed
+
+- Schema 4 persists optional stable canonical fact identifiers without reclassifying uncertain legacy records.
+- A dependency-free 118-definition registry drives physical measurements, standard sizes and underlying brand/product facts across eleven canonical categories; the twelfth established category, Custom, remains the deliberate escape hatch.
+- Primary creation derives label, category, measurement type or size context, and permitted units/systems. Custom creation remains a separate secondary path.
+- Canonical physical facts have one ongoing record per profile; standard-size and brand/product contexts may coexist and are never silently merged.
+- Search includes canonical labels and aliases while legacy/custom labels remain retrievable. Anatomy paths are metadata only.
+- Real-profile manual testing remains browser-local; repository examples, tests and demo sources remain synthetic.
 
 - Refined warm-light/charcoal-dark visual system with restrained teal active states, semantic primary/secondary/disabled controls and minimal dark-mode shadow.
 - Local gender-neutral anatomical line art for first-use and physical-measurement empty states; no interactive anatomy or body-shape inference.
@@ -86,7 +93,7 @@ Ticket 6B2 expanded-record disclosure layout is implemented; final responsive vi
 - Domain: `src/domain` owns the schema, taxonomy, history rules and record service.
 - Persistence: `src/data/repository.ts` owns explicit load states; `src/data/migrations.ts` validates and dispatches schema versions.
 - UI: `src/app/app.ts` orchestrates state/events while focused modules under `src/app/ui` render screens and translate forms.
-- Data scope: schema-3 local records, correction metadata, Families, memberships, adult connections and sharing grants.
+- Data scope: schema-4 local records, optional canonical identifiers, correction metadata, Families, memberships, adult connections and sharing grants.
 - Source scope: manual entry is active; future source types are schema vocabulary only.
 - Privacy: no account, cloud, telemetry, analytics, advertising, external service or permission request.
 - Testing: Node built-in test runner with domain, reload/persistence and lightweight DOM interaction coverage.

@@ -89,12 +89,14 @@ test('record cards distinguish recorded facts, exact conversions, standard equiv
   assert.match(sizes, /Standard equivalents/); assert.match(sizes, /Approximate standard equivalent/); assert.match(sizes, /ISO 19407:2023/); assert.match(sizes, /T-shirt/);
 });
 
-test('new-record taxonomy marks categorical sizes without a length dimension selector', () => {
+test('new-record creation uses the canonical picker and keeps custom creation secondary', () => {
   const local = storage(); const service = new SigmaService(new LocalStorageRepository(local), () => '2026-07-15T12:00:00Z', () => 'profile-1');
   service.createProfile({ displayName: 'Alex', profileType: 'independent' });
   const html = renderRecords(service, 'measurement', '', '');
-  assert.match(html, /<option value="General shoe size" data-semantics="categorical" data-dimension="">Footwear · General shoe size<\/option>/);
-  assert.doesNotMatch(html, /<option value="General shoe size"[^>]*data-dimension="length"/);
+  assert.match(html, /id="canonical-fact-search"/);
+  assert.match(html, /value="measurement.height"[^>]*>General body dimensions · Height<\/option>/);
+  assert.match(html, /Create custom fact/);
+  assert.doesNotMatch(html, /name="label" required/);
 });
 
 test('ordinary profile editing cannot change type and genuinely shared viewers see no mutation controls',()=>{const local=storage();let n=0;const service=new SigmaService(new LocalStorageRepository(local),()=> '2026-07-15T12:00:00Z',()=>`id-${++n}`);const alex=service.createProfile({displayName:'Alex',profileType:'independent'});service.addMeasurement({profileId:alex.id,measurementType:'Waist',category:'Upper body',label:'Waist',value:90,unit:'cm',originalValue:90,originalUnit:'cm',measuredAt:'2026-07-15',recordedAt:'2026-07-15',sourceType:'manual',acquisitionMethod:'manual'});const jordan=service.createProfile({displayName:'Jordan',profileType:'independent'});const profileHtml=renderProfiles(service,alex.id,true);assert.match(profileHtml,/Profile type cannot be changed/);assert.doesNotMatch(profileHtml,/name="profileType"/);const request=service.requestConnection(jordan.id);service.selectActor(jordan.id);service.respondConnection(request.id,true);service.selectActor(alex.id);service.grantAccess(alex.id,jordan.id,{type:'profile'});service.selectActor(jordan.id);service.selectProfile(alex.id);const recordsHtml=renderRecords(service,'measurement','','');assert.match(recordsHtml,/read-only/i);assert.doesNotMatch(recordsHtml,/id="record-form"|data-history-form|data-edit-measurement-form/);});
