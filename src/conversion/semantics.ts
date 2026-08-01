@@ -1,4 +1,5 @@
 import type { Dimension } from './model.js';
+import { canonicalFactDefinitions } from '../domain/canonical-facts.js';
 
 export type MeasurementSemantics =
   | { kind: 'dimensional'; dimension: Dimension }
@@ -29,6 +30,8 @@ const CATEGORICAL = new Set([
 
 export function measurementSemantics(measurementType: string): MeasurementSemantics {
   const key = measurementType.trim().toLowerCase();
+  const canonical=canonicalFactDefinitions.find((fact)=>fact.recordKind==='measurement'&&fact.measurement?.measurementType.toLowerCase()===key);
+  if(canonical)return canonical.measurement!.semantics;
   if (MASS.has(key)) return { kind: 'dimensional', dimension: 'mass' };
   if (LENGTH.has(key)) return { kind: 'dimensional', dimension: 'length' };
   if (CATEGORICAL.has(key)) return { kind: 'categorical' };

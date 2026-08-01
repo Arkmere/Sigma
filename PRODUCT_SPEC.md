@@ -38,3 +38,11 @@ Ordinary creation begins with a canonical fact picker for physical measurements,
 Physical canonical facts form one ongoing history per profile. Standard sizes and brand/product facts may coexist where context differs and are never silently merged. Anatomy paths prepare later discovery but are not an interactive navigator.
 
 Manual acceptance may use a genuine local primary profile. Such data remains browser-local or in an explicit local backup and never enters repository files, fixtures, documentation, published screenshots or diagnostic output. Tests and demo payloads remain synthetic.
+
+## Canonical measurement guidance (Ticket 6D)
+
+Priority canonical physical measurements resolve concise static guidance from their canonical definition. Guidance states where and how to measure, preparation, common mistakes, equipment and whether assistance is useful. It supports consistent record keeping only: it does not assess a body, set targets, offer medical advice, predict fit or adapt to a recorded value.
+
+Creation and saved-record views reuse the same local guidance. Custom facts, sizes, brand/product facts and ambiguous legacy measurements do not inherit guidance by label. Guidance evolves as product content and is not copied into user records or backups.
+
+Ticket 6E will define one coherent anatomy model and illustration family. Ticket 6F will add anatomy-based discovery. Future video tutorials may reference the same model family but no media feature is implemented by Ticket 6D.

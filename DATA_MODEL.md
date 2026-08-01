@@ -6,6 +6,8 @@ Ticket 6C defines schema version 4 for Sigma's canonical single-device local dat
 
 `src/domain/canonical-facts.ts` is a static, dependency-free registry separate from user records. Its 118 definitions provide stable IDs, labels, aliases, categories, record kinds, semantics, permitted units or sizing systems, and controlled anatomy paths. Records may persist `canonicalFactId`; custom and uncertain legacy records omit it. Validation rejects unknown IDs and metadata drift. Canonical physical measurements are unique by profile and fact ID; standard sizes and brand/product facts remain context-specific and may coexist.
 
+Measurement guidance is version-controlled product content referenced by canonical physical definitions. It is not a field on `PhysicalMeasurement`, `MeasurementValue`, `SigmaData` or `SigmaBackup`. Reload and backup restore resolve current guidance through the stable canonical ID; custom and ambiguous legacy records resolve none. Ticket 6D retains schema version 4.
+
 Ticket 5/5A retains schema 2. `MeasurementValue` and `StandardSize` share optional `sourceId`, `sourceItemId`, `sourceDevice`, confidence and structured `derivation` (`direct` or `derived`, with optional method/input description). These fields change no required collection, required field or existing meaning. Confidence is finite and constrained to 0–1. Runtime loading rejects unknown source IDs, empty source identifiers/devices and malformed provenance. Legacy records remain lossless and need no fabricated metadata.
 
 ## Profiles

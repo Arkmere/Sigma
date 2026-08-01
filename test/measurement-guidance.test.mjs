@@ -1,0 +1,36 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { canonicalFactDefinitions } from '../dist/domain/canonical-facts.js';
+import { measurementGuidanceFor, measurementGuidanceRegistry, priorityGuidanceIds } from '../dist/domain/measurement-guidance.js';
+import { measurementSemantics, unitsForDimension } from '../dist/conversion/registry.js';
+import { LocalStorageRepository } from '../dist/data/repository.js';
+import { SigmaService } from '../dist/domain/service.js';
+import { renderRecords } from '../dist/app/ui/records.js';
+
+const tools=new Set(['soft_tape','rigid_ruler','stadiometer','scales','calipers','foot_measuring_device','ring_sizer','other']);
+const assistance=new Set(['self','assisted','either','professional_preferred']);
+const anchors=new Set(['Body','Head and neck','Face','Torso','Upper limbs','Hand','Fingers','Lower limbs','Foot']);
+const storage=()=>{const values=new Map();return{getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value),removeItem:key=>values.delete(key)}};
+test('all 35 priority physical facts have complete, controlled local guidance',()=>{
+ assert.equal(priorityGuidanceIds.length,35);assert.equal(new Set(priorityGuidanceIds).size,35);
+ for(const id of priorityGuidanceIds){const fact=canonicalFactDefinitions.find(item=>item.id===id),guidance=measurementGuidanceFor(id);assert.equal(fact?.recordKind,'measurement');assert.equal(fact?.guidance,guidance);assert.ok(guidance?.summary.trim());assert.ok(guidance?.location.trim());assert.ok(guidance?.method.length);assert.ok(guidance.method.every(step=>step.trim()));assert.ok(tools.has(guidance.tool));assert.ok(assistance.has(guidance.assistance));for(const list of [guidance.preparation,guidance.commonErrors])assert.ok(!list||list.every(item=>item.trim()));assert.equal(guidance.illustration?.status,'placeholder');for(const segment of guidance.illustration.anatomyAnchor.split(' > '))assert.ok(anchors.has(segment),segment);}
+ assert.equal(Object.keys(measurementGuidanceRegistry).length,35);
+ assert.ok(canonicalFactDefinitions.filter(f=>f.recordKind!=='measurement').every(f=>!f.guidance));
+});
+test('canonical physical semantics, permitted units and update choices agree',()=>{
+ for(const fact of canonicalFactDefinitions.filter(item=>item.recordKind==='measurement')){const declared=fact.measurement.semantics,resolved=measurementSemantics(fact.measurement.measurementType);assert.deepEqual(resolved,declared,`${fact.id} semantics`);assert.notEqual(resolved.kind,'custom_or_unknown');if(declared.kind==='dimensional'){const expected=unitsForDimension(declared.dimension).map(unit=>unit.symbol);assert.deepEqual([...fact.measurement.permittedUnits],expected,`${fact.id} units`);if(declared.dimension==='mass')assert.ok(!fact.measurement.permittedUnits.includes('cm'));else assert.ok(!fact.measurement.permittedUnits.includes('kg'));}}
+});
+test('creation and saved records reuse ID-based guidance while custom facts do not inherit it',()=>{
+ let n=0;const service=new SigmaService(new LocalStorageRepository(storage()),()=> '2026-08-01T12:00:00Z',()=>`id-${++n}`);const profile=service.createProfile({displayName:'Morgan',profileType:'independent'});
+ let creation=renderRecords(service,'measurement','','',true);assert.match(creation,/data-guidance-id="measurement\.waist-circumference"/);assert.match(creation,/lowest palpable rib/);assert.match(creation,/data-guidance-id="measurement\.foot-length"/);assert.match(creation,/longest toe/);
+ service.addMeasurement({profileId:profile.id,canonicalFactId:'measurement.waist-circumference',measurementType:'Waist circumference',category:'Upper body',label:'Waist circumference',value:80,unit:'cm',originalValue:80,originalUnit:'cm',measuredAt:'2026-08-01',recordedAt:'2026-08-01',sourceType:'manual',acquisitionMethod:'manual'});
+ service.addMeasurement({profileId:profile.id,measurementType:'Waist circumference',category:'Custom',label:'Waist circumference',value:1,unit:'cm',originalValue:1,originalUnit:'cm',measuredAt:'2026-08-01',recordedAt:'2026-08-01',sourceType:'manual',acquisitionMethod:'manual'});
+ const saved=renderRecords(service,'measurement','','',false);assert.match(saved,/Measurement guidance/);assert.match(saved,/trouser waistband/);assert.match(saved,/custom or legacy fact does not have standardised Sigma measurement guidance/);
+});
+test('guidance is resolved after reload and never persisted in records or backups',()=>{
+ const local=storage();let n=0;let service=new SigmaService(new LocalStorageRepository(local),()=> '2026-08-01',()=>`i${++n}`);const profile=service.createProfile({displayName:'Taylor',profileType:'independent'});service.addMeasurement({profileId:profile.id,canonicalFactId:'measurement.foot-length',measurementType:'Foot length',category:'Feet',label:'Foot length',value:250,unit:'mm',originalValue:250,originalUnit:'mm',measuredAt:'2026-08-01',recordedAt:'2026-08-01',sourceType:'manual',acquisitionMethod:'manual'});
+ const raw=local.getItem('sigma.data.v1'),backup=JSON.stringify(service.exportBackup());for(const text of [raw,backup]){assert.doesNotMatch(text,/measurementGuidance|commonErrors|heel settled/);assert.match(text,/measurement\.foot-length/);}service=new SigmaService(new LocalStorageRepository(local));assert.match(renderRecords(service,'measurement','','',false),/longest toe/);
+});
+test('a read-only recipient sees guidance for only the explicitly shared canonical record',()=>{
+ let n=0;const service=new SigmaService(new LocalStorageRepository(storage()),()=> '2026-08-01',()=>`s${++n}`);const owner=service.createProfile({displayName:'Alex',profileType:'independent'});const shared=service.addMeasurement({profileId:owner.id,canonicalFactId:'measurement.foot-length',measurementType:'Foot length',category:'Feet',label:'Foot length',value:250,unit:'mm',originalValue:250,originalUnit:'mm',measuredAt:'2026-08-01',recordedAt:'2026-08-01',sourceType:'manual',acquisitionMethod:'manual'});service.addMeasurement({profileId:owner.id,canonicalFactId:'measurement.waist-circumference',measurementType:'Waist circumference',category:'Upper body',label:'Waist circumference',value:80,unit:'cm',originalValue:80,originalUnit:'cm',measuredAt:'2026-08-01',recordedAt:'2026-08-01',sourceType:'manual',acquisitionMethod:'manual'});const recipient=service.createProfile({displayName:'Jordan',profileType:'independent'});const request=service.requestConnection(recipient.id);service.selectActor(recipient.id);service.respondConnection(request.id,true);service.selectActor(owner.id);service.grantAccess(owner.id,recipient.id,{type:'record',recordKind:'measurement',recordId:shared.id});service.selectActor(recipient.id);service.selectProfile(owner.id);const html=renderRecords(service,'measurement','','',false);assert.match(html,/Foot length/);assert.match(html,/longest toe/);assert.doesNotMatch(html,/Waist circumference|lowest palpable rib|data-history-form|data-edit-measurement-form/);
+});

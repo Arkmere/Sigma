@@ -2,9 +2,15 @@
 
 ## Current Phase
 
-Ticket 6C canonical fact creation is implemented. MI-01 is resolved in code and automated verification. MI-20 interactive anatomy navigation remains deferred. Ticket 7 has not started.
+Ticket 6D canonical measurement guidance is implemented. MI-20 interactive anatomy navigation remains deferred. Tickets 6E and 6F, and Ticket 7, have not started.
 
 ## Completed
+
+- Ticket 6D adds structured, static guidance for 35 priority canonical physical measurements. Creation and saved-record views resolve the same content from `canonicalFactId`; guidance is not persisted or exported.
+- Guidance distinguishes location, ordered method, preparation, common errors, tool, assistance, posture, clothing and placeholder illustration/tutorial references without medical interpretation or recommendation.
+- Canonical physical semantics now resolve from declared registry metadata, preventing newer canonical names from falling through to custom/unknown conversion behaviour.
+- Anatomy illustration consistency requirement: Sigma must use one coherent anatomical illustration system across the future body-region navigator and measurement-guidance views. Whole-body, regional and close-up illustrations must derive from the same model family, with consistent proportions, line style, orientation logic and highlight treatment. This visual requirement is not complete in Ticket 6D.
+- Ticket boundaries remain explicit: 6D is structured guidance content and UI; 6E is the anatomy model and illustration system; 6F is anatomy-based canonical-fact discovery. Video tutorials remain future work and are not implemented.
 
 - Schema 4 persists optional stable canonical fact identifiers without reclassifying uncertain legacy records.
 - A dependency-free 118-definition registry drives physical measurements, standard sizes and underlying brand/product facts across eleven canonical categories; the twelfth established category, Custom, remains the deliberate escape hatch.

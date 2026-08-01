@@ -17,6 +17,7 @@ Light theme uses off-white surfaces, charcoal text and muted teal accents. Dark 
 - Context bar: one adaptive strip for viewed profile, same-device acting adult and editable/read-only state; selectors appear only when a real choice exists.
 - Form panel: record entry opens deliberately and can be cancelled without hiding retrieval.
 - Fact picker: ordinary creation uses searchable, category-labelled canonical facts and applicable choices only. “Create custom fact” is a secondary disclosure with a limitations note. Standard/custom status uses text rather than colour alone.
+- Measurement guidance: use “Measurement guidance” for the saved-card disclosure and “How to measure” inside. Keep Where and ordered Method prominent; tool and assistance use human-readable metadata; preparation and mistakes use a nested disclosure. Text remains complete without imagery and stacks to one column on phones.
 - Notice: typed feedback appears in an `aria-live` region and never relies on colour alone.
 - Button states: primary actions use a restrained teal fill, secondary actions use a clearly interactive tonal/outlined treatment, and genuine disabled controls retain native `disabled` semantics with lower contrast and no hover affordance.
 - Status and metadata: concise wording distinguishes live/demo/future, current/history, recorded/converted and editable/read-only.

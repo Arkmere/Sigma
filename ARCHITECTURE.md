@@ -15,6 +15,7 @@ Alternatives considered: React Native/Expo offers stronger native deployment but
 - `src/app/ui`: focused shell, profile, record, status, form-action and shared HTML modules.
 - `src/domain/model.ts`: schema-4 canonical entities, optional fact references, non-destructive correction and current-measurement selection.
 - `src/domain/canonical-facts.ts`: immutable canonical creation/discovery registry and controlled anatomy metadata, independent of stored records.
+- `src/domain/measurement-guidance.ts`: local structured guidance referenced by canonical physical definitions, including placeholder-only illustration and future tutorial metadata.
 - `src/domain/sharing.ts`: deterministic sharing scopes, access and grant authority.
 - `src/domain/service.ts`: profile, record, history, search and export operations.
 - `src/domain/taxonomy.ts`: initial browse taxonomy.
@@ -30,6 +31,8 @@ Alternatives considered: React Native/Expo offers stronger native deployment but
 ## State and routing
 
 The shell controller has six top-level destinations. Profile/record creation and Family stages are transient disclosures rather than routes. Family renders only the selected operational stage. Record search restores focus and caret after the dependency-free full render. Notices are action-owned transient state: the immediate action render preserves or replaces them, while ordinary route and focused-stage navigation clears stale messages.
+
+Measurement guidance uses one escaping renderer. Creation swaps canonical-ID-addressed panels in place, preserving entered values and search focus; saved editable and read-only cards reuse the same renderer after normal access filtering. Guidance is never inferred from a label and never enters `SigmaData`.
 
 ## Sources and contextual permissions
 

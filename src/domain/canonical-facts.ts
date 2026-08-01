@@ -1,4 +1,5 @@
 import { categories } from './taxonomy.js';
+import { measurementGuidanceFor, type MeasurementGuidance } from './measurement-guidance.js';
 
 export type MeasurementCategory = typeof categories[number];
 export type CanonicalRecordKind = 'measurement' | 'standard_size' | 'brand_product_fact';
@@ -20,6 +21,7 @@ export interface CanonicalFactDefinition {
   standardSize?: { sizeContext: string; permittedSystems: readonly string[]; defaultSystem?: string };
   brandProduct?: { sizeContext?: string; permittedSystems?: readonly string[] };
   anatomyPath?: AnatomyPath;
+  guidance?: MeasurementGuidance;
 }
 
 const lengthUnits = ['mm', 'cm', 'm', 'in', 'ft'] as const;
@@ -120,7 +122,7 @@ const sizeSeeds: readonly SizeSeed[] = [
 
 const measurements: CanonicalFactDefinition[] = measurementSeeds.map(([id,label,category,aliases,dimension='length',anatomyPath,description]) => ({
   id:`measurement.${id}`, label, category, aliases, recordKind:'measurement', description,
-  measurement:{measurementType:label,semantics:{kind:'dimensional',dimension},permittedUnits:dimension==='mass'?massUnits:lengthUnits,defaultUnit:dimension==='mass'?'kg':'cm'}, anatomyPath,
+  measurement:{measurementType:label,semantics:{kind:'dimensional',dimension},permittedUnits:dimension==='mass'?massUnits:lengthUnits,defaultUnit:dimension==='mass'?'kg':'cm'}, anatomyPath, guidance:measurementGuidanceFor(`measurement.${id}`),
 }));
 const sizes: CanonicalFactDefinition[] = sizeSeeds.map(([id,label,category,aliases,sizeContext,permittedSystems,anatomyPath,description]) => ({
   id:`size.${id}`,label,category,aliases,recordKind:'standard_size',description,
