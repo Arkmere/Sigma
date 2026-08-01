@@ -4,6 +4,8 @@ Use synthetic data for publishable evidence. Genuine primary-profile values may 
 
 At 360 × 800, 768, 1024 and 1440 CSS pixels, test light and dark themes. Confirm guidance wraps without horizontal overflow, metadata stacks at phone width, save controls remain reachable, and an open saved-card disclosure spans the card. Repeat using keyboard only and with reduced motion enabled. Search must retain focus; opening nested guidance must not reset value, date or notes.
 
+In canonical physical creation, confirm “Record this measurement” and its value, declared-default unit, date, source and notes appear before the closed “How to measure” disclosure. Waist must initially select cm, Weight kg, and Foot length its registry default. Changing the canonical fact applies its new default; opening guidance or other unrelated controls preserves the current unit and all entered fields. “Before measuring and common mistakes” remains nested inside the outer guidance disclosure.
+
 ## Journeys
 
 1. Waist circumference: search and select it; confirm the lowest-rib/top-of-hip-bone midpoint method explicitly differs from trouser waistband, navel and visual waist. Save locally and confirm the saved Measurement guidance is identical.

@@ -7,6 +7,7 @@ Ticket 6D canonical measurement guidance is implemented. MI-20 interactive anato
 ## Completed
 
 - Ticket 6D adds structured, static guidance for 35 priority canonical physical measurements. Creation and saved-record views resolve the same content from `canonicalFactId`; guidance is not persisted or exported.
+- Canonical measurement creation prioritises “Record this measurement” fields and uses each definition’s declared default unit. “How to measure” follows as a closed disclosure with preparation and mistakes nested inside it.
 - Guidance distinguishes location, ordered method, preparation, common errors, tool, assistance, posture, clothing and placeholder illustration/tutorial references without medical interpretation or recommendation.
 - Canonical physical semantics now resolve from declared registry metadata, preventing newer canonical names from falling through to custom/unknown conversion behaviour.
 - Anatomy illustration consistency requirement: Sigma must use one coherent anatomical illustration system across the future body-region navigator and measurement-guidance views. Whole-body, regional and close-up illustrations must derive from the same model family, with consistent proportions, line style, orientation logic and highlight treatment. This visual requirement is not complete in Ticket 6D.

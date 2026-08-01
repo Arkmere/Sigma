@@ -609,6 +609,12 @@ button.danger {
 .guidance-meta dd { margin: .25rem 0 0; }
 .measurement-guidance-disclosure { grid-column: 1 / -1; }
 .guidance-illustration-note { border-left: 2px solid var(--accent); padding-left: var(--space-3); }
+.record-entry-heading { margin: var(--space-3) 0 0; }
+#creation-guidance { margin-top: var(--space-4); }
+.creation-guidance-disclosure { padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.creation-guidance-disclosure[open] { background: var(--bg-subtle); }
+.guidance-secondary { margin-top: var(--space-4); padding: var(--space-3) 0 0 var(--space-3); border-left: 2px solid var(--border); }
+.custom-fact-path { margin-top: var(--space-5); }
 
 .inline-form.compact-edit {
   margin-top: var(--space-3);
