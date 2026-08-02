@@ -145,6 +145,7 @@ Ticket 6F: anatomy-based canonical-fact discovery using the Ticket 6E registry. 
 - All 35 rich-guidance physical facts resolve by canonical ID to typed region, orientation, anchors, overlay semantics and accessible text. Custom and ambiguous legacy records resolve no illustration.
 - Creation and saved-record disclosures reuse the same static registry. Illustrations remain absent from schema-4 records and backups.
 - Semantic CSS bounds figures responsively and distinguishes paths with line patterns and marker shapes, not colour alone. Manual browser review remains required using `MANUAL_ACCEPTANCE_6E.md`.
+- Anchor IDs now drive rendering through per-symbol coordinate maps. All 35 facts have distinct geometry definitions, and front/back/side/top/palm/sole assets are deliberate drawings rather than compressed or rotated substitutes. Overlay legends contain only active semantics.
 
 ## Ticket 6B manual-inspection findings
 

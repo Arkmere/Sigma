@@ -624,6 +624,7 @@ button.danger {
 .anatomy-key span::before { display: inline-block; width: 1.2rem; margin-right: .3rem; content: ''; vertical-align: middle; border-top: 3px solid currentColor; }
 .anatomy-key .key-dashed::before { border-top-style: dashed; }
 .anatomy-key .key-landmark::before { width: .55rem; height: .55rem; border: 2px solid currentColor; }
+.anatomy-key .key-direction::before { width: .7rem; height: .7rem; border-top: 2px solid currentColor; border-right: 2px solid currentColor; transform: rotate(45deg); }
 @media (forced-colors: active) { .anatomy-path,.anatomy-hidden-path,.anatomy-start,.anatomy-end,.anatomy-landmark,.anatomy-direction,.anatomy-scale { stroke: CanvasText; } }
 .record-entry-heading { margin: var(--space-3) 0 0; }
 #creation-guidance { margin-top: var(--space-4); }
