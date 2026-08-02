@@ -24,6 +24,7 @@ Light theme uses off-white surfaces, charcoal text and muted teal accents. Dark 
 - Record hierarchy: default cards show the fact, date and at most one useful conversion. History, all conversions, source and editing live behind disclosures. Correction is labelled in text and retained in history.
 - Family hierarchy: overview first, then one focused operational stage at a time.
 - Anatomical marker: a local, gender-neutral teal outline may support first use or an empty physical-measurement state. It remains small, non-judgemental and either has meaningful alternative text or is explicitly decorative.
+- Anatomy guidance: `sigma-neutral-v1` uses one neutral local vector family for whole-body, regional and detail views. Solid paths with unlike endpoints mean point-to-point, repeated dashes mean circumference, short dashes mean hidden continuation, squares mean landmarks and arrows mean direction. Complete instructions never depend on the image.
 
 ## Interaction and accessibility
 Visible focus states, semantic buttons/inputs, keyboard-operable navigation, touch-friendly controls, contrast-aware themes, no information conveyed only by colour, and reduced-motion respect for transitions. Hover and pressed states are restrained. With `prefers-reduced-motion: reduce`, non-essential transitions and animations are effectively suppressed.

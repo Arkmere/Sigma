@@ -8,6 +8,8 @@ Ticket 6C defines schema version 4 for Sigma's canonical single-device local dat
 
 Measurement guidance is version-controlled product content referenced by canonical physical definitions. It is not a field on `PhysicalMeasurement`, `MeasurementValue`, `SigmaData` or `SigmaBackup`. Reload and backup restore resolve current guidance through the stable canonical ID; custom and ambiguous legacy records resolve none. Ticket 6D retains schema version 4.
 
+Ticket 6E anatomy illustrations are static domain metadata. Canonical IDs resolve through `sigma-neutral-v1` to controlled regions, orientations, overlays and reusable landmarks. Asset paths, illustration IDs and anchors are never stored in user records or backups; schema version 4 and migrations are unchanged.
+
 Ticket 5/5A retains schema 2. `MeasurementValue` and `StandardSize` share optional `sourceId`, `sourceItemId`, `sourceDevice`, confidence and structured `derivation` (`direct` or `derived`, with optional method/input description). These fields change no required collection, required field or existing meaning. Confidence is finite and constrained to 0–1. Runtime loading rejects unknown source IDs, empty source identifiers/devices and malformed provenance. Legacy records remain lossless and need no fabricated metadata.
 
 ## Profiles

@@ -609,6 +609,22 @@ button.danger {
 .guidance-meta dd { margin: .25rem 0 0; }
 .measurement-guidance-disclosure { grid-column: 1 / -1; }
 .guidance-illustration-note { border-left: 2px solid var(--accent); padding-left: var(--space-3); }
+.anatomy-figure { width: min(100%, 22rem); margin: 0 auto var(--space-4); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); color: var(--text-muted); }
+.anatomy-svg { display: block; width: 100%; height: auto; max-height: 17rem; overflow: visible; }
+.anatomy-model { color: var(--text-muted); opacity: .72; }
+.anatomy-path { fill: none; stroke: var(--accent-strong); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+.anatomy-circumference { stroke-dasharray: 9 5; }
+.anatomy-hidden-path { fill: none; stroke: var(--text-muted); stroke-width: 3; stroke-dasharray: 3 6; }
+.anatomy-start { fill: var(--surface); stroke: var(--accent-strong); stroke-width: 4; }
+.anatomy-end, .anatomy-landmark { fill: var(--surface); stroke: var(--accent-strong); stroke-width: 4; }
+.anatomy-direction { fill: none; stroke: var(--accent-strong); stroke-width: 4; }
+.anatomy-scale { fill: none; stroke: var(--accent-strong); stroke-width: 4; }
+.anatomy-figure figcaption { font-size: .82rem; font-weight: 700; color: var(--text); text-align: center; }
+.anatomy-key { display: flex; flex-wrap: wrap; justify-content: center; gap: .35rem .8rem; margin: var(--space-2) 0 0; color: var(--text-muted); font-size: .72rem; }
+.anatomy-key span::before { display: inline-block; width: 1.2rem; margin-right: .3rem; content: ''; vertical-align: middle; border-top: 3px solid currentColor; }
+.anatomy-key .key-dashed::before { border-top-style: dashed; }
+.anatomy-key .key-landmark::before { width: .55rem; height: .55rem; border: 2px solid currentColor; }
+@media (forced-colors: active) { .anatomy-path,.anatomy-hidden-path,.anatomy-start,.anatomy-end,.anatomy-landmark,.anatomy-direction,.anatomy-scale { stroke: CanvasText; } }
 .record-entry-heading { margin: var(--space-3) 0 0; }
 #creation-guidance { margin-top: var(--space-4); }
 .creation-guidance-disclosure { padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); }

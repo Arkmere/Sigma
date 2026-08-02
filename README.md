@@ -55,3 +55,5 @@ The current target is a desktop browser development environment with responsive 
 - `DESIGN_SYSTEM.md` — visual and interaction system.
 - `ARCHITECTURE.md` — technical architecture and decision log.
 - `AGENTS.md` — instructions for future coding agents.
+- `src/assets/ANATOMY.md` — anatomy model provenance, semantics, accessibility and replacement contract.
+- `MANUAL_ACCEPTANCE_6E.md` — Ticket 6E responsive, theme and accessibility review journeys.

@@ -137,7 +137,14 @@ Ticket 6D canonical measurement guidance is implemented. MI-20 interactive anato
 
 ## Next Planned Work
 
-Ticket 7: validation, audit, formal demo guide and completion report.
+Ticket 6F: anatomy-based canonical-fact discovery using the Ticket 6E registry. No interactive region navigation is present yet.
+
+## Ticket 6E anatomy illustration system
+
+- `sigma-neutral-v1` is one original, repository-owned neutral SVG family with whole-body and related head/neck, torso, limb, hand/finger and foot views.
+- All 35 rich-guidance physical facts resolve by canonical ID to typed region, orientation, anchors, overlay semantics and accessible text. Custom and ambiguous legacy records resolve no illustration.
+- Creation and saved-record disclosures reuse the same static registry. Illustrations remain absent from schema-4 records and backups.
+- Semantic CSS bounds figures responsively and distinguishes paths with line patterns and marker shapes, not colour alone. Manual browser review remains required using `MANUAL_ACCEPTANCE_6E.md`.
 
 ## Ticket 6B manual-inspection findings
 

@@ -49,6 +49,6 @@ const seeds:Record<string,Seed>={
 export const priorityGuidanceIds=Object.freeze(Object.keys(seeds));
 export const measurementGuidanceRegistry:Readonly<Record<string,MeasurementGuidance>>=Object.freeze(Object.fromEntries(Object.entries(seeds).map(([id,seed])=>[id,{
  summary:seed.summary??`How to take a consistent ${id.slice(12).replaceAll('-',' ')} measurement.`,location:seed.location,method:seed.method,tool:seed.tool??'soft_tape',assistance:seed.assistance??'either',posture:seed.posture,clothing:seed.clothing,preparation:seed.preparation,commonErrors:seed.errors,
- illustration:{anatomyAnchor:seed.anchor,view:seed.view??'not_defined',status:'placeholder' as const},futureTutorialKey:`guidance.${id.slice(12)}`,
+ illustration:{anatomyAnchor:seed.anchor,view:seed.view??'not_defined',status:'approved' as const,assetId:`illustration.${id.slice(12)}`},futureTutorialKey:`guidance.${id.slice(12)}`,
 }])));
 export const measurementGuidanceFor=(canonicalFactId:string|undefined):MeasurementGuidance|undefined=>canonicalFactId?measurementGuidanceRegistry[canonicalFactId]:undefined;
