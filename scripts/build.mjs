@@ -8,6 +8,9 @@ try {
   await copyFile(join('src', 'styles.css'), join(outDir, 'styles.css'));
   await copyFile(join('src', 'assets', 'body-outline.svg'), join(outDir, 'body-outline.svg'));
   await copyFile(join('src', 'assets', 'anatomy-model.svg'), join(outDir, 'anatomy-model.svg'));
+  const anatomyDir=join(outDir,'anatomy','masculine');
+  await mkdir(anatomyDir,{recursive:true});
+  for(const asset of ['body-front.svg','body-back.svg','body-side.svg'])await copyFile(join('src','assets','anatomy','masculine',asset),join(anatomyDir,asset));
   const html = await readFile('index.html', 'utf8');
   const productionHtml = html
     .replace('/src/main.ts', '/main.js')

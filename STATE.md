@@ -141,6 +141,8 @@ Ticket 6F: anatomy-based canonical-fact discovery using the Ticket 6E registry. 
 
 ## Ticket 6E anatomy illustration system
 
+- A limited standalone-asset test replaces only Height, Waist circumference and Shoulder width with cleaned masculine side, front and back SVGs. Their overlays use measured native-viewBox anchors and remain hidden until local SVG parsing succeeds. This does not add model selection, persistence or Ticket 6F behaviour; every other mapping remains on the prototype family.
+
 - `sigma-neutral-v1` is one original, repository-owned neutral SVG family with whole-body and related head/neck, torso, limb, hand/finger and foot views.
 - All 35 rich-guidance physical facts resolve by canonical ID to typed region, orientation, anchors, overlay semantics and accessible text. Custom and ambiguous legacy records resolve no illustration.
 - Creation and saved-record disclosures reuse the same static registry. Illustrations remain absent from schema-4 records and backups.

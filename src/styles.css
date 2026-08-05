@@ -611,6 +611,9 @@ button.danger {
 .guidance-illustration-note { border-left: 2px solid var(--accent); padding-left: var(--space-3); }
 .anatomy-figure { width: min(100%, 22rem); margin: 0 auto var(--space-4); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); color: var(--text-muted); }
 .anatomy-svg { display: block; width: 100%; height: auto; max-height: 17rem; overflow: visible; }
+.anatomy-figure-standalone { width: min(100%, 16rem); }
+.anatomy-figure-standalone .anatomy-svg { max-height: 22rem; }
+.anatomy-load-error { margin: var(--space-2) 0 0; color: var(--danger); font-size: .78rem; text-align: center; }
 .anatomy-model { color: var(--text-muted); opacity: .72; }
 .anatomy-path { fill: none; stroke: var(--accent-strong); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
 .anatomy-circumference { stroke-dasharray: 9 5; }

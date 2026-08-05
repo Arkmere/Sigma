@@ -9,3 +9,9 @@ Review light, dark and system themes at 360, 768, 1024 and 1440 CSS pixels. Chec
 Using keyboard only, open and close both guidance disclosures. Focus must remain predictable and no SVG child may enter the tab order. Inspect the accessibility tree: each meaningful SVG is named by its fact-specific title and description, while complete instructions remain ordinary adjacent text.
 
 Automated structure checks accompany this checklist. Record real-browser results honestly; automated checks alone are not visual acceptance.
+
+## Limited masculine standalone test
+
+Use synthetic data and confirm each “How to measure” disclosure starts collapsed. For Height, open guidance and verify the masculine side figure appears with a vertical path from floor to crown; no prototype figure or floating overlay may appear. For Waist circumference, confirm `cm` remains the default, enter synthetic form data, open guidance, and verify the masculine front figure and natural-waist circumference appear without clearing any field. For Shoulder width, open guidance and verify the masculine back figure has a shoulder-point-to-shoulder-point line.
+
+Repeat all three in light and dark themes at 360 CSS pixels and desktop width. Confirm tight useful framing, no horizontal overflow, readable paths and no white asset background. With the development server, also force an asset request failure and confirm the written guidance remains, the overlay is absent, and a development failure message is visible.

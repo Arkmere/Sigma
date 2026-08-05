@@ -1,7 +1,7 @@
-import { anatomyIllustrationFor, anatomyPointFor, type AnatomyAnchorId, type AnatomyIllustrationDefinition, type AnatomyPoint } from '../../domain/anatomy.js';
+import { anatomyIllustrationFor, anatomyPointForIllustration, type AnatomyAnchorId, type AnatomyIllustrationDefinition, type AnatomyPoint } from '../../domain/anatomy.js';
 import { escapeHtml as e } from './html.js';
 
-const point=(item:AnatomyIllustrationDefinition,anchor:AnatomyAnchorId):AnatomyPoint=>{const value=anatomyPointFor(item.symbolId,anchor);if(!value)throw new Error(`Missing anatomy coordinate: ${item.symbolId}.${anchor}`);return value;};
+const point=(item:AnatomyIllustrationDefinition,anchor:AnatomyAnchorId):AnatomyPoint=>{const value=anatomyPointForIllustration(item,anchor);if(!value)throw new Error(`Missing anatomy coordinate: ${item.standaloneAssetId??item.symbolId}.${anchor}`);return value;};
 const marker=(kind:'start'|'end'|'landmark',anchor:AnatomyAnchorId,[x,y]:AnatomyPoint):string=>kind==='start'?`<circle class="anatomy-start" data-anchor="${anchor}" cx="${x}" cy="${y}" r="6"/>`:`<rect class="anatomy-${kind}" data-anchor="${anchor}" x="${x-6}" y="${y-6}" width="12" height="12"/>`;
 const curvedPath=(points:readonly AnatomyPoint[]):string=>{let d=`M${points[0][0]} ${points[0][1]}`;for(let index=1;index<points.length-1;index++){const here=points[index],next=points[index+1],mid:[number,number]=[(here[0]+next[0])/2,(here[1]+next[1])/2];d+=` Q${here[0]} ${here[1]} ${mid[0]} ${mid[1]}`;}const end=points.at(-1)!;return `${d} L${end[0]} ${end[1]}`;};
 function overlayFor(item:AnatomyIllustrationDefinition):string{
@@ -27,5 +27,17 @@ function legendFor(item:AnatomyIllustrationDefinition):string{
 export function renderAnatomyIllustration(canonicalFactId:string|undefined):string{
  const item=anatomyIllustrationFor(canonicalFactId);if(!item)return '';
  const titleId=`${item.id}-title`,descId=`${item.id}-desc`;
- return `<figure class="anatomy-figure" data-illustration-id="${item.id}" data-model-family="${item.modelFamilyId}" data-region="${item.region}" data-orientation="${item.orientation}" data-overlay="${item.overlay}"><svg class="anatomy-svg" viewBox="0 0 240 240" role="img" tabindex="-1" aria-labelledby="${titleId} ${descId}" focusable="false"><title id="${titleId}">${e(item.title)}</title><desc id="${descId}">${e(item.description)}</desc><use class="anatomy-model" href="${item.assetRef}#${item.symbolId}"/>${overlayFor(item)}</svg><figcaption>${e(item.caption)}</figcaption>${legendFor(item)}</figure>`;
+ const model=item.standaloneAssetId?`<g class="anatomy-model" data-standalone-asset="${item.assetRef}" data-standalone-view-box="${item.viewBox}"></g>`:`<use class="anatomy-model" href="${item.assetRef}#${item.symbolId}"/>`;
+ const overlay=item.standaloneAssetId?`<g class="anatomy-overlay" hidden>${overlayFor(item)}</g>`:overlayFor(item);
+ return `<figure class="anatomy-figure${item.standaloneAssetId?' anatomy-figure-standalone':''}" data-illustration-id="${item.id}" data-model-family="${item.modelFamilyId}" data-region="${item.region}" data-orientation="${item.orientation}" data-overlay="${item.overlay}"><svg class="anatomy-svg" viewBox="${item.viewBox}" role="img" tabindex="-1" aria-labelledby="${titleId} ${descId}" focusable="false"><title id="${titleId}">${e(item.title)}</title><desc id="${descId}">${e(item.description)}</desc>${model}${overlay}</svg><figcaption>${e(item.caption)}</figcaption>${legendFor(item)}</figure>`;
+}
+
+let standaloneInstance=0;
+export async function hydrateStandaloneAnatomy(root:ParentNode,load:typeof fetch=globalThis.fetch):Promise<void>{
+ const targets=[...root.querySelectorAll<SVGGElement>('[data-standalone-asset]')];
+ await Promise.all(targets.map(async(target)=>{const assetRef=target.dataset.standaloneAsset!,expectedViewBox=target.dataset.standaloneViewBox!,figure=target.closest<HTMLElement>('.anatomy-figure'),overlay=target.parentElement?.querySelector<SVGGElement>('.anatomy-overlay');try{
+  const response=await load(assetRef);if(!response.ok)throw new Error(`HTTP ${response.status}`);const source=new DOMParser().parseFromString(await response.text(),'image/svg+xml'),svg=source.documentElement;if(svg.localName!=='svg'||source.querySelector('parsererror'))throw new Error('invalid SVG');if(svg.getAttribute('viewBox')!==expectedViewBox)throw new Error('unexpected viewBox');if(source.querySelector('script,foreignObject,use[href^="http"],use[href^="/"]'))throw new Error('unsafe external SVG content');
+  const prefix=`sigma-anatomy-${++standaloneInstance}-`;const ids=new Map<string,string>();source.querySelectorAll<SVGElement>('[id]').forEach(node=>{const id=node.id,next=`${prefix}${id}`;ids.set(id,next);node.id=next;});source.querySelectorAll<SVGElement>('*').forEach(node=>{for(const attribute of [...node.attributes]){let value=attribute.value;for(const [oldId,newId] of ids)value=value.replaceAll(`url(#${oldId})`,`url(#${newId})`).replaceAll(`#${oldId}`,`#${newId}`);node.setAttribute(attribute.name,value);}});
+  for(const child of [...svg.children])if(!['title','desc'].includes(child.localName))target.append(document.importNode(child,true));if(!target.childElementCount)throw new Error('empty SVG');if(!target.isConnected)return;target.dataset.assetState='ready';overlay?.removeAttribute('hidden');
+ }catch(error){target.dataset.assetState='error';overlay?.setAttribute('hidden','');if(globalThis.location?.hostname==='localhost'){const message=document.createElement('p');message.className='anatomy-load-error';message.textContent=`Development asset failure: ${assetRef}`;figure?.append(message);}console.error(`Failed to load standalone anatomy asset ${assetRef}.`,error);}}));
 }

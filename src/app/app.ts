@@ -17,6 +17,7 @@ import { evaluateDemoPayload, importCandidate } from '../sources/import.js';
 import type { ImportCandidate } from '../sources/model.js';
 import type { SourceId } from '../domain/model.js';
 import { renderSources } from './ui/sources.js';
+import { hydrateStandaloneAnatomy } from './ui/anatomy-illustration.js';
 
 export function mountApp(root: HTMLElement, service = new SigmaService(new LocalStorageRepository(globalThis.localStorage))): void {
   let route: RouteId = 'profiles'; let theme = readThemePreference(); let entitlement=readDemoEntitlement(); let mode: RecordMode = 'measurement'; let search = ''; let category = ''; let editingProfileId = ''; let profileFormOpen=false; let recordFormOpen=false; let familyView:FamilyView='overview'; let notice:AppNotice|undefined;
@@ -27,6 +28,7 @@ export function mountApp(root: HTMLElement, service = new SigmaService(new Local
     document.documentElement.dataset.theme = resolved; document.documentElement.dataset.themePreference = theme; writeThemePreference(theme);
     const content = route === 'profiles' ? renderProfiles(service, editingProfileId,profileFormOpen) : route === 'measurements' ? renderRecords(service, mode, search, category,recordFormOpen) : route === 'sources' ? renderSources(service,permissions,permissionFlow,importCandidates,excluded,sourceNotice) : route === 'privacy' ? renderPrivacy(service,permissions) : route === 'settings' ? renderSettings(service, theme, resolved, entitlement,permissions) : renderFamilyScreen(service, entitlement,grantComposer,familyView);
     root.innerHTML = renderShell(route, service, content,notice);
+    void hydrateStandaloneAnatomy(root);
     const run=(action:()=>void,message?:string)=>{try{action();if(message)notice={kind:'success',message};render();}catch(error){if(error instanceof Error){notice={kind:'error',message:error.message};render();return;}throw error;}};
     bind(root, '[data-route]', 'click', (element) => { notice=undefined; route = element.dataset.route as RouteId; render(); });
     bind(root, '[data-select-profile]', 'click', (element) => {notice=undefined;run(()=>{ service.selectProfile(element.dataset.selectProfile!); route = 'measurements'; });});
