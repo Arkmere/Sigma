@@ -613,6 +613,7 @@ button.danger {
 .anatomy-svg { display: block; width: 100%; height: auto; max-height: 17rem; overflow: visible; }
 .anatomy-figure-standalone { width: min(100%, 16rem); }
 .anatomy-figure-standalone .anatomy-svg { max-height: 22rem; }
+.anatomy-figure-standalone .anatomy-path,.anatomy-figure-standalone .anatomy-hidden-path,.anatomy-figure-standalone .anatomy-start,.anatomy-figure-standalone .anatomy-end,.anatomy-figure-standalone .anatomy-landmark { stroke-width: 2; }
 .anatomy-load-error { margin: var(--space-2) 0 0; color: var(--danger); font-size: .78rem; text-align: center; }
 .anatomy-model { color: var(--text-muted); opacity: .72; }
 .anatomy-path { fill: none; stroke: var(--accent-strong); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }

@@ -25,11 +25,12 @@ test('all 35 guided facts have unique typed geometry whose anchors resolve in th
 
 test('limited masculine standalone mappings use measured native coordinates and inline placeholders',async()=>{
  const expected=[
-  ['height','/anatomy/masculine/body-side.svg','masculine-body-side','0 0 60.96 335.76',['floor','crown'],'d="M30.5 334 L30.5 1.5"'],
+  ['height','/anatomy/masculine/body-side.svg','masculine-body-side','0 0 60.96 335.76',['floor','crown'],'data-guide-x="4" d="M30.5 1.5 H4 V334 H30.5"'],
   ['waist-circumference','/anatomy/masculine/body-front.svg','masculine-body-front','0 0 127.2 329.52',['naturalWaist'],'cx="63.6" cy="143"'],
-  ['shoulder-width','/anatomy/masculine/body-back.svg','masculine-body-back','0 0 130.56 340.08',['shoulderLeft','shoulderRight'],'d="M29 61 L101.5 61"']
+  ['shoulder-width','/anatomy/masculine/body-back.svg','masculine-body-back','0 0 130.56 340.08',['shoulderLeft','shoulderRight'],'d="M18 67 L112.5 67"']
  ];
  for(const [id,assetRef,assetId,viewBox,anchors,path] of expected){const item=fact(id);assert.equal(item.modelFamilyId,'masculine-v1-test');assert.equal(item.assetRef,assetRef);assert.equal(item.standaloneAssetId,assetId);assert.equal(item.viewBox,viewBox);for(const anchor of anchors)assert.ok(standaloneAnatomyAnchors[assetId][anchor]);const source=await readFile(new URL(`../src/assets${assetRef}`,import.meta.url),'utf8');assert.match(source,new RegExp(`viewBox="${viewBox}"`));assert.doesNotMatch(source,/<use\b|<script\b|<image\b|(?:href|src)=["']https?:/);const html=renderAnatomyIllustration(`measurement.${id}`);assert.match(html,new RegExp(`data-standalone-asset="${assetRef.replaceAll('/','\\/')}"`));assert.match(html,new RegExp(path));assert.match(html,/class="anatomy-overlay" hidden/);assert.doesNotMatch(html,/<use\b/);assert.match(html,/role="img"/);assert.match(html,/<title[^>]*>/);assert.match(html,/<desc[^>]*>/);}
+ assert.equal(fact('height').standaloneGuideX,4);assert.deepEqual(standaloneAnatomyAnchors['masculine-body-back'],{shoulderLeft:[18,67],shoulderRight:[112.5,67]});assert.deepEqual(standaloneAnatomyAnchors['masculine-body-front'].naturalWaist,[63.6,143]);
 });
 
 test('unrelated facts retain the prototype and illustration data never enters persistence',()=>{

@@ -23,7 +23,7 @@ export type AnatomyOverlayDefinition=
  | {kind:'tool';anchor:AnatomyAnchorId};
 
 export interface AnatomyIllustrationDefinition{
- id:`illustration.${string}`;canonicalFactId:`measurement.${string}`;modelFamilyId:AnatomyModelFamilyId;region:AnatomyRegionId;orientation:AnatomyOrientation;assetRef:'/anatomy-model.svg'|`/anatomy/masculine/${string}.svg`;symbolId:AnatomySymbolId;standaloneAssetId?:StandaloneAnatomyAssetId;anchors:readonly AnatomyAnchorId[];overlay:AnatomyOverlayType;geometry:AnatomyOverlayDefinition;title:string;description:string;caption:string;theme:'semantic-tokens';viewBox:string;
+ id:`illustration.${string}`;canonicalFactId:`measurement.${string}`;modelFamilyId:AnatomyModelFamilyId;region:AnatomyRegionId;orientation:AnatomyOrientation;assetRef:'/anatomy-model.svg'|`/anatomy/masculine/${string}.svg`;symbolId:AnatomySymbolId;standaloneAssetId?:StandaloneAnatomyAssetId;standaloneGuideX?:number;anchors:readonly AnatomyAnchorId[];overlay:AnatomyOverlayType;geometry:AnatomyOverlayDefinition;title:string;description:string;caption:string;theme:'semantic-tokens';viewBox:string;
 }
 
 const points=(value:Partial<Record<AnatomyAnchorId,AnatomyPoint>>)=>Object.freeze(value);
@@ -51,7 +51,7 @@ export const anatomySymbolAnchors:Readonly<Record<AnatomySymbolId,Readonly<Parti
 export const standaloneAnatomyAnchors:Readonly<Record<StandaloneAnatomyAssetId,Readonly<Partial<Record<AnatomyAnchorId,AnatomyPoint>>>>>=Object.freeze({
  'masculine-body-side':points({crown:[30.5,1.5],floor:[30.5,334]}),
  'masculine-body-front':points({naturalWaist:[63.6,143]}),
- 'masculine-body-back':points({shoulderLeft:[29,61],shoulderRight:[101.5,61]})
+ 'masculine-body-back':points({shoulderLeft:[18,67],shoulderRight:[112.5,67]})
 });
 
 type Seed={fact:string;region:AnatomyRegionId;orientation:AnatomyOrientation;geometry:AnatomyOverlayDefinition;title:string;description:string};
@@ -95,8 +95,8 @@ const seeds:readonly Seed[]=[
  {fact:'instep-circumference',region:'foot',orientation:'side',geometry:circumference('instepLoopCentre',31,42,'instep'),title:'Instep circumference',description:'Side foot view showing a closed upright path over the highest instep point and under the foot.'}
 ];
 const geometryAnchors=(geometry:AnatomyOverlayDefinition):readonly AnatomyAnchorId[]=>geometry.kind==='tool'?[geometry.anchor]:geometry.kind==='circumference'?[geometry.centre,...geometry.landmark&&geometry.landmark!==geometry.centre?[geometry.landmark]:[]]:geometry.kind==='curved'?[geometry.start,...geometry.via,geometry.end]:[geometry.start,geometry.end];
-const standaloneTests:Readonly<Record<string,Pick<AnatomyIllustrationDefinition,'modelFamilyId'|'assetRef'|'standaloneAssetId'|'viewBox'>>>=Object.freeze({
- height:{modelFamilyId:'masculine-v1-test',assetRef:'/anatomy/masculine/body-side.svg',standaloneAssetId:'masculine-body-side',viewBox:'0 0 60.96 335.76'},
+const standaloneTests:Readonly<Record<string,Pick<AnatomyIllustrationDefinition,'modelFamilyId'|'assetRef'|'standaloneAssetId'|'standaloneGuideX'|'viewBox'>>>=Object.freeze({
+ height:{modelFamilyId:'masculine-v1-test',assetRef:'/anatomy/masculine/body-side.svg',standaloneAssetId:'masculine-body-side',standaloneGuideX:4,viewBox:'0 0 60.96 335.76'},
  'waist-circumference':{modelFamilyId:'masculine-v1-test',assetRef:'/anatomy/masculine/body-front.svg',standaloneAssetId:'masculine-body-front',viewBox:'0 0 127.2 329.52'},
  'shoulder-width':{modelFamilyId:'masculine-v1-test',assetRef:'/anatomy/masculine/body-back.svg',standaloneAssetId:'masculine-body-back',viewBox:'0 0 130.56 340.08'}
 });

@@ -2,21 +2,22 @@ import { anatomyIllustrationFor, anatomyPointForIllustration, type AnatomyAnchor
 import { escapeHtml as e } from './html.js';
 
 const point=(item:AnatomyIllustrationDefinition,anchor:AnatomyAnchorId):AnatomyPoint=>{const value=anatomyPointForIllustration(item,anchor);if(!value)throw new Error(`Missing anatomy coordinate: ${item.standaloneAssetId??item.symbolId}.${anchor}`);return value;};
-const marker=(kind:'start'|'end'|'landmark',anchor:AnatomyAnchorId,[x,y]:AnatomyPoint):string=>kind==='start'?`<circle class="anatomy-start" data-anchor="${anchor}" cx="${x}" cy="${y}" r="6"/>`:`<rect class="anatomy-${kind}" data-anchor="${anchor}" x="${x-6}" y="${y-6}" width="12" height="12"/>`;
+const marker=(kind:'start'|'end'|'landmark',anchor:AnatomyAnchorId,[x,y]:AnatomyPoint,size=6):string=>kind==='start'?`<circle class="anatomy-start" data-anchor="${anchor}" cx="${x}" cy="${y}" r="${size}"/>`:`<rect class="anatomy-${kind}" data-anchor="${anchor}" x="${x-size}" y="${y-size}" width="${size*2}" height="${size*2}"/>`;
 const curvedPath=(points:readonly AnatomyPoint[]):string=>{let d=`M${points[0][0]} ${points[0][1]}`;for(let index=1;index<points.length-1;index++){const here=points[index],next=points[index+1],mid:[number,number]=[(here[0]+next[0])/2,(here[1]+next[1])/2];d+=` Q${here[0]} ${here[1]} ${mid[0]} ${mid[1]}`;}const end=points.at(-1)!;return `${d} L${end[0]} ${end[1]}`;};
 function overlayFor(item:AnatomyIllustrationDefinition):string{
- const geometry=item.geometry;
+ const geometry=item.geometry,markerSize=item.standaloneAssetId?2.5:6;
  if(geometry.kind==='tool'){const [x,y]=point(item,geometry.anchor);return `<path class="anatomy-scale" data-anchor="${geometry.anchor}" d="M${x-46} ${y-18}h92l-8 32h-76z"/>`;}
  if(geometry.kind==='circumference'){
   const [x,y]=point(item,geometry.centre),landmark=geometry.landmark??geometry.centre,landmarkPoint=point(item,landmark);
-  return `<ellipse class="anatomy-path anatomy-circumference" data-anchor="${geometry.centre}" cx="${x}" cy="${y}" rx="${geometry.radiusX}" ry="${geometry.radiusY}"/><path class="anatomy-hidden-path" data-anchor="${geometry.centre}" d="M${x-geometry.radiusX} ${y} A${geometry.radiusX} ${geometry.radiusY} 0 0 0 ${x+geometry.radiusX} ${y}"/>${marker('landmark',landmark,landmarkPoint)}`;
+  return `<ellipse class="anatomy-path anatomy-circumference" data-anchor="${geometry.centre}" cx="${x}" cy="${y}" rx="${geometry.radiusX}" ry="${geometry.radiusY}"/><path class="anatomy-hidden-path" data-anchor="${geometry.centre}" d="M${x-geometry.radiusX} ${y} A${geometry.radiusX} ${geometry.radiusY} 0 0 0 ${x+geometry.radiusX} ${y}"/>${marker('landmark',landmark,landmarkPoint,markerSize)}`;
  }
  const start=point(item,geometry.start),end=point(item,geometry.end);
  if(geometry.kind==='curved'){
   const via=geometry.via.map(anchor=>point(item,anchor)),all=[start,...via,end],middle=all[Math.floor(all.length/2)];
-  return `<path class="anatomy-path anatomy-curved" data-start-anchor="${geometry.start}" data-via-anchors="${geometry.via.join(' ')}" data-end-anchor="${geometry.end}" d="${curvedPath(all)}"/>${marker('start',geometry.start,start)}${marker('end',geometry.end,end)}${geometry.direction?`<path class="anatomy-direction" d="M${middle[0]-7} ${middle[1]-7}l12 7-12 7"/>`:''}`;
+  return `<path class="anatomy-path anatomy-curved" data-start-anchor="${geometry.start}" data-via-anchors="${geometry.via.join(' ')}" data-end-anchor="${geometry.end}" d="${curvedPath(all)}"/>${marker('start',geometry.start,start,markerSize)}${marker('end',geometry.end,end,markerSize)}${geometry.direction?`<path class="anatomy-direction" d="M${middle[0]-7} ${middle[1]-7}l12 7-12 7"/>`:''}`;
  }
- return `<path class="anatomy-path anatomy-${geometry.kind}" data-start-anchor="${geometry.start}" data-end-anchor="${geometry.end}" d="M${start[0]} ${start[1]} L${end[0]} ${end[1]}"/>${marker('start',geometry.start,start)}${marker('end',geometry.end,end)}`;
+ const path=item.standaloneGuideX!==undefined&&geometry.kind==='vertical'?`M${end[0]} ${end[1]} H${item.standaloneGuideX} V${start[1]} H${start[0]}`:`M${start[0]} ${start[1]} L${end[0]} ${end[1]}`;
+ return `<path class="anatomy-path anatomy-${geometry.kind}" data-start-anchor="${geometry.start}" data-end-anchor="${geometry.end}"${item.standaloneGuideX!==undefined?` data-guide-x="${item.standaloneGuideX}"`:''} d="${path}"/>${marker('start',geometry.start,start,markerSize)}${marker('end',geometry.end,end,markerSize)}`;
 }
 function legendFor(item:AnatomyIllustrationDefinition):string{
  if(item.geometry.kind==='tool')return '';
