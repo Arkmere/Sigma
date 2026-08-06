@@ -1,4 +1,4 @@
-export const anatomyModelFamilyIds=['sigma-neutral-v1','masculine-v1-test'] as const;
+export const anatomyModelFamilyIds=['neutral','masculine','feminine'] as const;
 export type AnatomyModelFamilyId=typeof anatomyModelFamilyIds[number];
 export const anatomyRegionIds=['body','head','neck','torso','upper-limb','hand','finger','lower-limb','foot','scale'] as const;
 export type AnatomyRegionId=typeof anatomyRegionIds[number];
@@ -8,7 +8,7 @@ export const overlayTypes=['circumference','point-to-point','vertical','curved',
 export type AnatomyOverlayType=typeof overlayTypes[number];
 export type AnatomySymbolId=`${AnatomyRegionId}-${AnatomyOrientation}`;
 export type AnatomyPoint=readonly [x:number,y:number];
-export const standaloneAnatomyAssetIds=['masculine-body-front','masculine-body-back','masculine-body-side'] as const;
+export const standaloneAnatomyAssetIds=['masculine-body-front','masculine-body-back','masculine-body-side','feminine-body-front','feminine-body-back','feminine-body-side','feminine-head-front','feminine-head-side'] as const;
 export type StandaloneAnatomyAssetId=typeof standaloneAnatomyAssetIds[number];
 
 export const anatomyAnchors=Object.freeze({
@@ -19,12 +19,14 @@ export type AnatomyAnchorId=keyof typeof anatomyAnchors;
 export type AnatomyOverlayDefinition=
  | {kind:'point-to-point'|'vertical';start:AnatomyAnchorId;end:AnatomyAnchorId}
  | {kind:'curved';start:AnatomyAnchorId;via:readonly AnatomyAnchorId[];end:AnatomyAnchorId;direction:boolean}
- | {kind:'circumference';centre:AnatomyAnchorId;radiusX:number;radiusY:number;hiddenRear:boolean;landmark?:AnatomyAnchorId}
+ | {kind:'circumference';centre:AnatomyAnchorId;hiddenRear:boolean;landmark?:AnatomyAnchorId}
  | {kind:'tool';anchor:AnatomyAnchorId};
 
 export interface AnatomyIllustrationDefinition{
- id:`illustration.${string}`;canonicalFactId:`measurement.${string}`;modelFamilyId:AnatomyModelFamilyId;region:AnatomyRegionId;orientation:AnatomyOrientation;assetRef:'/anatomy-model.svg'|`/anatomy/masculine/${string}.svg`;symbolId:AnatomySymbolId;standaloneAssetId?:StandaloneAnatomyAssetId;standaloneGuideX?:number;anchors:readonly AnatomyAnchorId[];overlay:AnatomyOverlayType;geometry:AnatomyOverlayDefinition;title:string;description:string;caption:string;theme:'semantic-tokens';viewBox:string;
+ id:`illustration.${string}`;canonicalFactId:`measurement.${string}`;region:AnatomyRegionId;orientation:AnatomyOrientation;anchors:readonly AnatomyAnchorId[];overlay:AnatomyOverlayType;geometry:AnatomyOverlayDefinition;title:string;description:string;caption:string;theme:'semantic-tokens';
 }
+export interface AnatomyFamilyAssetDefinition{assetId:StandaloneAnatomyAssetId;familyId:Exclude<AnatomyModelFamilyId,'neutral'>;assetVersion:'v1';assetRef:`/anatomy/${Exclude<AnatomyModelFamilyId,'neutral'>}/${string}.svg`;viewBox:string;anchors:Readonly<Partial<Record<AnatomyAnchorId,AnatomyPoint>>>;guideX?:number;circumferences?:Readonly<Partial<Record<AnatomyAnchorId,Readonly<{radiusX:number;radiusY:number}>>>>;}
+export interface ResolvedAnatomyAssetDefinition{assetId:string;familyId:AnatomyModelFamilyId;assetVersion:'v1';assetRef:string;viewBox:string;anchors:Readonly<Partial<Record<AnatomyAnchorId,AnatomyPoint>>>;symbolId?:AnatomySymbolId;guideX?:number;circumferences?:Readonly<Partial<Record<AnatomyAnchorId,Readonly<{radiusX:number;radiusY:number}>>>>;}
 
 const points=(value:Partial<Record<AnatomyAnchorId,AnatomyPoint>>)=>Object.freeze(value);
 export const anatomySymbolAnchors:Readonly<Record<AnatomySymbolId,Readonly<Partial<Record<AnatomyAnchorId,AnatomyPoint>>>>>=Object.freeze({
@@ -51,11 +53,16 @@ export const anatomySymbolAnchors:Readonly<Record<AnatomySymbolId,Readonly<Parti
 export const standaloneAnatomyAnchors:Readonly<Record<StandaloneAnatomyAssetId,Readonly<Partial<Record<AnatomyAnchorId,AnatomyPoint>>>>>=Object.freeze({
  'masculine-body-side':points({crown:[30.5,1.5],floor:[30.5,334]}),
  'masculine-body-front':points({naturalWaist:[63.6,143]}),
- 'masculine-body-back':points({shoulderLeft:[18,67],shoulderRight:[112.5,67]})
+ 'masculine-body-back':points({shoulderLeft:[18,67],shoulderRight:[112.5,67]}),
+ 'feminine-body-side':points({crown:[48.3,1],floor:[48,586]}),
+ 'feminine-body-front':points({naturalWaist:[84.5,218]}),
+ 'feminine-body-back':points({shoulderLeft:[21,124],shoulderRight:[150,124]}),
+ 'feminine-head-front':points({}),
+ 'feminine-head-side':points({})
 });
 
 type Seed={fact:string;region:AnatomyRegionId;orientation:AnatomyOrientation;geometry:AnatomyOverlayDefinition;title:string;description:string};
-const circumference=(centre:AnatomyAnchorId,radiusX:number,radiusY:number,landmark=centre):AnatomyOverlayDefinition=>({kind:'circumference',centre,radiusX,radiusY,hiddenRear:true,landmark});
+const circumference=(centre:AnatomyAnchorId,_radiusX:number,_radiusY:number,landmark=centre):AnatomyOverlayDefinition=>({kind:'circumference',centre,hiddenRear:true,landmark});
 const line=(kind:'point-to-point'|'vertical',start:AnatomyAnchorId,end:AnatomyAnchorId):AnatomyOverlayDefinition=>({kind,start,end});
 const seeds:readonly Seed[]=[
  {fact:'height',region:'body',orientation:'side',geometry:line('vertical','floor','crown'),title:'Height measurement',description:'Side view showing a vertical path from level floor to the crown of the head.'},
@@ -95,13 +102,28 @@ const seeds:readonly Seed[]=[
  {fact:'instep-circumference',region:'foot',orientation:'side',geometry:circumference('instepLoopCentre',31,42,'instep'),title:'Instep circumference',description:'Side foot view showing a closed upright path over the highest instep point and under the foot.'}
 ];
 const geometryAnchors=(geometry:AnatomyOverlayDefinition):readonly AnatomyAnchorId[]=>geometry.kind==='tool'?[geometry.anchor]:geometry.kind==='circumference'?[geometry.centre,...geometry.landmark&&geometry.landmark!==geometry.centre?[geometry.landmark]:[]]:geometry.kind==='curved'?[geometry.start,...geometry.via,geometry.end]:[geometry.start,geometry.end];
-const standaloneTests:Readonly<Record<string,Pick<AnatomyIllustrationDefinition,'modelFamilyId'|'assetRef'|'standaloneAssetId'|'standaloneGuideX'|'viewBox'>>>=Object.freeze({
- height:{modelFamilyId:'masculine-v1-test',assetRef:'/anatomy/masculine/body-side.svg',standaloneAssetId:'masculine-body-side',standaloneGuideX:4,viewBox:'0 0 60.96 335.76'},
- 'waist-circumference':{modelFamilyId:'masculine-v1-test',assetRef:'/anatomy/masculine/body-front.svg',standaloneAssetId:'masculine-body-front',viewBox:'0 0 127.2 329.52'},
- 'shoulder-width':{modelFamilyId:'masculine-v1-test',assetRef:'/anatomy/masculine/body-back.svg',standaloneAssetId:'masculine-body-back',viewBox:'0 0 130.56 340.08'}
-});
-export const anatomyIllustrations:readonly AnatomyIllustrationDefinition[]=Object.freeze(seeds.map(seed=>{const symbolId=`${seed.region}-${seed.orientation}` as AnatomySymbolId,standalone=standaloneTests[seed.fact],base={id:`illustration.${seed.fact}`,canonicalFactId:`measurement.${seed.fact}`,modelFamilyId:'sigma-neutral-v1',region:seed.region,orientation:seed.orientation,assetRef:'/anatomy-model.svg',symbolId,anchors:geometryAnchors(seed.geometry),overlay:seed.geometry.kind,geometry:seed.geometry,title:seed.title,description:seed.description,caption:`${seed.title} · ${seed.orientation} view`,theme:'semantic-tokens',viewBox:'0 0 240 240'};return Object.assign(base,standalone) as AnatomyIllustrationDefinition;}));
+export const anatomyIllustrations:readonly AnatomyIllustrationDefinition[]=Object.freeze(seeds.map(seed=>({id:`illustration.${seed.fact}`,canonicalFactId:`measurement.${seed.fact}`,region:seed.region,orientation:seed.orientation,anchors:geometryAnchors(seed.geometry),overlay:seed.geometry.kind,geometry:seed.geometry,title:seed.title,description:seed.description,caption:`${seed.title} · ${seed.orientation} view`,theme:'semantic-tokens'} as AnatomyIllustrationDefinition)));
 const byFact=new Map<string,AnatomyIllustrationDefinition>(anatomyIllustrations.map(item=>[item.canonicalFactId,item]));
 export const anatomyIllustrationFor=(canonicalFactId:string|undefined):AnatomyIllustrationDefinition|undefined=>canonicalFactId?byFact.get(canonicalFactId):undefined;
 export const anatomyPointFor=(symbolId:AnatomySymbolId,anchor:AnatomyAnchorId):AnatomyPoint|undefined=>anatomySymbolAnchors[symbolId]?.[anchor];
-export const anatomyPointForIllustration=(item:AnatomyIllustrationDefinition,anchor:AnatomyAnchorId):AnatomyPoint|undefined=>item.standaloneAssetId?standaloneAnatomyAnchors[item.standaloneAssetId]?.[anchor]:anatomyPointFor(item.symbolId,anchor);
+
+const standalone=(assetId:StandaloneAnatomyAssetId,familyId:Exclude<AnatomyModelFamilyId,'neutral'>,assetRef:AnatomyFamilyAssetDefinition['assetRef'],viewBox:string,extra:Pick<AnatomyFamilyAssetDefinition,'guideX'|'circumferences'>={}):AnatomyFamilyAssetDefinition=>Object.freeze({assetId,familyId,assetVersion:'v1',assetRef,viewBox,anchors:standaloneAnatomyAnchors[assetId],...extra});
+export const anatomyFamilyAssets:readonly AnatomyFamilyAssetDefinition[]=Object.freeze([
+ standalone('masculine-body-side','masculine','/anatomy/masculine/body-side.svg','0 0 60.96 335.76',{guideX:4}),
+ standalone('masculine-body-front','masculine','/anatomy/masculine/body-front.svg','0 0 127.2 329.52',{circumferences:{naturalWaist:{radiusX:41,radiusY:10}}}),
+ standalone('masculine-body-back','masculine','/anatomy/masculine/body-back.svg','0 0 130.56 340.08'),
+ standalone('feminine-body-side','feminine','/anatomy/feminine/body-side.svg','0 0 96 587',{guideX:92}),
+ standalone('feminine-body-front','feminine','/anatomy/feminine/body-front.svg','0 0 169 589.18',{circumferences:{naturalWaist:{radiusX:52,radiusY:13}}}),
+ standalone('feminine-body-back','feminine','/anatomy/feminine/body-back.svg','0 0 171 586.33'),
+ standalone('feminine-head-front','feminine','/anatomy/feminine/head-front.svg','0 0 445 581'),
+ standalone('feminine-head-side','feminine','/anatomy/feminine/head-side.svg','0 0 397 580')
+]);
+const familyAssetsById=new Map(anatomyFamilyAssets.map(asset=>[asset.assetId,asset]));
+const familyFactAssets:Readonly<Record<Exclude<AnatomyModelFamilyId,'neutral'>,Readonly<Partial<Record<string,StandaloneAnatomyAssetId>>>>>=Object.freeze({
+ masculine:{'measurement.height':'masculine-body-side','measurement.waist-circumference':'masculine-body-front','measurement.shoulder-width':'masculine-body-back'},
+ feminine:{'measurement.height':'feminine-body-side','measurement.waist-circumference':'feminine-body-front','measurement.shoulder-width':'feminine-body-back'}
+});
+const neutralCircumferences:Readonly<Record<string,Readonly<{radiusX:number;radiusY:number}>>>=Object.freeze({'measurement.head-circumference':{radiusX:51,radiusY:15},'measurement.neck-circumference':{radiusX:29,radiusY:9},'measurement.chest-circumference':{radiusX:49,radiusY:12},'measurement.bust-circumference':{radiusX:53,radiusY:13},'measurement.underbust-circumference':{radiusX:47,radiusY:11},'measurement.waist-circumference':{radiusX:41,radiusY:10},'measurement.hip-circumference':{radiusX:54,radiusY:13},'measurement.upper-arm-circumference':{radiusX:21,radiusY:7},'measurement.forearm-circumference':{radiusX:18,radiusY:6},'measurement.wrist-circumference':{radiusX:17,radiusY:6},'measurement.palm-circumference':{radiusX:36,radiusY:10},'measurement.finger-circumference':{radiusX:27,radiusY:8},'measurement.thigh-circumference':{radiusX:27,radiusY:8},'measurement.knee-circumference':{radiusX:22,radiusY:7},'measurement.calf-circumference':{radiusX:25,radiusY:8},'measurement.ankle-circumference':{radiusX:18,radiusY:6},'measurement.foot-circumference':{radiusX:34,radiusY:12},'measurement.instep-circumference':{radiusX:31,radiusY:42}});
+export const anatomyFamilyFrom=(value:string|null|undefined):AnatomyModelFamilyId=>anatomyModelFamilyIds.includes(value as AnatomyModelFamilyId)?value as AnatomyModelFamilyId:'neutral';
+export const anatomyAssetFor=(item:AnatomyIllustrationDefinition,familyValue:AnatomyModelFamilyId|'unknown'='neutral'):ResolvedAnatomyAssetDefinition=>{const family=anatomyFamilyFrom(familyValue);if(family!=='neutral'){const assetId=familyFactAssets[family][item.canonicalFactId],asset=assetId&&familyAssetsById.get(assetId);if(asset)return asset;}const symbolId=`${item.region}-${item.orientation}` as AnatomySymbolId,circumference=neutralCircumferences[item.canonicalFactId];return {assetId:`neutral-${symbolId}`,familyId:'neutral',assetVersion:'v1',assetRef:'/anatomy-model.svg',viewBox:'0 0 240 240',anchors:anatomySymbolAnchors[symbolId],symbolId,circumferences:circumference&&item.geometry.kind==='circumference'?{[item.geometry.centre]:circumference}:undefined};};
+export const anatomyPointForIllustration=(item:AnatomyIllustrationDefinition,anchor:AnatomyAnchorId,family:AnatomyModelFamilyId='neutral'):AnatomyPoint|undefined=>anatomyAssetFor(item,family).anchors[anchor];
