@@ -5,7 +5,7 @@ const point=(asset:ResolvedAnatomyAssetDefinition,anchor:AnatomyAnchorId):Anatom
 const marker=(kind:'start'|'end'|'landmark',anchor:AnatomyAnchorId,[x,y]:AnatomyPoint,size=6):string=>kind==='start'?`<circle class="anatomy-start" data-anchor="${anchor}" cx="${x}" cy="${y}" r="${size}"/>`:`<rect class="anatomy-${kind}" data-anchor="${anchor}" x="${x-size}" y="${y-size}" width="${size*2}" height="${size*2}"/>`;
 const curvedPath=(points:readonly AnatomyPoint[]):string=>{let d=`M${points[0][0]} ${points[0][1]}`;for(let index=1;index<points.length-1;index++){const here=points[index],next=points[index+1],mid:[number,number]=[(here[0]+next[0])/2,(here[1]+next[1])/2];d+=` Q${here[0]} ${here[1]} ${mid[0]} ${mid[1]}`;}const end=points.at(-1)!;return `${d} L${end[0]} ${end[1]}`;};
 function overlayFor(item:AnatomyIllustrationDefinition,asset:ResolvedAnatomyAssetDefinition):string{
- const geometry=item.geometry,markerSize=asset.familyId==='neutral'?6:2.5;
+ const geometry=item.geometry,markerSize=asset.symbolId?6:2.5;
  if(geometry.kind==='tool'){const [x,y]=point(asset,geometry.anchor);return `<path class="anatomy-scale" data-anchor="${geometry.anchor}" d="M${x-46} ${y-18}h92l-8 32h-76z"/>`;}
  if(geometry.kind==='circumference'){
   const [x,y]=point(asset,geometry.centre),landmark=geometry.landmark??geometry.centre,landmarkPoint=point(asset,landmark),size=asset.circumferences?.[geometry.centre];if(!size)throw new Error(`Missing anatomy circumference: ${asset.assetId}.${geometry.centre}`);
@@ -28,7 +28,7 @@ function legendFor(item:AnatomyIllustrationDefinition):string{
 export const anatomyFamilyFromLocation=(location:Pick<Location,'hostname'|'search'>|undefined=globalThis.location):AnatomyModelFamilyId=>location&&['localhost','127.0.0.1'].includes(location.hostname)?anatomyFamilyFrom(new URLSearchParams(location.search).get('anatomyFamily')):'neutral';
 export function renderAnatomyIllustration(canonicalFactId:string|undefined,family:AnatomyModelFamilyId=anatomyFamilyFromLocation()):string{
  const item=anatomyIllustrationFor(canonicalFactId);if(!item)return '';
- const asset=anatomyAssetFor(item,family),titleId=`${item.id}-title`,descId=`${item.id}-desc`,standalone=asset.familyId!=='neutral';
+ const asset=anatomyAssetFor(item,family),titleId=`${item.id}-title`,descId=`${item.id}-desc`,standalone=!asset.symbolId;
  const model=standalone?`<g class="anatomy-model" data-standalone-asset="${asset.assetRef}" data-standalone-view-box="${asset.viewBox}"></g>`:`<use class="anatomy-model" href="${asset.assetRef}#${asset.symbolId}"/>`;
  const overlay=standalone?`<g class="anatomy-overlay" hidden>${overlayFor(item,asset)}</g>`:overlayFor(item,asset);
  return `<figure class="anatomy-figure${standalone?' anatomy-figure-standalone':''}" data-illustration-id="${item.id}" data-model-family="${asset.familyId}" data-asset-version="${asset.assetVersion}" data-asset-id="${asset.assetId}" data-region="${item.region}" data-orientation="${item.orientation}" data-overlay="${item.overlay}"><svg class="anatomy-svg" viewBox="${asset.viewBox}" role="img" tabindex="-1" aria-labelledby="${titleId} ${descId}" focusable="false"><title id="${titleId}">${e(item.title)}</title><desc id="${descId}">${e(item.description)}</desc>${model}${overlay}</svg><figcaption>${e(item.caption)}</figcaption>${legendFor(item)}</figure>`;

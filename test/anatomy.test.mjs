@@ -17,20 +17,23 @@ test('all 35 guided facts have unique typed geometry whose anchors resolve in th
  const signatures=new Set();
  for(const item of anatomyIllustrations){
   assert.ok(anatomyRegionIds.includes(item.region));assert.ok(anatomyOrientations.includes(item.orientation));assert.ok(overlayTypes.includes(item.overlay));assert.equal(item.overlay,item.geometry.kind);assert.ok(canonicalFactById(item.canonicalFactId));assert.equal('assetRef' in item,false);assert.equal('modelFamilyId' in item,false);
-  const neutral=anatomyAssetFor(item,'neutral');assert.equal(neutral.familyId,'neutral');assert.equal(neutral.assetRef,'/anatomy-model.svg');assert.match(asset,new RegExp(`id=["']${neutral.symbolId}["']`));const declared=geometryAnchors(item.geometry);assert.deepEqual(item.anchors,declared);for(const anchor of declared){assert.ok(anchor in anatomyAnchors);assert.ok(anatomyPointForIllustration(item,anchor),`${item.id}: ${neutral.assetId}.${anchor}`);}
-  const signature=`${neutral.symbolId}:${JSON.stringify(item.geometry)}`;assert.ok(!signatures.has(signature),`${item.id} reused generic geometry`);signatures.add(signature);
+  const neutral=anatomyAssetFor(item,'neutral');assert.equal(neutral.familyId,'neutral');if(neutral.symbolId){assert.equal(neutral.assetRef,'/anatomy-model.svg');assert.match(asset,new RegExp(`id=["']${neutral.symbolId}["']`));}else assert.match(neutral.assetRef,/^\/anatomy\/neutral\//);const declared=geometryAnchors(item.geometry);assert.deepEqual(item.anchors,declared);for(const anchor of declared){assert.ok(anchor in anatomyAnchors);assert.ok(anatomyPointForIllustration(item,anchor),`${item.id}: ${neutral.assetId}.${anchor}`);}
+  const signature=`${neutral.assetId}:${JSON.stringify(item.geometry)}`;assert.ok(!signatures.has(signature),`${item.id} reused generic geometry`);signatures.add(signature);
  }
  assert.deepEqual(new Set(anatomyIllustrations.map(x=>x.canonicalFactId)),new Set(priorityGuidanceIds));
 });
 
-test('permanent family asset registry contains safe unique masculine and feminine v1 assets',async()=>{
+test('permanent family asset registry contains safe unique neutral and feminine v1 assets',async()=>{
  assert.deepEqual(anatomyModelFamilyIds,['neutral','masculine','feminine']);assert.equal(new Set(anatomyFamilyAssets.map(x=>x.assetId)).size,anatomyFamilyAssets.length);
- const feminine=[['body-back.svg','0 0 171 586.33'],['body-front.svg','0 0 169 589.18'],['body-side.svg','0 0 96 587'],['head-front.svg','0 0 445 581'],['head-side.svg','0 0 397 580']];
- for(const [name,viewBox] of feminine){const source=await readFile(new URL(`../src/assets/anatomy/feminine/${name}`,import.meta.url),'utf8'),registered=anatomyFamilyAssets.find(x=>x.assetRef===`/anatomy/feminine/${name}`);assert.ok(registered);assert.equal(registered.familyId,'feminine');assert.equal(registered.assetVersion,'v1');assert.equal(registered.viewBox,viewBox);assert.match(source,new RegExp(`viewBox="${viewBox}"`));assert.match(source,/currentColor/);assert.doesNotMatch(source,/<script\b|<image\b|<use\b|(?:href|src)=["']https?:/);}
+ const families={neutral:[['body-back.svg','0 0 116.88 279.6'],['body-front.svg','0 0 116.88 280.08'],['body-side.svg','0 0 46.56 279.84']],feminine:[['body-back.svg','0 0 171 586.33'],['body-front.svg','0 0 169 589.18'],['body-side.svg','0 0 96 587'],['head-front.svg','0 0 445 581'],['head-side.svg','0 0 397 580']]};
+ for(const [family,files] of Object.entries(families))for(const [name,viewBox] of files){const source=await readFile(new URL(`../src/assets/anatomy/${family}/${name}`,import.meta.url),'utf8'),registered=anatomyFamilyAssets.find(x=>x.assetRef===`/anatomy/${family}/${name}`);assert.ok(registered);assert.equal(registered.familyId,family);assert.equal(registered.assetVersion,'v1');assert.equal(registered.viewBox,viewBox);assert.match(source,new RegExp(`viewBox="${viewBox}"`));assert.match(source,/currentColor/);assert.match(source,/<title\b[^>]*>[^<]+<\/title>/);assert.match(source,/<desc\b[^>]*>[^<]+<\/desc>/);assert.doesNotMatch(source,/<script\b|<image\b|<use\b|(?:href|src)=["'](?:https?:|\/\/)/);}
 });
 
 test('representative facts resolve family assets at render time with safe fallback',async()=>{
  const expected=[
+  ['height','neutral','neutral-body-side','data-guide-x="1.5" d="M25.75 0.59 H1.5 V279.2 H28"'],
+  ['waist-circumference','neutral','neutral-body-front','cx="58.44" cy="104"'],
+  ['shoulder-width','neutral','neutral-body-back','d="M26 58 L91 58"'],
   ['height','masculine','masculine-body-side','data-guide-x="4" d="M30.5 1.5 H4 V334 H30.5"'],
   ['waist-circumference','masculine','masculine-body-front','cx="63.6" cy="143"'],
   ['shoulder-width','masculine','masculine-body-back','d="M18 67 L112.5 67"'],
@@ -44,7 +47,7 @@ test('representative facts resolve family assets at render time with safe fallba
 
 test('unrelated facts retain the prototype and illustration data never enters persistence',()=>{
  const unrelated=fact('foot-length');assert.equal(anatomyAssetFor(unrelated,'feminine').familyId,'neutral');assert.match(renderAnatomyIllustration('measurement.foot-length','feminine'),/<use class="anatomy-model" href="\/anatomy-model\.svg#foot-top"\/>/);assert.equal(renderAnatomyIllustration('custom.waist'),'');
- const values=new Map(),storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,String(value)),removeItem:key=>values.delete(key)};const service=new SigmaService(new LocalStorageRepository(storage));service.createProfile({displayName:'Synthetic person',profileType:'independent'});const persisted=`${[...values.values()].join(' ')} ${JSON.stringify(service.exportBackup())}`;assert.doesNotMatch(persisted,/masculine|feminine|anatomy\/(?:masculine|feminine)|familyId|assetId|assetRef|standaloneAsset/);assert.equal(service.exportBackup().schemaVersion,4);
+ const values=new Map(),storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,String(value)),removeItem:key=>values.delete(key)};const service=new SigmaService(new LocalStorageRepository(storage));service.createProfile({displayName:'Synthetic person',profileType:'independent'});const persisted=`${[...values.values()].join(' ')} ${JSON.stringify(service.exportBackup())}`;assert.doesNotMatch(persisted,/masculine|feminine|anatomy\/(?:neutral|masculine|feminine)|familyId|assetId|assetRef|standaloneAsset/);assert.equal(service.exportBackup().schemaVersion,4);
 });
 
 test('standalone hydration validation rejects misleading or unsafe inputs before overlays reveal',()=>{assert.equal(standaloneSvgIssue('<svg viewBox="0 0 10 10"><path id="line" d="M0 0L1 1"/></svg>','0 0 10 10'),undefined);assert.equal(standaloneSvgIssue('<svg viewBox="0 0 9 9"><path/></svg>','0 0 10 10'),'unexpected viewBox');assert.equal(standaloneSvgIssue('<svg viewBox="0 0 10 10"><title>Empty</title></svg>','0 0 10 10'),'empty SVG');assert.equal(standaloneSvgIssue('<svg viewBox="0 0 10 10"><script/><path/></svg>','0 0 10 10'),'unsafe external SVG content');assert.equal(standaloneSvgIssue('<svg viewBox="0 0 10 10"><image href="https://example.test/a.png"/></svg>','0 0 10 10'),'unsafe external SVG content');const sourceText=readFile(new URL('../src/app/ui/anatomy-illustration.ts',import.meta.url),'utf8');return sourceText.then(source=>{assert.match(source,/sigma-anatomy-\$\{\+\+standaloneInstance\}-/);assert.match(source,/overlay\?\.removeAttribute\('hidden'\)/);assert.match(source,/overlay\?\.setAttribute\('hidden',''\)/);});});

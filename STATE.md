@@ -142,7 +142,7 @@ Ticket 6F: anatomy-based canonical-fact discovery using the Ticket 6E registry. 
 ## Ticket 6E anatomy illustration system
 
 - Permanent presentation family IDs are `neutral`, `masculine`, and `feminine`, with asset version recorded separately in static registry metadata. Canonical fact semantics do not contain family or asset details.
-- Masculine and Feminine V1 standalone assets map Height, Waist circumference, and Shoulder width. Feminine head front/side assets are registered but not mapped to facts. Unsupported family/fact combinations retain the Neutral prototype.
+- Neutral, Masculine and Feminine V1 standalone assets map Height, Waist circumference, and Shoulder width. Feminine head front/side assets are registered but not mapped to facts. The old Neutral sprite remains transitional for all remaining guided facts until equivalent standalone assets exist.
 - Localhost query parameters (`?anatomyFamily=neutral`, `masculine`, or `feminine`) provide development-only comparison. Family choice is presentation-only and is absent from schema 4, records, backups, imports, sharing, profiles, and preferences. Production model selection and Ticket 6F remain deferred.
 
 - `neutral` V1 is one original, repository-owned SVG family with whole-body and related head/neck, torso, limb, hand/finger and foot views.
