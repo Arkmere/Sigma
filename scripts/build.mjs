@@ -8,15 +8,8 @@ try {
   await copyFile(join('src', 'styles.css'), join(outDir, 'styles.css'));
   await copyFile(join('src', 'assets', 'body-outline.svg'), join(outDir, 'body-outline.svg'));
   await copyFile(join('src', 'assets', 'anatomy-model.svg'), join(outDir, 'anatomy-model.svg'));
-  const neutralDir=join(outDir,'anatomy','neutral');
-  await mkdir(neutralDir,{recursive:true});
-  for(const asset of ['body-front.svg','body-back.svg','body-side.svg'])await copyFile(join('src','assets','anatomy','neutral',asset),join(neutralDir,asset));
-  const anatomyDir=join(outDir,'anatomy','masculine');
-  await mkdir(anatomyDir,{recursive:true});
-  for(const asset of ['body-front.svg','body-back.svg','body-side.svg'])await copyFile(join('src','assets','anatomy','masculine',asset),join(anatomyDir,asset));
-  const feminineDir=join(outDir,'anatomy','feminine');
-  await mkdir(feminineDir,{recursive:true});
-  for(const asset of ['body-front.svg','body-back.svg','body-side.svg','head-front.svg','head-side.svg'])await copyFile(join('src','assets','anatomy','feminine',asset),join(feminineDir,asset));
+  const anatomyAssets=['body-front.svg','body-back.svg','body-side.svg','head-front.svg','head-side.svg','neck-front.svg','neck-side.svg','torso-front.svg','torso-back.svg','torso-side.svg','upper-limb-front.svg','upper-limb-side.svg','hand-side.svg','lower-limb-front.svg','lower-limb-back.svg','lower-limb-side.svg','ankle-detail.svg','foot-side.svg'];
+  for(const family of ['neutral','masculine','feminine']){const familyDir=join(outDir,'anatomy',family);await mkdir(familyDir,{recursive:true});for(const asset of anatomyAssets)await copyFile(join('src','assets','anatomy',family,asset),join(familyDir,asset));}
   const html = await readFile('index.html', 'utf8');
   const productionHtml = html
     .replace('/src/main.ts', '/main.js')

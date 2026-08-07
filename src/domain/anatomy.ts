@@ -8,8 +8,10 @@ export const overlayTypes=['circumference','point-to-point','vertical','curved',
 export type AnatomyOverlayType=typeof overlayTypes[number];
 export type AnatomySymbolId=`${AnatomyRegionId}-${AnatomyOrientation}`;
 export type AnatomyPoint=readonly [x:number,y:number];
-export const standaloneAnatomyAssetIds=['neutral-body-front','neutral-body-back','neutral-body-side','masculine-body-front','masculine-body-back','masculine-body-side','feminine-body-front','feminine-body-back','feminine-body-side','feminine-head-front','feminine-head-side'] as const;
-export type StandaloneAnatomyAssetId=typeof standaloneAnatomyAssetIds[number];
+export const standaloneAnatomyViewIds=['body-front','body-back','body-side','head-front','head-side','neck-front','neck-side','torso-front','torso-back','torso-side','upper-limb-front','upper-limb-side','hand-side','lower-limb-front','lower-limb-back','lower-limb-side','ankle-detail','foot-side'] as const;
+export type StandaloneAnatomyViewId=typeof standaloneAnatomyViewIds[number];
+export type StandaloneAnatomyAssetId=`${AnatomyModelFamilyId}-${StandaloneAnatomyViewId}`;
+export const standaloneAnatomyAssetIds:readonly StandaloneAnatomyAssetId[]=Object.freeze(anatomyModelFamilyIds.flatMap(family=>standaloneAnatomyViewIds.map(view=>`${family}-${view}` as StandaloneAnatomyAssetId)));
 
 export const anatomyAnchors=Object.freeze({
  crown:'Crown of head',floor:'Level floor',headWidest:'Widest head level',neckBase:'Base of neck',chestLevel:'Full chest level',bustLevel:'Full bust level',underbustLine:'Underbust line',naturalWaist:'Natural waist',naturalWaistFront:'Natural waist at centre front',naturalWaistBack:'Natural waist at centre back',fullHip:'Full hip level',shoulderLeft:'Left shoulder point',shoulderRight:'Right shoulder point',backLeft:'Left back landmark',backRight:'Right back landmark',neckBack:'Back neck point',crotch:'Crotch junction',elbow:'Elbow',upperArmFull:'Fullest upper arm',forearmFull:'Fullest forearm',wristCrease:'Wrist crease',fingertip:'Longest fingertip',palmBase:'Palm base',palmLeft:'Left palm edge',palmRight:'Right palm edge',palmCentre:'Palm circumference centre',knuckleBase:'Knuckle or ring base',thighFull:'Full thigh level',kneeCentre:'Knee centre',calfFull:'Full calf level',ankle:'Ankle landmark',heel:'Back of heel',longestToe:'Longest toe',ballInner:'Inner ball joint',ballOuter:'Outer ball joint',ballCentre:'Ball circumference centre',instep:'Highest instep point',instepLoopCentre:'Instep circumference centre',soleBelowInstep:'Sole beneath instep',scale:'Standing scales'
@@ -42,7 +44,7 @@ export const anatomySymbolAnchors:Readonly<Record<AnatomySymbolId,Readonly<Parti
  'hand-detail':points({wristCrease:[120,202]}),
  'hand-palm':points({palmBase:[120,202],fingertip:[126,18],palmLeft:[86,137],palmRight:[157,137],palmCentre:[121,137]}),
  'finger-detail':points({knuckleBase:[120,151]}),
- 'lower-limb-front':points({naturalWaist:[120,38],crotch:[120,86],thighFull:[101,105],kneeCentre:[103,145],floor:[103,218]}),
+ 'lower-limb-front':points({naturalWaist:[120,38],crotch:[120,86],thighFull:[101,105],kneeCentre:[103,145],floor:[103,218],ankle:[103,218]}),
  'lower-limb-back':points({naturalWaist:[120,38],crotch:[120,86],calfFull:[139,169]}),
  'lower-limb-side':points({naturalWaist:[108,39],naturalWaistFront:[132,42],naturalWaistBack:[96,42],crotch:[119,91],floor:[128,218]}),
  'lower-limb-detail':points({ankle:[120,191]}),
@@ -50,18 +52,35 @@ export const anatomySymbolAnchors:Readonly<Record<AnatomySymbolId,Readonly<Parti
  'foot-side':points({heel:[62,184],ballInner:[157,167],instep:[126,105],instepLoopCentre:[126,147],soleBelowInstep:[126,190]})
 } as Partial<Record<AnatomySymbolId,Readonly<Partial<Record<AnatomyAnchorId,AnatomyPoint>>>>> as Record<AnatomySymbolId,Readonly<Partial<Record<AnatomyAnchorId,AnatomyPoint>>>>);
 
-export const standaloneAnatomyAnchors:Readonly<Record<StandaloneAnatomyAssetId,Readonly<Partial<Record<AnatomyAnchorId,AnatomyPoint>>>>>=Object.freeze({
+export const standaloneAnatomyAnchors:Readonly<Partial<Record<StandaloneAnatomyAssetId,Readonly<Partial<Record<AnatomyAnchorId,AnatomyPoint>>>>>>=Object.freeze({
  'neutral-body-side':points({crown:[25.75,.59],floor:[28,279.2]}),
  'neutral-body-front':points({naturalWaist:[58.44,104]}),
  'neutral-body-back':points({shoulderLeft:[26,58],shoulderRight:[91,58]}),
+ 'neutral-head-side':points({headWidest:[545,299]}),
+ 'neutral-neck-front':points({neckBase:[500,492]}),
+ 'neutral-torso-front':points({chestLevel:[500,285],bustLevel:[500,354],underbustLine:[500,417],naturalWaist:[500,467],fullHip:[500,700]}),
+ 'neutral-upper-limb-side':points({neckBack:[630,95],shoulderRight:[661,123],elbow:[615,483],wristCrease:[484,680]}),
+ 'neutral-lower-limb-front':points({crotch:[500,95],ankle:[500,834]}),
+ 'neutral-torso-side':points({naturalWaistFront:[596,468],crotch:[520,757],naturalWaistBack:[463,468]}),
  'masculine-body-side':points({crown:[30.5,1.5],floor:[30.5,334]}),
  'masculine-body-front':points({naturalWaist:[63.6,143]}),
  'masculine-body-back':points({shoulderLeft:[18,67],shoulderRight:[112.5,67]}),
+ 'masculine-head-side':points({headWidest:[520,322]}),
+ 'masculine-neck-front':points({neckBase:[500,500]}),
+ 'masculine-torso-front':points({chestLevel:[500,337],bustLevel:[500,401],underbustLine:[500,471],naturalWaist:[500,577],fullHip:[500,738]}),
+ 'masculine-upper-limb-side':points({neckBack:[620,90],shoulderRight:[653,112],elbow:[632,440],wristCrease:[539,713]}),
+ 'masculine-lower-limb-front':points({crotch:[500,52],ankle:[500,831]}),
+ 'masculine-torso-side':points({naturalWaistFront:[595,563],crotch:[522,783],naturalWaistBack:[448,563]}),
  'feminine-body-side':points({crown:[48.3,1],floor:[48,586]}),
  'feminine-body-front':points({naturalWaist:[84.5,218]}),
  'feminine-body-back':points({shoulderLeft:[21,124],shoulderRight:[150,124]}),
  'feminine-head-front':points({}),
- 'feminine-head-side':points({})
+ 'feminine-head-side':points({headWidest:[220,190]}),
+ 'feminine-neck-front':points({neckBase:[500,500]}),
+ 'feminine-torso-front':points({chestLevel:[500,247],bustLevel:[500,306],underbustLine:[500,366],naturalWaist:[500,465],fullHip:[500,720]}),
+ 'feminine-upper-limb-side':points({neckBack:[625,115],shoulderRight:[663,136],elbow:[626,495],wristCrease:[532,761]}),
+ 'feminine-lower-limb-front':points({crotch:[500,9],ankle:[500,787]}),
+ 'feminine-torso-side':points({naturalWaistFront:[599,467],crotch:[539,713],naturalWaistBack:[494,467]})
 });
 
 type Seed={fact:string;region:AnatomyRegionId;orientation:AnatomyOrientation;geometry:AnatomyOverlayDefinition;title:string;description:string};
@@ -89,7 +108,7 @@ const seeds:readonly Seed[]=[
  {fact:'hand-width',region:'hand',orientation:'palm',geometry:line('point-to-point','palmLeft','palmRight'),title:'Hand width',description:'Palm view showing a solid path across the widest part of the palm.'},
  {fact:'palm-circumference',region:'hand',orientation:'palm',geometry:circumference('palmCentre',36,10,'palmRight'),title:'Palm circumference',description:'Palm view showing a closed path around the knuckles while excluding the thumb.'},
  {fact:'finger-circumference',region:'finger',orientation:'detail',geometry:circumference('knuckleBase',27,8),title:'Finger circumference',description:'Finger close-up showing a closed ring-position path and the knuckle landmark.'},
- {fact:'inseam',region:'lower-limb',orientation:'front',geometry:line('vertical','crotch','floor'),title:'Inseam',description:'Front lower-body view showing a vertical path from crotch junction down the inside leg.'},
+ {fact:'inseam',region:'lower-limb',orientation:'front',geometry:line('vertical','crotch','ankle'),title:'Inseam',description:'Front lower-body view showing a vertical path from crotch junction down the inside leg.'},
  {fact:'outseam',region:'lower-limb',orientation:'side',geometry:line('vertical','naturalWaist','floor'),title:'Outseam',description:'Side lower-body view showing a path from natural waist down the outside leg.'},
  {fact:'rise',region:'lower-limb',orientation:'side',geometry:{kind:'curved',start:'naturalWaistFront',via:['crotch'],end:'naturalWaistBack',direction:true},title:'Rise',description:'Side lower-body view showing a curved path from front waist through the crotch to back waist.'},
  {fact:'front-rise',region:'lower-limb',orientation:'front',geometry:line('vertical','naturalWaist','crotch'),title:'Front rise',description:'Front lower-body view showing a path from centre-front natural waist to crotch junction.'},
@@ -110,25 +129,28 @@ const byFact=new Map<string,AnatomyIllustrationDefinition>(anatomyIllustrations.
 export const anatomyIllustrationFor=(canonicalFactId:string|undefined):AnatomyIllustrationDefinition|undefined=>canonicalFactId?byFact.get(canonicalFactId):undefined;
 export const anatomyPointFor=(symbolId:AnatomySymbolId,anchor:AnatomyAnchorId):AnatomyPoint|undefined=>anatomySymbolAnchors[symbolId]?.[anchor];
 
-const standalone=(assetId:StandaloneAnatomyAssetId,familyId:AnatomyModelFamilyId,assetRef:AnatomyFamilyAssetDefinition['assetRef'],viewBox:string,extra:Pick<AnatomyFamilyAssetDefinition,'guideX'|'circumferences'>={}):AnatomyFamilyAssetDefinition=>Object.freeze({assetId,familyId,assetVersion:'v1',assetRef,viewBox,anchors:standaloneAnatomyAnchors[assetId],...extra});
-export const anatomyFamilyAssets:readonly AnatomyFamilyAssetDefinition[]=Object.freeze([
- standalone('neutral-body-side','neutral','/anatomy/neutral/body-side.svg','0 0 46.56 279.84',{guideX:1.5}),
- standalone('neutral-body-front','neutral','/anatomy/neutral/body-front.svg','0 0 116.88 280.08',{circumferences:{naturalWaist:{radiusX:22,radiusY:5.5}}}),
- standalone('neutral-body-back','neutral','/anatomy/neutral/body-back.svg','0 0 116.88 279.6'),
- standalone('masculine-body-side','masculine','/anatomy/masculine/body-side.svg','0 0 60.96 335.76',{guideX:4}),
- standalone('masculine-body-front','masculine','/anatomy/masculine/body-front.svg','0 0 127.2 329.52',{circumferences:{naturalWaist:{radiusX:41,radiusY:10}}}),
- standalone('masculine-body-back','masculine','/anatomy/masculine/body-back.svg','0 0 130.56 340.08'),
- standalone('feminine-body-side','feminine','/anatomy/feminine/body-side.svg','0 0 96 587',{guideX:92}),
- standalone('feminine-body-front','feminine','/anatomy/feminine/body-front.svg','0 0 169 589.18',{circumferences:{naturalWaist:{radiusX:52,radiusY:13}}}),
- standalone('feminine-body-back','feminine','/anatomy/feminine/body-back.svg','0 0 171 586.33'),
- standalone('feminine-head-front','feminine','/anatomy/feminine/head-front.svg','0 0 445 581'),
- standalone('feminine-head-side','feminine','/anatomy/feminine/head-side.svg','0 0 397 580')
-]);
+const nativeViewBoxes:Readonly<Partial<Record<StandaloneAnatomyAssetId,string>>>=Object.freeze({
+ 'neutral-body-front':'0 0 116.88 280.08','neutral-body-back':'0 0 116.88 279.6','neutral-body-side':'0 0 46.56 279.84',
+ 'masculine-body-front':'0 0 127.2 329.52','masculine-body-back':'0 0 130.56 340.08','masculine-body-side':'0 0 60.96 335.76',
+ 'feminine-body-front':'0 0 169 589.18','feminine-body-back':'0 0 171 586.33','feminine-body-side':'0 0 96 587','feminine-head-front':'0 0 445 581','feminine-head-side':'0 0 397 580'
+});
+const assetExtras:Readonly<Partial<Record<StandaloneAnatomyAssetId,Pick<AnatomyFamilyAssetDefinition,'guideX'|'circumferences'>>>>=Object.freeze({
+ 'neutral-body-side':{guideX:1.5},'neutral-body-front':{circumferences:{naturalWaist:{radiusX:22,radiusY:5.5}}},
+ 'masculine-body-side':{guideX:4},'masculine-body-front':{circumferences:{naturalWaist:{radiusX:41,radiusY:10}}},
+ 'feminine-body-side':{guideX:92},'feminine-body-front':{circumferences:{naturalWaist:{radiusX:52,radiusY:13}}},
+ 'neutral-head-side':{circumferences:{headWidest:{radiusX:220,radiusY:190}}},'masculine-head-side':{circumferences:{headWidest:{radiusX:210,radiusY:205}}},'feminine-head-side':{circumferences:{headWidest:{radiusX:170,radiusY:120}}},
+ 'neutral-neck-front':{circumferences:{neckBase:{radiusX:196,radiusY:75}}},'masculine-neck-front':{circumferences:{neckBase:{radiusX:200,radiusY:70}}},'feminine-neck-front':{circumferences:{neckBase:{radiusX:187,radiusY:65}}},
+ 'neutral-torso-front':{circumferences:{chestLevel:{radiusX:190,radiusY:45},bustLevel:{radiusX:200,radiusY:48},underbustLine:{radiusX:175,radiusY:42},fullHip:{radiusX:215,radiusY:52}}},
+ 'masculine-torso-front':{circumferences:{chestLevel:{radiusX:210,radiusY:48},bustLevel:{radiusX:220,radiusY:50},underbustLine:{radiusX:195,radiusY:44},fullHip:{radiusX:230,radiusY:54}}},
+ 'feminine-torso-front':{circumferences:{chestLevel:{radiusX:210,radiusY:48},bustLevel:{radiusX:225,radiusY:52},underbustLine:{radiusX:200,radiusY:45},fullHip:{radiusX:240,radiusY:56}}}
+});
+const standalone=(assetId:StandaloneAnatomyAssetId,familyId:AnatomyModelFamilyId,view:StandaloneAnatomyViewId):AnatomyFamilyAssetDefinition=>Object.freeze({assetId,familyId,assetVersion:'v1',assetRef:`/anatomy/${familyId}/${view}.svg`,viewBox:nativeViewBoxes[assetId]??'0 0 1000 1000',anchors:standaloneAnatomyAnchors[assetId]??points({}),...assetExtras[assetId]});
+export const anatomyFamilyAssets:readonly AnatomyFamilyAssetDefinition[]=Object.freeze(anatomyModelFamilyIds.flatMap(family=>standaloneAnatomyViewIds.map(view=>standalone(`${family}-${view}`,family,view))));
 const familyAssetsById=new Map(anatomyFamilyAssets.map(asset=>[asset.assetId,asset]));
+const mappedViews:Readonly<Record<string,StandaloneAnatomyViewId>>=Object.freeze({'measurement.height':'body-side','measurement.waist-circumference':'body-front','measurement.shoulder-width':'body-back','measurement.head-circumference':'head-side','measurement.neck-circumference':'neck-front','measurement.chest-circumference':'torso-front','measurement.bust-circumference':'torso-front','measurement.underbust-circumference':'torso-front','measurement.hip-circumference':'torso-front','measurement.sleeve-length':'upper-limb-side','measurement.inseam':'lower-limb-front','measurement.rise':'torso-side'});
+const mappedAssetsFor=(family:AnatomyModelFamilyId):Readonly<Partial<Record<string,StandaloneAnatomyAssetId>>> =>Object.freeze(Object.fromEntries(Object.entries(mappedViews).map(([fact,view])=>[fact,`${family}-${view}` as StandaloneAnatomyAssetId])));
 const familyFactAssets:Readonly<Record<AnatomyModelFamilyId,Readonly<Partial<Record<string,StandaloneAnatomyAssetId>>>>>=Object.freeze({
- neutral:{'measurement.height':'neutral-body-side','measurement.waist-circumference':'neutral-body-front','measurement.shoulder-width':'neutral-body-back'},
- masculine:{'measurement.height':'masculine-body-side','measurement.waist-circumference':'masculine-body-front','measurement.shoulder-width':'masculine-body-back'},
- feminine:{'measurement.height':'feminine-body-side','measurement.waist-circumference':'feminine-body-front','measurement.shoulder-width':'feminine-body-back'}
+ neutral:mappedAssetsFor('neutral'),masculine:mappedAssetsFor('masculine'),feminine:mappedAssetsFor('feminine')
 });
 const neutralCircumferences:Readonly<Record<string,Readonly<{radiusX:number;radiusY:number}>>>=Object.freeze({'measurement.head-circumference':{radiusX:51,radiusY:15},'measurement.neck-circumference':{radiusX:29,radiusY:9},'measurement.chest-circumference':{radiusX:49,radiusY:12},'measurement.bust-circumference':{radiusX:53,radiusY:13},'measurement.underbust-circumference':{radiusX:47,radiusY:11},'measurement.waist-circumference':{radiusX:41,radiusY:10},'measurement.hip-circumference':{radiusX:54,radiusY:13},'measurement.upper-arm-circumference':{radiusX:21,radiusY:7},'measurement.forearm-circumference':{radiusX:18,radiusY:6},'measurement.wrist-circumference':{radiusX:17,radiusY:6},'measurement.palm-circumference':{radiusX:36,radiusY:10},'measurement.finger-circumference':{radiusX:27,radiusY:8},'measurement.thigh-circumference':{radiusX:27,radiusY:8},'measurement.knee-circumference':{radiusX:22,radiusY:7},'measurement.calf-circumference':{radiusX:25,radiusY:8},'measurement.ankle-circumference':{radiusX:18,radiusY:6},'measurement.foot-circumference':{radiusX:34,radiusY:12},'measurement.instep-circumference':{radiusX:31,radiusY:42}});
 export const anatomyFamilyFrom=(value:string|null|undefined):AnatomyModelFamilyId=>anatomyModelFamilyIds.includes(value as AnatomyModelFamilyId)?value as AnatomyModelFamilyId:'neutral';
