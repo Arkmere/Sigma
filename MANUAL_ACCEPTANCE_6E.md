@@ -1,5 +1,17 @@
 # Ticket 6E manual acceptance
 
+## Ticket 6E — COMPLETE
+
+The authoritative final state is three permanent presentation families (`neutral`, `masculine`, `feminine`), a shared 22-view vocabulary, 66 runtime standalone SVGs, and standalone coverage for all 35 guided facts (105 family/fact resolutions). Family-specific assets and coordinates resolve only at render time and no family or illustration metadata enters schema 4, records, backups, imports, sharing, profiles, or preferences. Standalone artwork is safely hydrated into the same contained SVG coordinate system as its overlay and retains fact-specific accessible title and description.
+
+`anatomy-model.svg` is intentionally retained as a defensive Neutral fallback for a genuinely unmapped illustration definition. It is not used by any current guided fact and is not scheduled for removal. The localhost `anatomyFamily` query is development comparison only; the production family selector and Ticket 6F remain deferred.
+
+Final closure smoke matrix: desktop light — Neutral Height, Back width, Hand length and Foot width; Masculine Waist circumference and Palm circumference; Feminine Bust circumference and Finger circumference. At 360 CSS pixels — Neutral Arm length and Foot circumference. In dark mode — one torso, hand and foot example. Confirm correct family artwork, aligned overlay, contained figure, no blank state or horizontal overflow, initially collapsed guidance, and form values preserved through disclosure toggling.
+
+Closure browser review completed 2026-08-07. The complete desktop-light matrix resolved the expected Neutral, Masculine and Feminine standalone files, hydrated without sprite `<use>` or failure state, remained 256 CSS pixels wide with zero page overflow, began collapsed, and retained the synthetic value after opening. Representative torso, hand and foot checks also passed in dark mode. The closure run could not obtain a reliable 360 CSS-pixel viewport override, so the unchanged renderer's most recent 360-pixel evidence remains the completed Ticket 6E5 review below; Neutral Arm length and Foot circumference are outstanding for a fresh closure-specific mobile rerun.
+
+The Ticket 6E1–6E4 sections below are historical acceptance snapshots. Their statements about then-unmapped facts or prototype use describe those intermediate baselines only and do not override this completed state.
+
 Use synthetic data only. Run `npm run dev`, then exercise Waist circumference, Shoulder width, Inseam, Finger circumference and Foot length in creation and saved-record guidance. Confirm entry precedes the initially closed disclosure; closing and reopening it preserves value, unit, date, source and notes. Confirm circumference, point-to-point, vertical/curved, endpoint and landmark conventions match the adjacent text.
 
 Share one synthetic canonical measurement read-only, verify only its authorised record and guidance are visible, revoke it, and verify both disappear. Custom and non-canonical legacy facts must show no canonical art.

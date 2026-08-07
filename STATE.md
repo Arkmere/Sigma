@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Ticket 6D canonical measurement guidance is implemented. MI-20 interactive anatomy navigation remains deferred. Tickets 6E and 6F, and Ticket 7, have not started.
+Ticket 6E anatomy illustrations are complete across all current guided facts and presentation families. MI-20 interactive anatomy navigation and Ticket 6F remain deferred; Ticket 7 has not started.
 
 ## Completed
 
@@ -133,7 +133,7 @@ Ticket 6D canonical measurement guidance is implemented. MI-20 interactive anato
 - Invalid JSON, invalid version-1 structures and broken profile references are surfaced as corrupt without modifying raw storage.
 - Unknown schema versions are surfaced as unsupported and routed through a dedicated migration boundary.
 - Unsafe repository states are read-only until reset so creating a profile cannot overwrite unreadable personal data.
-- Schema version is 3. Version-1 and version-2 facts migrate unchanged; legacy managed profiles remain unassigned. Conversion results remain transient and never enter storage or backups.
+- Schema version is 4. Earlier facts migrate without fabricated canonical IDs; legacy managed profiles remain unassigned. Conversion results and anatomy presentation metadata remain transient and never enter storage or backups.
 
 ## Next Planned Work
 
@@ -141,9 +141,12 @@ Ticket 6F: anatomy-based canonical-fact discovery using the Ticket 6E registry. 
 
 ## Ticket 6E anatomy illustration system
 
+**Ticket 6E — COMPLETE.**
+
 - Permanent presentation family IDs are `neutral`, `masculine`, and `feminine`, with asset version recorded separately in static registry metadata. Canonical fact semantics do not contain family or asset details.
 - Neutral, Masculine and Feminine share a 22-view standalone V1 vocabulary. All 35 guided facts have standalone three-family coverage; specialised scale-front, hand-palm, finger-detail and foot-top views cover Weight, wrist/hand/palm, Finger circumference and top-foot measurements.
-- The transitional Neutral sprite is no longer required by any guided fact. Its renderer branch remains a safe fallback only for a truly unmapped illustration definition; custom and ambiguous records continue to resolve no illustration.
+- The legacy Neutral sprite is intentionally retained and is not scheduled for removal. No guided fact uses it; its renderer branch is a defensive fallback only for a genuinely unmapped illustration definition, while custom and ambiguous records continue to resolve no illustration.
+- The typed registries establish 35 guided facts × 3 families = 105 standalone resolutions and 22 views × 3 families = 66 runtime standalone SVGs. Production builds retain those 66 files plus `anatomy-model.svg` for the defensive fallback.
 - Standalone SVG presentation is bounded by the shared guidance figure viewport, preventing hydrated regional artwork from painting over later content while preserving its declared viewBox, responsive aspect ratio and common model/overlay coordinate system.
 - Localhost query parameters (`?anatomyFamily=neutral`, `masculine`, or `feminine`) provide development-only comparison. Family choice is presentation-only and is absent from schema 4, records, backups, imports, sharing, profiles, and preferences. Production model selection and Ticket 6F remain deferred.
 
@@ -151,6 +154,7 @@ Ticket 6F: anatomy-based canonical-fact discovery using the Ticket 6E registry. 
 - All 35 rich-guidance physical facts resolve by canonical ID to typed region, orientation, anchors, overlay semantics and accessible text. Custom and ambiguous legacy records resolve no illustration.
 - Creation and saved-record disclosures reuse the same static registry. Illustrations remain absent from schema-4 records and backups.
 - Semantic CSS bounds figures responsively and distinguishes paths with line patterns and marker shapes, not colour alone. Manual browser review remains required using `MANUAL_ACCEPTANCE_6E.md`.
+- Standalone artwork is validated, namespaced and hydrated inline before its overlay is revealed. The artwork and overlay share a contained SVG coordinate system; each meaningful figure exposes a fact-specific title and description and remains outside the tab order.
 - Anchor IDs now drive rendering through per-symbol coordinate maps. All 35 facts have distinct geometry definitions, and front/back/side/top/palm/sole assets are deliberate drawings rather than compressed or rotated substitutes. Overlay legends contain only active semantics.
 
 ## Ticket 6B manual-inspection findings
