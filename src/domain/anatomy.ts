@@ -59,18 +59,30 @@ export const standaloneAnatomyAnchors:Readonly<Partial<Record<StandaloneAnatomyA
  'neutral-head-side':points({headWidest:[545,299]}),
  'neutral-neck-front':points({neckBase:[500,492]}),
  'neutral-torso-front':points({chestLevel:[500,285],bustLevel:[500,354],underbustLine:[500,417],naturalWaist:[500,467],fullHip:[500,700]}),
+ 'neutral-torso-back':points({backLeft:[390,326],backRight:[610,326]}),
  'neutral-upper-limb-side':points({neckBack:[630,95],shoulderRight:[661,123],elbow:[615,483],wristCrease:[484,680]}),
- 'neutral-lower-limb-front':points({crotch:[500,95],ankle:[500,834]}),
- 'neutral-torso-side':points({naturalWaistFront:[596,468],crotch:[520,757],naturalWaistBack:[463,468]}),
+ 'neutral-upper-limb-front':points({shoulderRight:[690,185],elbow:[746,470],wristCrease:[778,735],upperArmFull:[716,310],forearmFull:[758,575]}),
+ 'neutral-lower-limb-front':points({naturalWaist:[500,4],crotch:[500,95],thighFull:[405,190],kneeCentre:[401,438],ankle:[500,834]}),
+ 'neutral-lower-limb-back':points({naturalWaist:[500,4],crotch:[500,88],calfFull:[603,590]}),
+ 'neutral-lower-limb-side':points({naturalWaist:[500,4],floor:[514,855]}),
+ 'neutral-ankle-detail':points({ankle:[500,646]}),
+ 'neutral-foot-side':points({heel:[940,742],ballInner:[290,760],instep:[620,470],instepLoopCentre:[620,665],soleBelowInstep:[620,786]}),
+ 'neutral-torso-side':points({neckBack:[468,80],naturalWaist:[530,468],naturalWaistFront:[596,468],crotch:[520,757],naturalWaistBack:[463,468]}),
  'masculine-body-side':points({crown:[30.5,1.5],floor:[30.5,334]}),
  'masculine-body-front':points({naturalWaist:[63.6,143]}),
  'masculine-body-back':points({shoulderLeft:[18,67],shoulderRight:[112.5,67]}),
  'masculine-head-side':points({headWidest:[520,322]}),
  'masculine-neck-front':points({neckBase:[500,500]}),
  'masculine-torso-front':points({chestLevel:[500,337],bustLevel:[500,401],underbustLine:[500,471],naturalWaist:[500,577],fullHip:[500,738]}),
+ 'masculine-torso-back':points({backLeft:[365,327],backRight:[635,327]}),
  'masculine-upper-limb-side':points({neckBack:[620,90],shoulderRight:[653,112],elbow:[632,440],wristCrease:[539,713]}),
- 'masculine-lower-limb-front':points({crotch:[500,52],ankle:[500,831]}),
- 'masculine-torso-side':points({naturalWaistFront:[595,563],crotch:[522,783],naturalWaistBack:[448,563]}),
+ 'masculine-upper-limb-front':points({shoulderRight:[714,170],elbow:[765,438],wristCrease:[803,724],upperArmFull:[737,293],forearmFull:[782,552]}),
+ 'masculine-lower-limb-front':points({naturalWaist:[500,4],crotch:[500,52],thighFull:[394,164],kneeCentre:[397,435],ankle:[500,831]}),
+ 'masculine-lower-limb-back':points({naturalWaist:[500,4],crotch:[500,49],calfFull:[607,580]}),
+ 'masculine-lower-limb-side':points({naturalWaist:[500,4],floor:[515,862]}),
+ 'masculine-ankle-detail':points({ankle:[500,640]}),
+ 'masculine-foot-side':points({heel:[944,735],ballInner:[278,761],instep:[620,455],instepLoopCentre:[620,658],soleBelowInstep:[620,784]}),
+ 'masculine-torso-side':points({neckBack:[465,67],naturalWaist:[522,563],naturalWaistFront:[595,563],crotch:[522,783],naturalWaistBack:[448,563]}),
  'feminine-body-side':points({crown:[48.3,1],floor:[48,586]}),
  'feminine-body-front':points({naturalWaist:[84.5,218]}),
  'feminine-body-back':points({shoulderLeft:[21,124],shoulderRight:[150,124]}),
@@ -78,9 +90,15 @@ export const standaloneAnatomyAnchors:Readonly<Partial<Record<StandaloneAnatomyA
  'feminine-head-side':points({headWidest:[220,190]}),
  'feminine-neck-front':points({neckBase:[500,500]}),
  'feminine-torso-front':points({chestLevel:[500,247],bustLevel:[500,306],underbustLine:[500,366],naturalWaist:[500,465],fullHip:[500,720]}),
+ 'feminine-torso-back':points({backLeft:[398,310],backRight:[602,310]}),
  'feminine-upper-limb-side':points({neckBack:[625,115],shoulderRight:[663,136],elbow:[626,495],wristCrease:[532,761]}),
- 'feminine-lower-limb-front':points({crotch:[500,9],ankle:[500,787]}),
- 'feminine-torso-side':points({naturalWaistFront:[599,467],crotch:[539,713],naturalWaistBack:[494,467]})
+ 'feminine-upper-limb-front':points({shoulderRight:[682,164],elbow:[733,474],wristCrease:[772,758],upperArmFull:[706,300],forearmFull:[751,595]}),
+ 'feminine-lower-limb-front':points({naturalWaist:[500,4],crotch:[500,9],thighFull:[407,118],kneeCentre:[408,421],ankle:[500,787]}),
+ 'feminine-lower-limb-back':points({naturalWaist:[500,4],crotch:[500,9],calfFull:[594,574]}),
+ 'feminine-lower-limb-side':points({naturalWaist:[500,4],floor:[520,850]}),
+ 'feminine-ankle-detail':points({ankle:[500,650]}),
+ 'feminine-foot-side':points({heel:[940,748],ballInner:[286,770],instep:[615,465],instepLoopCentre:[615,670],soleBelowInstep:[615,794]}),
+ 'feminine-torso-side':points({neckBack:[480,84],naturalWaist:[545,467],naturalWaistFront:[599,467],crotch:[539,713],naturalWaistBack:[494,467]})
 });
 
 type Seed={fact:string;region:AnatomyRegionId;orientation:AnatomyOrientation;geometry:AnatomyOverlayDefinition;title:string;description:string};
@@ -143,11 +161,16 @@ const assetExtras:Readonly<Partial<Record<StandaloneAnatomyAssetId,Pick<AnatomyF
  'neutral-torso-front':{circumferences:{chestLevel:{radiusX:190,radiusY:45},bustLevel:{radiusX:200,radiusY:48},underbustLine:{radiusX:175,radiusY:42},fullHip:{radiusX:215,radiusY:52}}},
  'masculine-torso-front':{circumferences:{chestLevel:{radiusX:210,radiusY:48},bustLevel:{radiusX:220,radiusY:50},underbustLine:{radiusX:195,radiusY:44},fullHip:{radiusX:230,radiusY:54}}},
  'feminine-torso-front':{circumferences:{chestLevel:{radiusX:210,radiusY:48},bustLevel:{radiusX:225,radiusY:52},underbustLine:{radiusX:200,radiusY:45},fullHip:{radiusX:240,radiusY:56}}}
+ ,'neutral-upper-limb-front':{circumferences:{upperArmFull:{radiusX:58,radiusY:20},forearmFull:{radiusX:48,radiusY:17}}},'masculine-upper-limb-front':{circumferences:{upperArmFull:{radiusX:64,radiusY:22},forearmFull:{radiusX:52,radiusY:18}}},'feminine-upper-limb-front':{circumferences:{upperArmFull:{radiusX:52,radiusY:18},forearmFull:{radiusX:44,radiusY:16}}}
+ ,'neutral-lower-limb-front':{circumferences:{thighFull:{radiusX:106,radiusY:30},kneeCentre:{radiusX:74,radiusY:23}}},'masculine-lower-limb-front':{circumferences:{thighFull:{radiusX:116,radiusY:32},kneeCentre:{radiusX:82,radiusY:24}}},'feminine-lower-limb-front':{circumferences:{thighFull:{radiusX:105,radiusY:30},kneeCentre:{radiusX:72,radiusY:22}}}
+ ,'neutral-lower-limb-back':{circumferences:{calfFull:{radiusX:75,radiusY:24}}},'masculine-lower-limb-back':{circumferences:{calfFull:{radiusX:82,radiusY:26}}},'feminine-lower-limb-back':{circumferences:{calfFull:{radiusX:70,radiusY:23}}}
+ ,'neutral-ankle-detail':{circumferences:{ankle:{radiusX:185,radiusY:55}}},'masculine-ankle-detail':{circumferences:{ankle:{radiusX:190,radiusY:58}}},'feminine-ankle-detail':{circumferences:{ankle:{radiusX:178,radiusY:52}}}
+ ,'neutral-foot-side':{circumferences:{instepLoopCentre:{radiusX:145,radiusY:180}}},'masculine-foot-side':{circumferences:{instepLoopCentre:{radiusX:150,radiusY:185}}},'feminine-foot-side':{circumferences:{instepLoopCentre:{radiusX:142,radiusY:180}}}
 });
 const standalone=(assetId:StandaloneAnatomyAssetId,familyId:AnatomyModelFamilyId,view:StandaloneAnatomyViewId):AnatomyFamilyAssetDefinition=>Object.freeze({assetId,familyId,assetVersion:'v1',assetRef:`/anatomy/${familyId}/${view}.svg`,viewBox:nativeViewBoxes[assetId]??'0 0 1000 1000',anchors:standaloneAnatomyAnchors[assetId]??points({}),...assetExtras[assetId]});
 export const anatomyFamilyAssets:readonly AnatomyFamilyAssetDefinition[]=Object.freeze(anatomyModelFamilyIds.flatMap(family=>standaloneAnatomyViewIds.map(view=>standalone(`${family}-${view}`,family,view))));
 const familyAssetsById=new Map(anatomyFamilyAssets.map(asset=>[asset.assetId,asset]));
-const mappedViews:Readonly<Record<string,StandaloneAnatomyViewId>>=Object.freeze({'measurement.height':'body-side','measurement.waist-circumference':'body-front','measurement.shoulder-width':'body-back','measurement.head-circumference':'head-side','measurement.neck-circumference':'neck-front','measurement.chest-circumference':'torso-front','measurement.bust-circumference':'torso-front','measurement.underbust-circumference':'torso-front','measurement.hip-circumference':'torso-front','measurement.sleeve-length':'upper-limb-side','measurement.inseam':'lower-limb-front','measurement.rise':'torso-side'});
+const mappedViews:Readonly<Record<string,StandaloneAnatomyViewId>>=Object.freeze({'measurement.height':'body-side','measurement.waist-circumference':'body-front','measurement.shoulder-width':'body-back','measurement.head-circumference':'head-side','measurement.neck-circumference':'neck-front','measurement.chest-circumference':'torso-front','measurement.bust-circumference':'torso-front','measurement.underbust-circumference':'torso-front','measurement.hip-circumference':'torso-front','measurement.sleeve-length':'upper-limb-side','measurement.inseam':'lower-limb-front','measurement.rise':'torso-side','measurement.back-width':'torso-back','measurement.torso-length':'torso-side','measurement.arm-length':'upper-limb-front','measurement.upper-arm-circumference':'upper-limb-front','measurement.forearm-circumference':'upper-limb-front','measurement.outseam':'lower-limb-side','measurement.front-rise':'lower-limb-front','measurement.back-rise':'lower-limb-back','measurement.thigh-circumference':'lower-limb-front','measurement.knee-circumference':'lower-limb-front','measurement.calf-circumference':'lower-limb-back','measurement.ankle-circumference':'ankle-detail','measurement.arch-length':'foot-side','measurement.instep-circumference':'foot-side'});
 const mappedAssetsFor=(family:AnatomyModelFamilyId):Readonly<Partial<Record<string,StandaloneAnatomyAssetId>>> =>Object.freeze(Object.fromEntries(Object.entries(mappedViews).map(([fact,view])=>[fact,`${family}-${view}` as StandaloneAnatomyAssetId])));
 const familyFactAssets:Readonly<Record<AnatomyModelFamilyId,Readonly<Partial<Record<string,StandaloneAnatomyAssetId>>>>>=Object.freeze({
  neutral:mappedAssetsFor('neutral'),masculine:mappedAssetsFor('masculine'),feminine:mappedAssetsFor('feminine')
