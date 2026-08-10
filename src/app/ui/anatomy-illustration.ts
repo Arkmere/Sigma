@@ -1,4 +1,5 @@
 import { anatomyAssetFor, anatomyFamilyFrom, anatomyIllustrationFor, type AnatomyAnchorId, type AnatomyIllustrationDefinition, type AnatomyModelFamilyId, type AnatomyPoint, type ResolvedAnatomyAssetDefinition } from '../../domain/anatomy.js';
+import { readAnatomyFamilyPreference } from '../../lib/preferences.js';
 import { escapeHtml as e } from './html.js';
 
 const point=(asset:ResolvedAnatomyAssetDefinition,anchor:AnatomyAnchorId):AnatomyPoint=>{const value=asset.anchors[anchor];if(!value)throw new Error(`Missing anatomy coordinate: ${asset.assetId}.${anchor}`);return value;};
@@ -25,7 +26,7 @@ function legendFor(item:AnatomyIllustrationDefinition):string{
  if(item.geometry.kind==='curved')return `<p class="anatomy-key"><span class="key-solid">Path with distinct start and end</span>${item.geometry.direction?'<span class="key-direction">Direction</span>':''}</p>`;
  return '<p class="anatomy-key"><span class="key-solid">Solid path with distinct start and end</span></p>';
 }
-export const anatomyFamilyFromLocation=(location:Pick<Location,'hostname'|'search'>|undefined=globalThis.location):AnatomyModelFamilyId=>location&&['localhost','127.0.0.1'].includes(location.hostname)?anatomyFamilyFrom(new URLSearchParams(location.search).get('anatomyFamily')):'neutral';
+export const anatomyFamilyFromLocation=(location:Pick<Location,'hostname'|'search'>|undefined=globalThis.location,stored:AnatomyModelFamilyId=readAnatomyFamilyPreference()):AnatomyModelFamilyId=>{if(location&&['localhost','127.0.0.1'].includes(location.hostname)){const query=new URLSearchParams(location.search).get('anatomyFamily');if(query==='neutral'||query==='masculine'||query==='feminine')return query;}return anatomyFamilyFrom(stored);};
 export function renderAnatomyIllustration(canonicalFactId:string|undefined,family:AnatomyModelFamilyId=anatomyFamilyFromLocation()):string{
  const item=anatomyIllustrationFor(canonicalFactId);if(!item)return '';
  const asset=anatomyAssetFor(item,family),titleId=`${item.id}-title`,descId=`${item.id}-desc`,standalone=!asset.symbolId;

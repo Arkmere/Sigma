@@ -1,7 +1,7 @@
 import { type RouteId } from './content.js';
 import { LocalStorageRepository } from '../data/repository.js';
 import { SigmaService } from '../domain/service.js';
-import { readThemePreference, resolveTheme, type ThemePreference, writeThemePreference } from '../lib/preferences.js';
+import { readAnatomyFamilyPreference, readThemePreference, resolveTheme, type AnatomyFamilyPreference, type ThemePreference, writeAnatomyFamilyPreference, writeThemePreference } from '../lib/preferences.js';
 import { addHistory, downloadBackup, saveProfile, saveRecord } from './ui/actions.js';
 import { field } from './ui/html.js';
 import { renderProfiles } from './ui/profiles.js';
@@ -20,13 +20,13 @@ import { renderSources } from './ui/sources.js';
 import { hydrateStandaloneAnatomy } from './ui/anatomy-illustration.js';
 
 export function mountApp(root: HTMLElement, service = new SigmaService(new LocalStorageRepository(globalThis.localStorage))): void {
-  let route: RouteId = 'profiles'; let theme = readThemePreference(); let entitlement=readDemoEntitlement(); let mode: RecordMode = 'measurement'; let search = ''; let category = ''; let editingProfileId = ''; let profileFormOpen=false; let recordFormOpen=false; let familyView:FamilyView='overview'; let notice:AppNotice|undefined;
+  let route: RouteId = 'profiles'; let theme = readThemePreference(); let anatomyFamily=readAnatomyFamilyPreference(); let entitlement=readDemoEntitlement(); let mode: RecordMode = 'measurement'; let search = ''; let category = ''; let editingProfileId = ''; let profileFormOpen=false; let recordFormOpen=false; let familyView:FamilyView='overview'; let notice:AppNotice|undefined;
   const permissions=new PermissionDemoService(globalThis.localStorage); let permissionFlow:PermissionKind|undefined; let selectedSourceId:SourceId|undefined; let sourceNotice=''; let importCandidates:ImportCandidate[]=[]; let excluded=0;
   let grantComposer:GrantComposerState=emptyGrantComposerState();
   const render = () => {
     const resolved = resolveTheme(theme, globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false);
-    document.documentElement.dataset.theme = resolved; document.documentElement.dataset.themePreference = theme; writeThemePreference(theme);
-    const content = route === 'profiles' ? renderProfiles(service, editingProfileId,profileFormOpen) : route === 'measurements' ? renderRecords(service, mode, search, category,recordFormOpen) : route === 'sources' ? renderSources(service,permissions,permissionFlow,importCandidates,excluded,sourceNotice) : route === 'privacy' ? renderPrivacy(service,permissions) : route === 'settings' ? renderSettings(service, theme, resolved, entitlement,permissions) : renderFamilyScreen(service, entitlement,grantComposer,familyView);
+    document.documentElement.dataset.theme = resolved; document.documentElement.dataset.themePreference = theme; writeThemePreference(theme);writeAnatomyFamilyPreference(anatomyFamily);
+    const content = route === 'profiles' ? renderProfiles(service, editingProfileId,profileFormOpen) : route === 'measurements' ? renderRecords(service, mode, search, category,recordFormOpen) : route === 'sources' ? renderSources(service,permissions,permissionFlow,importCandidates,excluded,sourceNotice) : route === 'privacy' ? renderPrivacy(service,permissions) : route === 'settings' ? renderSettings(service, theme, resolved, anatomyFamily, entitlement,permissions) : renderFamilyScreen(service, entitlement,grantComposer,familyView);
     root.innerHTML = renderShell(route, service, content,notice);
     void hydrateStandaloneAnatomy(root);
     const run=(action:()=>void,message?:string)=>{try{action();if(message)notice={kind:'success',message};render();}catch(error){if(error instanceof Error){notice={kind:'error',message:error.message};render();return;}throw error;}};
@@ -39,6 +39,7 @@ export function mountApp(root: HTMLElement, service = new SigmaService(new Local
     root.querySelector<HTMLSelectElement>('#record-mode-select')?.addEventListener('change',(event)=>{mode=(event.currentTarget as HTMLSelectElement).value as RecordMode;recordFormOpen=false;render();});
     bind(root,'[data-family-view]','click',(element)=>{notice=undefined;familyView=element.dataset.familyView as FamilyView;route='family';render();});
     root.querySelectorAll<HTMLInputElement>('input[name="theme"]').forEach((input) => input.addEventListener('change', () => { theme = input.value as ThemePreference; render(); }));
+    root.querySelectorAll<HTMLInputElement>('input[name="anatomyFamily"]').forEach((input) => input.addEventListener('change', () => { anatomyFamily = input.value as AnatomyFamilyPreference; writeAnatomyFamilyPreference(anatomyFamily); render(); }));
     root.querySelector<HTMLSelectElement>('#entitlement-select')?.addEventListener('change',(event)=>{entitlement=(event.currentTarget as HTMLSelectElement).value as DemoEntitlement;writeDemoEntitlement(entitlement);render();});
     root.querySelectorAll<HTMLSelectElement>('#actor-select,#context-actor-select').forEach(select=>select.addEventListener('change',(event)=>run(()=>{service.selectActor((event.currentTarget as HTMLSelectElement).value);grantComposer=emptyGrantComposerState();familyView='overview';search='';category='';recordFormOpen=false;},'Acting local adult switched.')));
     root.querySelector<HTMLSelectElement>('#context-profile-select')?.addEventListener('change',(event)=>run(()=>service.selectProfile((event.currentTarget as HTMLSelectElement).value)));

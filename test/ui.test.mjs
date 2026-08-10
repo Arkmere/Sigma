@@ -33,6 +33,8 @@ class Root {
     if (selector === '[data-route]') for (const match of this.html.matchAll(/data-route="([^"]+)"/g)) controls.push(new Control({ route: match[1] }));
     if (selector === '[data-source-action]') for (const match of this.html.matchAll(/data-source-action="([^"]+)"/g)) controls.push(new Control({ sourceAction: match[1] }));
     if (selector === '[data-permission-allow]') for (const match of this.html.matchAll(/data-permission-allow="([^"]+)"/g)) controls.push(new Control({ permissionAllow: match[1] }));
+    if (selector === 'input[name="theme"]') for (const match of this.html.matchAll(/<input type="radio" name="theme" value="([^"]+)"/g)) controls.push(new Control({},match[1]));
+    if (selector === 'input[name="anatomyFamily"]') for (const match of this.html.matchAll(/<input type="radio" name="anatomyFamily" value="([^"]+)"/g)) controls.push(new Control({},match[1]));
     if (selector === '#actor-select,#context-actor-select' && this.html.includes('id="context-actor-select"')) controls.push(new Control({}));
     if (selector === '#reset-data' && this.html.includes('id="reset-data"')) controls.push(new Control({}));
     this.controls.set(selector, controls);
@@ -53,6 +55,12 @@ test('shell renders truthful empty states and switches every primary route witho
     const button = root.querySelectorAll('[data-route]').find((item) => item.dataset.route === route);
     assert.ok(button); button.click(); assert.match(root.textContent, expected);
   }
+});
+
+test('Settings exposes an accessible device-local anatomy presentation preference',()=>{
+ const local=storage();globalThis.localStorage=local;globalThis.matchMedia=()=>({matches:false});globalThis.document={documentElement:{dataset:{}}};const root=new Root();mountApp(root,new SigmaService(new LocalStorageRepository(local)));root.querySelectorAll('[data-route]').find(item=>item.dataset.route==='settings').click();
+ assert.match(root.innerHTML,/<fieldset class="theme-options anatomy-family-options"[^>]*aria-describedby=/);assert.match(root.innerHTML,/<legend>Anatomy illustration<\/legend>/);assert.match(root.textContent,/changes illustrations only/i);assert.doesNotMatch(root.innerHTML,/profile-form[\s\S]*anatomyFamily/);
+ const choices=root.querySelectorAll('input[name="anatomyFamily"]');assert.deepEqual(choices.map(choice=>choice.value),['neutral','masculine','feminine']);choices[1].change('masculine');assert.equal(local.getItem('sigma.anatomyFamily'),'masculine');assert.match(root.innerHTML,/name="anatomyFamily" value="masculine" checked/);
 });
 
 test('unsafe storage renders warnings and reset still requires confirmation', () => {
