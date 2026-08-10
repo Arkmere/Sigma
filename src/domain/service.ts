@@ -196,7 +196,7 @@ export class SigmaService {
     };
   }
 
-  exportBackup(): SigmaBackup { return { product: 'Sigma', exportedAt: this.now(), ...this.snapshot(), schemaVersion: DATA_SCHEMA_VERSION }; }
+  exportBackup(): SigmaBackup { this.ensureWritable(); return { product: 'Sigma', exportedAt: this.now(), ...this.snapshot(), schemaVersion: DATA_SCHEMA_VERSION }; }
   existingCanonicalMeasurement(profileId:string,canonicalFactId:string):PhysicalMeasurement|undefined {
     const record=this.data.measurements.find((item)=>item.profileId===profileId&&item.canonicalFactId===canonicalFactId);
     return record?structuredClone(record):undefined;

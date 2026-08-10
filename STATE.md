@@ -2,11 +2,12 @@
 
 ## Current Phase
 
-Ticket 6F anatomy discovery is complete through Ticket 6F3. The existing 35 guided physical measurements use one progressive metadata-derived hierarchy, path-driven whole-body and Hand/Fingers/Foot detail views, and the existing canonical-form handoff. Ticket 7 remains deferred.
+Ticket 6F anatomy discovery is complete through Ticket 6F3. The existing 35 guided physical measurements use one progressive metadata-derived hierarchy, path-driven whole-body and Hand/Fingers/Foot detail views, and the existing canonical-form handoff. Ticket 7A and 7B are complete.
 
 ## Completed
 
 - Ticket 7A restores `canonicalFactId` as the single authority for canonical semantics. Canonical standard-size and brand/product edits validate category and permitted sizing systems before persistence, derive fixed registry metadata, and leave custom records flexible. Supported external fields map explicitly to canonical IDs, and imported physical values join the existing canonical measurement history. Schema remains version 4; historical uncatalogued imports are not rewritten.
+- Ticket 7B hardens schema-3 migration and schema-4 runtime validation. Automatic mapping requires exact metadata and compatible stored units/systems, and same-profile physical collisions remain uncatalogued. IDs are unique only within their defined entity scopes; record grants must target owner records; canonical physical and standard-size labels cannot drift. Malformed version discriminators are corrupt, unknown finite versions are unsupported, unsafe raw data remains unchanged, and backup export is blocked in unsafe states.
 - Ticket 6F1 adds optional “Browse by body” discovery alongside canonical search. `anatomyPath` supplies the hierarchy; eligibility requires an anatomy-tagged canonical measurement with both existing structured guidance and an existing illustration definition, yielding the current 35 supported facts.
 - Body-region and measurement choices are semantic buttons with progressive back navigation. Selecting a result changes the existing canonical picker and its unit/guidance state; there is no second editor.
 - Discovery and current-path state are transient presentation state, independent of Neutral/Masculine/Feminine artwork, and absent from schema 4 and backups.

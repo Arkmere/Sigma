@@ -16,6 +16,7 @@ const timestampPair = (value: Record<string, unknown>) => string(value.createdAt
 
 export function migrateStoredData(raw: unknown): MigrationResult {
   if (!object(raw)) return corrupt('Stored value is not an object.');
+  if (typeof raw.schemaVersion !== 'number' || !Number.isFinite(raw.schemaVersion)) return corrupt('schemaVersion must be a finite number.');
   if (raw.schemaVersion === 1) {
     const reason = validateVersionOne(raw); if (reason) return corrupt(reason);
     const migrated = { ...structuredClone(raw), schemaVersion: DATA_SCHEMA_VERSION, activeActorProfileId: undefined, families: [], familyMemberships: [], adultConnections: [], sharingGrants: [] } as unknown as SigmaData;
@@ -64,12 +65,13 @@ function validateVersionTwo(root: Record<string, unknown>,allowCorrections=false
     if ((c.status === 'active'||c.status === 'declined') && (!nonEmpty(c.respondedAt)||c.disconnectedAt!==undefined||c.disconnectedByProfileId!==undefined)) return 'A responded connection has inconsistent metadata.';
     if (c.status === 'disconnected' && (!nonEmpty(c.respondedAt)||!nonEmpty(c.disconnectedAt)||!nonEmpty(c.disconnectedByProfileId)||![c.initiatorProfileId,c.recipientProfileId].includes(c.disconnectedByProfileId))) return 'A disconnected connection has invalid metadata.';
   }
+  if (![families, memberships, root.adultConnections as Record<string,unknown>[], root.sharingGrants as Record<string,unknown>[]].every(uniqueIds)) return 'Entity IDs must be unique within each collection.';
   const records = [...root.measurements as Record<string,unknown>[], ...root.standardSizes as Record<string,unknown>[], ...root.brandFits as Record<string,unknown>[]];
   for (const g of root.sharingGrants as Record<string, unknown>[]) {
     const owner=profile(g.ownerProfileId); const grantor=profile(g.grantedByProfileId);
     if (!requiredStrings(g,['id','ownerProfileId','recipientProfileId','grantedByProfileId','status','grantedAt']) || !owner || profile(g.recipientProfileId)?.profileType !== 'independent' || grantor?.profileType !== 'independent' || !['active','revoked'].includes(String(g.status)) || !object(g.scope)) return 'A sharing grant is invalid.';
     if ((owner.profileType==='independent'&&g.grantedByProfileId!==g.ownerProfileId)||(owner.profileType==='managed'&&(!Array.isArray(owner.managedByProfileIds)||!owner.managedByProfileIds.includes(g.grantedByProfileId)))) return 'A sharing grant has impossible grant authority.';
-    const s=g.scope; if (s.type === 'category' ? !nonEmpty(s.category) : s.type === 'record_kind' ? !['standard_size','brand_fit'].includes(String(s.recordKind)) : s.type === 'record' ? !['measurement','standard_size','brand_fit'].includes(String(s.recordKind)) || !records.some((r)=>r.id===s.recordId && r.kind===s.recordKind) : s.type !== 'profile') return 'A sharing scope is invalid.';
+    const s=g.scope; if (s.type === 'category' ? !nonEmpty(s.category) : s.type === 'record_kind' ? !['standard_size','brand_fit'].includes(String(s.recordKind)) : s.type === 'record' ? !['measurement','standard_size','brand_fit'].includes(String(s.recordKind)) || !records.some((r)=>r.id===s.recordId && r.kind===s.recordKind && r.profileId===g.ownerProfileId) : s.type !== 'profile') return 'A sharing scope is invalid.';
     if ((g.status === 'active' && (g.revokedAt !== undefined || g.revokedByProfileId !== undefined)) || (g.status === 'revoked' && (!nonEmpty(g.revokedAt) || profile(g.revokedByProfileId)?.profileType!=='independent'))) return 'Grant revocation metadata is inconsistent.';
     if (g.status==='revoked'&&((owner.profileType==='independent'&&g.revokedByProfileId!==owner.id)||(owner.profileType==='managed'&&(!Array.isArray(owner.managedByProfileIds)||!owner.managedByProfileIds.includes(g.revokedByProfileId))))) return 'Grant revocation actor was not authorised.';
     if (g.status==='active'&&owner.profileType==='managed'&&owner.managedKind==='child'&&!memberships.some((m)=>m.profileId===owner.id&&memberships.some((n)=>n.familyId===m.familyId&&n.profileId===g.recipientProfileId))) return 'An active child grant recipient must share a Family with the child.';
@@ -87,9 +89,11 @@ function validateVersionOne(root: Record<string, unknown>,allowCorrections=false
   for (const record of root.measurements) {
     if (!object(record) || !requiredStrings(record, ['id', 'profileId', 'measurementType', 'category', 'label', 'createdAt', 'updatedAt']) || record.kind !== 'measurement' || record.visibility !== 'private' || !Array.isArray(record.values)) return 'A physical measurement has an invalid required field.';
     for (const value of record.values) if (!validMeasurementValue(value,allowCorrections,root.profiles as Record<string,unknown>[])) return 'A physical measurement value has an invalid field.';
+    if (!uniqueIds(record.values as Record<string,unknown>[])) return 'Measurement value IDs must be unique within their measurement.';
   }
   for (const record of root.standardSizes) if (!validStandardSize(record)) return 'A standard-size record has an invalid field.';
   for (const record of root.brandFits) if (!validBrandFit(record)) return 'A brand-fit record has an invalid field.';
+  if (![root.profiles, root.measurements, root.standardSizes, root.brandFits].every((collection)=>uniqueIds(collection as Record<string,unknown>[]))) return 'Entity IDs must be unique within each collection.';
   const profileIds = new Set(root.profiles.map((profile) => (profile as Record<string, unknown>).id));
   if (root.activeProfileId !== undefined && !profileIds.has(root.activeProfileId)) return 'The active profile does not exist.';
   for (const collection of [root.measurements, root.standardSizes, root.brandFits]) for (const record of collection) if (!profileIds.has((record as Record<string, unknown>).profileId)) return 'A record refers to a profile that does not exist.';
@@ -122,9 +126,20 @@ const safeMappings = new Map([
   ['standard_size|Ring size|Jewellery','size.ring-size'],
 ]);
 function applySafeCanonicalMappings(root:Record<string,unknown>):void {
-  for(const record of root.measurements as Record<string,unknown>[]) {
+  const measurements=root.measurements as Record<string,unknown>[];
+  const candidates=new Map<Record<string,unknown>,string>();
+  const counts=new Map<string,number>();
+  for(const record of measurements) {
     const id=safeMappings.get(`measurement|${record.measurementType}|${record.category}|${record.label}`);
-    if(id)record.canonicalFactId=id;
+    const definition=id?canonicalFactById(id):undefined;
+    if(id&&definition?.measurement&&(record.values as Record<string,unknown>[]).every((value)=>definition.measurement!.permittedUnits.includes(String(value.unit)))) {
+      candidates.set(record,id);
+      const key=`${record.profileId}|${id}`;
+      counts.set(key,(counts.get(key)??0)+1);
+    }
+  }
+  for(const [record,id] of candidates) {
+    if(counts.get(`${record.profileId}|${id}`)===1)record.canonicalFactId=id;
   }
   for(const record of root.standardSizes as Record<string,unknown>[]) {
     const id=safeMappings.get(`standard_size|${record.label}|${record.category}`);
@@ -137,7 +152,7 @@ function validateCanonicalRecords(root:Record<string,unknown>):string|undefined 
     if(record.canonicalFactId===undefined)continue;
     if(!nonEmpty(record.canonicalFactId))return 'A canonical fact identifier is invalid.';
     const definition=canonicalFactById(record.canonicalFactId);
-    if(!definition||definition.recordKind!=='measurement'||definition.category!==record.category||definition.measurement?.measurementType!==record.measurementType)return 'A physical measurement has inconsistent canonical metadata.';
+    if(!definition||definition.recordKind!=='measurement'||definition.category!==record.category||definition.label!==record.label||definition.measurement?.measurementType!==record.measurementType)return 'A physical measurement has inconsistent canonical metadata.';
     for(const value of record.values as Record<string,unknown>[])if(!definition.measurement!.permittedUnits.includes(String(value.unit)))return 'A canonical measurement uses an invalid unit.';
   }
   for(const [collection,kind] of [[root.standardSizes,'standard_size'],[root.brandFits,'brand_product_fact']] as const) {
@@ -146,12 +161,13 @@ function validateCanonicalRecords(root:Record<string,unknown>):string|undefined 
       if(!nonEmpty(record.canonicalFactId))return 'A canonical fact identifier is invalid.';
       const definition=canonicalFactById(record.canonicalFactId);
       const systems=definition?.standardSize?.permittedSystems??definition?.brandProduct?.permittedSystems;
-      if(!definition||definition.recordKind!==kind||definition.category!==record.category||(systems&&!systems.includes(String(record.sizingSystem))))return 'A size record has inconsistent canonical metadata.';
+      if(!definition||definition.recordKind!==kind||definition.category!==record.category||(kind==='standard_size'&&definition.label!==record.label)||(systems&&!systems.includes(String(record.sizingSystem))))return 'A size record has inconsistent canonical metadata.';
     }
   }
 }
 
 function requiredStrings(value: Record<string, unknown>, keys: string[]): boolean { return keys.every((key) => nonEmpty(value[key])); }
+function uniqueIds(values: Record<string,unknown>[]):boolean { const ids=values.map((value)=>value.id); return ids.every(nonEmpty)&&new Set(ids).size===ids.length; }
 function validExternalProvenance(value:Record<string,unknown>):boolean {
   if (!optionalString(value.sourceItemId) || !optionalString(value.sourceDevice) || (value.sourceId !== undefined && !sourceIds.has(String(value.sourceId))) || (value.confidence !== undefined && (typeof value.confidence !== 'number' || !Number.isFinite(value.confidence) || value.confidence < 0 || value.confidence > 1))) return false;
   if ((value.sourceItemId !== undefined && !nonEmpty(value.sourceItemId)) || (value.sourceDevice !== undefined && !nonEmpty(value.sourceDevice))) return false;
