@@ -642,6 +642,13 @@ button.danger {
 .anatomy-region-choice, .anatomy-fact-choice { min-width: 0; min-height: 3rem; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .anatomy-fact-choice { align-items: start; flex-direction: column; }
 .anatomy-fact-choice span { color: var(--text-muted); font-size: .82rem; font-weight: 500; }
+.anatomy-browser-layout { display: grid; grid-template-columns: minmax(11rem,16rem) minmax(0,1fr); gap: var(--space-4); align-items: start; }
+.anatomy-navigator { width: 100%; margin: 0; }
+.anatomy-navigator-svg { touch-action: manipulation; }
+.anatomy-navigation-region rect { fill: color-mix(in srgb, var(--accent) 12%, transparent); stroke: var(--accent-strong); stroke-width: 1.5; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; cursor: pointer; transition: fill .15s ease,stroke-width .15s ease,opacity .15s ease; }
+.anatomy-navigation-region:hover rect { fill: color-mix(in srgb, var(--accent) 24%, transparent); stroke-width: 2.5; }
+.anatomy-navigation-region[data-selected] rect { fill: color-mix(in srgb, var(--accent) 30%, transparent); stroke-width: 3; stroke-dasharray: none; }
+.anatomy-semantic-browser { min-width: 0; }
 #creation-guidance { margin-top: var(--space-4); }
 .creation-guidance-disclosure { padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); }
 .creation-guidance-disclosure[open] { background: var(--bg-subtle); }
@@ -723,6 +730,8 @@ summary {
 }
 
 @media (max-width: 620px) {
+  .anatomy-browser-layout { grid-template-columns: 1fr; }
+  .anatomy-navigator { width: min(100%,13rem); }
   .anatomy-region-list, .anatomy-fact-list { grid-template-columns: 1fr; }
   .toolbar,
   .form-row,

@@ -8,6 +8,7 @@ import { categoryOptions, empty, escapeHtml as e, formatDate, header, sourceLabe
 import { renderAnatomyIllustration } from './anatomy-illustration.js';
 import { anatomyChildRegions, anatomyFactsAtPath, anatomyPathKey } from '../../domain/anatomy-discovery.js';
 import type { AnatomyPath } from '../../domain/canonical-facts.js';
+import { renderAnatomyNavigator } from './anatomy-navigator.js';
 export type RecordMode = 'measurement' | 'standard_size' | 'brand_fit';
 export const modeLabel = (mode: RecordMode) => mode === 'measurement' ? 'Physical measurements' : mode === 'standard_size' ? 'Standard sizes' : 'Brand & product facts';
 export function renderRecords(service: SigmaService, mode: RecordMode, search: string, category: string, creationOpen=true): string {
@@ -48,7 +49,7 @@ function renderAnatomyDiscovery():string {
     children.forEach(visit);
   };
   visit(['Body']);
-  return `<div class="anatomy-discovery"><button type="button" class="secondary" id="open-anatomy-discovery" aria-expanded="false" aria-controls="anatomy-discovery-browser">Browse by body</button><section id="anatomy-discovery-browser" hidden aria-label="Browse measurements by body region"><div class="anatomy-browser-heading"><div><p class="eyebrow">Find measurement</p><h3>Browse by body</h3></div><button type="button" class="quiet" id="close-anatomy-discovery">Close</button></div><p class="metadata">Choose a body region, then select a measurement. This does not change the measurement form.</p>${panels.join('')}</section></div>`;
+  return `<div class="anatomy-discovery"><button type="button" class="secondary" id="open-anatomy-discovery" aria-expanded="false" aria-controls="anatomy-discovery-browser">Browse by body</button><section id="anatomy-discovery-browser" hidden aria-label="Browse measurements by body region"><div class="anatomy-browser-heading"><div><p class="eyebrow">Find measurement</p><h3>Browse by body</h3></div><button type="button" class="quiet" id="close-anatomy-discovery">Close</button></div><p class="metadata">Choose a body region, then select a measurement. This does not change the measurement form.</p><div class="anatomy-browser-layout">${renderAnatomyNavigator()}<div class="anatomy-semantic-browser">${panels.join('')}</div></div></section></div>`;
 }
 function renderForm(profile: Profile, mode: RecordMode): string {
   const kind:CanonicalRecordKind=mode==='brand_fit'?'brand_product_fact':mode;
