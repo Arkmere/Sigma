@@ -2,7 +2,7 @@
 
 ## Current Phase
 
-Ticket 6F1 semantic anatomy discovery and Ticket 6F2 broad whole-body visual navigation are complete. The existing 35 guided physical measurements use one progressive metadata-derived hierarchy and canonical-form handoff. Deeper Hand, Fingers and Foot visual drill-down and Ticket 7 remain deferred.
+Ticket 6F anatomy discovery is complete through Ticket 6F3. The existing 35 guided physical measurements use one progressive metadata-derived hierarchy, path-driven whole-body and Hand/Fingers/Foot detail views, and the existing canonical-form handoff. Ticket 7 remains deferred.
 
 ## Completed
 
@@ -11,6 +11,7 @@ Ticket 6F1 semantic anatomy discovery and Ticket 6F2 broad whole-body visual nav
 - Discovery and current-path state are transient presentation state, independent of Neutral/Masculine/Feminine artwork, and absent from schema 4 and backups.
 - Ticket 6F2 adds a supplementary front-view whole-body surface for Head and neck, Torso, Upper limbs and Lower limbs. Family-specific generous hit geometry maps only to existing semantic paths, invokes the same 6F1 navigation action, and never maps facts.
 - The visual surface uses the selected Neutral/Masculine/Feminine `body-front` asset while region semantics remain identical. Existing semantic buttons remain the complete keyboard and assistive-technology equivalent; visual state is transient and schema remains 4.
+- Ticket 6F3 derives the active visual directly from the current semantic path: `upper-limb-front` exposes Hand, `hand-palm` exposes Fingers, `finger-detail` is terminal, `lower-limb-front` exposes Foot, and `foot-top` is terminal. Detail hit geometry is shared because these registered views use the same normalized coordinate system across families; root geometry remains family-specific. Visual metadata still contains paths only, semantic controls remain authoritative, and measurement selection still uses the canonical picker.
 
 - Ticket 6D adds structured, static guidance for 35 priority canonical physical measurements. Creation and saved-record views resolve the same content from `canonicalFactId`; guidance is not persisted or exported.
 - Canonical measurement creation prioritises “Record this measurement” fields and uses each definition’s declared default unit. “How to measure” follows as a closed disclosure with preparation and mistakes nested inside it.
@@ -143,7 +144,7 @@ Ticket 6F1 semantic anatomy discovery and Ticket 6F2 broad whole-body visual nav
 
 ## Next Planned Work
 
-Next 6F visual increment: optional deeper visual views or refinement. Hand, Fingers and Foot remain semantic-only; measurement overlays remain non-interactive.
+Ticket 6F closure assessment: the current canonical hierarchy now has coherent visual progression for every deeper region requested by the accepted scope, so no further 6F increment is required. Future visual refinement may be considered separately; measurement overlays remain non-interactive.
 
 ## Ticket 6E anatomy illustration system
 
