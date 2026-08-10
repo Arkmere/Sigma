@@ -6,6 +6,7 @@ import { canonicalFactById } from '../dist/domain/canonical-facts.js';
 import { LocalStorageRepository } from '../dist/data/repository.js';
 import { SigmaService } from '../dist/domain/service.js';
 import { renderRecords } from '../dist/app/ui/records.js';
+import { readFile } from 'node:fs/promises';
 
 const ids = (facts) => facts.map((fact) => fact.id);
 const childNames = (path) => anatomyChildRegions(path).map((child) => child.at(-1));
@@ -55,4 +56,16 @@ test('read-only profiles expose no anatomy discovery or record form and navigato
   const service=new SigmaService(new LocalStorageRepository(storage),()=> '2026-08-10T12:00:00Z',()=>`id-${++n}`),owner=service.createProfile({displayName:'Owner',profileType:'independent'}),viewer=service.createProfile({displayName:'Viewer',profileType:'independent'});const request=service.requestConnection(viewer.id);service.selectActor(viewer.id);service.respondConnection(request.id,true);service.selectActor(owner.id);service.grantAccess(owner.id,viewer.id,{type:'profile'});service.selectActor(viewer.id);service.selectProfile(owner.id);
   const html=renderRecords(service,'measurement','','');assert.doesNotMatch(html,/open-anatomy-discovery|record-form/);
   const backup=service.exportBackup();assert.equal(backup.schemaVersion,4);assert.doesNotMatch(JSON.stringify(backup),/discoveryMode|currentAnatomyPath|anatomy-discovery/);
+});
+
+test('back to Body has a visible semantic opener as its context-preserving focus target',async()=>{
+  const values=new Map(),storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,String(value)),removeItem:key=>values.delete(key)};
+  const service=new SigmaService(new LocalStorageRepository(storage),undefined,()=>crypto.randomUUID());service.createProfile({displayName:'Alex',profileType:'independent'});
+  const html=renderRecords(service,'measurement','','');
+  assert.match(html,/<button type="button" class="anatomy-region-choice" data-anatomy-path="Body &gt; Upper limbs" aria-label="Browse Upper limbs">/);
+  assert.match(html,/<button type="button" class="quiet anatomy-back" data-anatomy-path="Body" aria-label="Back to Body">/);
+  const controller=await readFile(new URL('../src/app/app.ts',import.meta.url),'utf8');
+  assert.match(controller,/isBack=element\.classList\.contains\('anatomy-back'\)/);
+  assert.match(controller,/isBack&&origin\?panel\?\.querySelector<HTMLElement>\(`\[data-anatomy-path="\$\{origin\}"\]`\)/);
+  assert.match(controller,/panel\?\.querySelector<HTMLElement>\('\[data-anatomy-fact\],\.anatomy-region-choice'\)/);
 });
