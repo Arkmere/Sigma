@@ -6,6 +6,7 @@ import { demoPayload, evaluateDemoPayload, evaluateExternalDatum, evaluateSource
 import { PermissionDemoService, PERMISSION_DEMO_STORAGE_KEY, permissionExplanations } from '../dist/permissions/service.js';
 import { LocalStorageRepository, DATA_STORAGE_KEY } from '../dist/data/repository.js';
 import { SigmaService } from '../dist/domain/service.js';
+import { canonicalFactById } from '../dist/domain/canonical-facts.js';
 import { migrateStoredData } from '../dist/data/migrations.js';
 
 const storage=()=>{const values=new Map();return{values,getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,String(v)),removeItem:k=>values.delete(k)}};
@@ -30,7 +31,7 @@ test('explicit allowlist accepts catalogued facts and rejects unrelated and malf
 
 test('demo payload filters unrelated fields and imports only confirmed individual facts with provenance and duplicate protection',()=>{
  const results=evaluateDemoPayload(),accepted=results.filter(x=>x.status==='accepted'),rejected=results.filter(x=>x.status==='rejected');
- assert.equal(demoPayload.length,8);assert.equal(accepted.length,4);assert.equal(rejected.length,4);
+ assert.equal(demoPayload.length,9);assert.equal(accepted.length,5);assert.equal(rejected.length,4);
  const {service}=fixture(),profile=service.createProfile({displayName:'Alex',profileType:'independent'});
  assert.equal(service.snapshot().measurements.length,0);
  importCandidate(service,profile.id,accepted[0].candidate);
@@ -38,7 +39,7 @@ test('demo payload filters unrelated fields and imports only confirmed individua
  assert.equal(service.snapshot().measurements.length,1);assert.equal(value.sourceId,'measurement_device');assert.equal(value.sourceDevice,'Sigma demo device');assert.equal(value.originalValue,178);assert.equal(value.derivation.kind,'direct');
  assert.throws(()=>importCandidate(service,profile.id,accepted[0].candidate),/already imported/);
  importCandidate(service,profile.id,{...accepted[0].candidate,sourceItemId:'different-item'});
- assert.equal(service.snapshot().measurements.length,2);
+ assert.equal(service.snapshot().measurements.length,1);assert.equal(service.snapshot().measurements[0].values.length,2);
 });
 
 test('import authority is independently enforced for managed and read-only profiles',()=>{
@@ -80,7 +81,7 @@ test('declared shoe and ring sizes import through the operational demo source wi
  assert.equal(clothing.status,'accepted');assert.equal(shoe.status,'accepted');assert.equal(clothing.candidate.targetKind,'standard_size');assert.equal(shoe.candidate.targetKind,'standard_size');
  const {service}=fixture(),profile=service.createProfile({displayName:'Alex',profileType:'independent'});
  importCandidate(service,profile.id,clothing.candidate);const record=service.snapshot().standardSizes[0];
- assert.deepEqual({profileId:record.profileId,category:record.category,label:record.label,sizingSystem:record.sizingSystem,sizeValue:record.sizeValue,sourceId:record.sourceId,sourceItemId:record.sourceItemId,sourceDevice:record.sourceDevice,confidence:record.confidence,derivation:record.derivation},{profileId:profile.id,category:'Footwear',label:'Shoe size',sizingSystem:'UK',sizeValue:'9',sourceId:'measurement_device',sourceItemId:'size-1',sourceDevice:'Demo sizing device',confidence:0.9,derivation:{kind:'direct',method:undefined,inputDescription:undefined}});
+ assert.deepEqual({profileId:record.profileId,canonicalFactId:record.canonicalFactId,category:record.category,label:record.label,sizingSystem:record.sizingSystem,sizeValue:record.sizeValue,sourceId:record.sourceId,sourceItemId:record.sourceItemId,sourceDevice:record.sourceDevice,confidence:record.confidence,derivation:record.derivation},{profileId:profile.id,canonicalFactId:'size.shoe-size',category:'Footwear',label:'Shoe size',sizingSystem:'UK',sizeValue:'9',sourceId:'measurement_device',sourceItemId:'size-1',sourceDevice:'Demo sizing device',confidence:0.9,derivation:{kind:'direct',method:undefined,inputDescription:undefined}});
  assert.equal(record.recordedAt,'2026-07-01');assert.equal(migrateStoredData(service.snapshot()).status,'ok');
  assert.throws(()=>importCandidate(service,profile.id,clothing.candidate),/already imported/);
  importCandidate(service,profile.id,{...clothing.candidate,sourceItemId:'size-2'});assert.equal(service.snapshot().standardSizes.length,2);
@@ -109,10 +110,28 @@ test('confirmed import defensively rejects forged source capability and availabi
  const {service}=fixture(),profile=service.createProfile({displayName:'Alex',profileType:'independent'}),valid=evaluateDemoPayload().find(x=>x.status==='accepted').candidate;
  const forgeries=[
   {...valid,sourceId:'health_connect'}, {...valid,externalFieldId:'body.neck_circumference'}, {...valid,targetKind:'standard_size'},
-  {...valid,externalFieldId:'size.shoe'}, {...valid,sourceId:'unknown'}, {...valid,sourceItemId:' '},
+  {...valid,externalFieldId:'size.shoe'}, {...valid,canonicalFactId:'measurement.weight'}, {...valid,category:'Feet'}, {...valid,label:'Not height'},
+  {...valid,unitOrSystem:'bpm'}, {...valid,sourceId:'unknown'}, {...valid,sourceItemId:' '},
  ];
  for(const candidate of forgeries)assert.throws(()=>importCandidate(service,profile.id,candidate),/invalid/);
  assert.equal(service.snapshot().measurements.length,0);assert.equal(service.snapshot().standardSizes.length,0);
+});
+
+test('operational external fields resolve and persist one canonical authority with provenance',()=>{
+ const cases=[
+  ['body.height',180,'cm','measurement.height'],['body.weight',75,'kg','measurement.weight'],['body.waist_circumference',82,'cm','measurement.waist-circumference'],['foot.length',270,'mm','measurement.foot-length'],
+  ['size.shoe','9','UK','size.shoe-size'],['size.ring','54','ISO','size.ring-size'],
+ ];
+ const {service}=fixture(),profile=service.createProfile({displayName:'Casey',profileType:'independent'});
+ for(const [externalFieldId,value,unitOrSystem,canonicalFactId] of cases){const result=evaluateExternalDatum({externalFieldId,value,unitOrSystem,measuredAt:'2026-08-10',sourceItemId:`item-${externalFieldId}`,sourceDevice:'Demo device'});assert.equal(result.status,'accepted');assert.equal(result.candidate.canonicalFactId,canonicalFactId);importCandidate(service,profile.id,result.candidate);}
+ const data=service.snapshot();for(const record of [...data.measurements,...data.standardSizes]){const definition=canonicalFactById(record.canonicalFactId);assert.ok(definition);assert.equal(record.category,definition.category);if(record.kind==='measurement'){assert.equal(record.label,definition.label);assert.equal(record.measurementType,definition.measurement.measurementType);assert.equal(record.values[0].sourceId,'measurement_device');}else{assert.equal(record.label,definition.label);assert.equal(record.sourceId,'measurement_device');}}
+});
+
+test('manual and imported canonical measurements converge on one history record in either order',()=>{
+ const first=fixture(),profile=first.service.createProfile({displayName:'Morgan',profileType:'independent'}),height=evaluateExternalDatum({externalFieldId:'body.height',value:181,unitOrSystem:'cm',measuredAt:'2026-08-10',sourceItemId:'height-import'}).candidate;
+ first.service.addMeasurement({profileId:profile.id,canonicalFactId:'measurement.height',measurementType:'Height',category:'General body dimensions',label:'Height',value:180,unit:'cm',originalValue:180,originalUnit:'cm',measuredAt:'2026-08-09',recordedAt:'2026-08-09',sourceType:'manual',acquisitionMethod:'manual'});
+ importCandidate(first.service,profile.id,height);assert.equal(first.service.snapshot().measurements.length,1);assert.equal(first.service.snapshot().measurements[0].values.length,2);assert.equal(first.service.snapshot().measurements[0].values[1].sourceId,'measurement_device');
+ const second=fixture(),other=second.service.createProfile({displayName:'Riley',profileType:'independent'});importCandidate(second.service,other.id,{...height,sourceItemId:'height-first'});const record=second.service.snapshot().measurements[0];second.service.addMeasurementValue(record.id,{value:182,unit:'cm',originalValue:182,originalUnit:'cm',measuredAt:'2026-08-11',recordedAt:'2026-08-11',sourceType:'manual',acquisitionMethod:'manual'});assert.equal(second.service.snapshot().measurements.length,1);assert.equal(second.service.snapshot().measurements[0].values.length,2);
 });
 
 test('standard-size imports enforce Ticket 4A management authority',()=>{

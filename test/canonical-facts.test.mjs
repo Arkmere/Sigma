@@ -40,6 +40,25 @@ test('custom records omit canonical IDs',()=>{
   const custom=service.addStandardSize({profileId:profile.id,category:'Custom',label:'Stage costume code',sizingSystem:'Maker',sizeValue:'B',recordedAt:'2026-07-30',sourceType:'manual'});
   assert.equal(custom.canonicalFactId,undefined);
 });
+test('canonical size and brand edits enforce registry metadata and remain reloadable',()=>{
+  const local=storage();let n=0;const service=new SigmaService(new LocalStorageRepository(local),()=> '2026-08-10T12:00:00Z',()=>`edit-${++n}`);
+  const profile=service.createProfile({displayName:'Taylor',profileType:'independent'});
+  const size=service.addStandardSize({profileId:profile.id,canonicalFactId:'size.shoe-size',category:'Footwear',label:'Shoe size',sizingSystem:'UK',sizeValue:'9',recordedAt:'2026-08-10',sourceType:'manual'});
+  assert.throws(()=>service.updateStandardSize(size.id,{category:'Clothing',label:'Changed',sizingSystem:'UK',sizeValue:'10',notes:undefined}),/category/);
+  assert.throws(()=>service.updateStandardSize(size.id,{category:'Footwear',label:'Changed',sizingSystem:'Bespoke',sizeValue:'10',notes:undefined}),/Sizing system/);
+  const updatedSize=service.updateStandardSize(size.id,{category:'Footwear',label:'Changed',sizingSystem:'EU',sizeValue:'43',notes:'Roomy'});
+  assert.deepEqual({label:updatedSize.label,category:updatedSize.category,sizingSystem:updatedSize.sizingSystem,sizeValue:updatedSize.sizeValue,notes:updatedSize.notes},{label:'Shoe size',category:'Footwear',sizingSystem:'EU',sizeValue:'43',notes:'Roomy'});
+  const brand=service.addBrandFit({profileId:profile.id,canonicalFactId:'brand.shoe-size',category:'Footwear',brand:'Example',productName:'Runner',sizingSystem:'UK',sizeValue:'9',recordedAt:'2026-08-10',sourceType:'manual'});
+  assert.throws(()=>service.updateBrandFit(brand.id,{category:'Clothing',brand:'Example',productName:'Runner',productLine:undefined,sizingSystem:'UK',sizeValue:'9',fitNotes:undefined}),/category/);
+  assert.throws(()=>service.updateBrandFit(brand.id,{category:'Footwear',brand:'Example',productName:'Runner',productLine:undefined,sizingSystem:'Bespoke',sizeValue:'9',fitNotes:undefined}),/Sizing system/);
+  const updatedBrand=service.updateBrandFit(brand.id,{category:'Footwear',brand:'New brand',productName:'Trail',productLine:'One',sizingSystem:'EU',sizeValue:'43',fitNotes:'Secure'});
+  assert.deepEqual({category:updatedBrand.category,brand:updatedBrand.brand,productName:updatedBrand.productName,productLine:updatedBrand.productLine,sizingSystem:updatedBrand.sizingSystem,sizeValue:updatedBrand.sizeValue,fitNotes:updatedBrand.fitNotes},{category:'Footwear',brand:'New brand',productName:'Trail',productLine:'One',sizingSystem:'EU',sizeValue:'43',fitNotes:'Secure'});
+  const customSize=service.addStandardSize({profileId:profile.id,category:'Custom',label:'Costume code',sizingSystem:'Maker',sizeValue:'A',recordedAt:'2026-08-10',sourceType:'manual'});
+  assert.equal(service.updateStandardSize(customSize.id,{category:'Clothing',label:'Wardrobe code',sizingSystem:'Studio',sizeValue:'B',notes:undefined}).sizingSystem,'Studio');
+  const customBrand=service.addBrandFit({profileId:profile.id,category:'Custom',brand:'Workshop',sizingSystem:'Maker',sizeValue:'A',recordedAt:'2026-08-10',sourceType:'manual'});
+  assert.equal(service.updateBrandFit(customBrand.id,{category:'Equipment',brand:'Workshop 2',productName:undefined,productLine:undefined,sizingSystem:'Studio',sizeValue:'B',fitNotes:undefined}).category,'Equipment');
+  const reloaded=new LocalStorageRepository(local).load();assert.equal(reloaded.status,'ok');assert.equal(reloaded.data.standardSizes.length,2);assert.equal(reloaded.data.brandFits.length,2);
+});
 test('schema-3 migration maps only exact allowlisted facts and preserves ambiguous records',()=>{
   const values=new Map();const local={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,value),removeItem:key=>values.delete(key)};
   const raw={schemaVersion:3,activeProfileId:'p',activeActorProfileId:'p',profiles:[{id:'p',displayName:'Casey',profileType:'independent',createdAt:'x',updatedAt:'x'}],measurements:[

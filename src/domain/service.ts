@@ -152,7 +152,9 @@ export class SigmaService {
     this.ensureWritable();
     const record = this.data.standardSizes.find((item) => item.id === recordId); if (!record) throw new Error('Standard size not found.');
     this.requireManagement(record.profileId);
-    Object.assign(record, input, { updatedAt: this.now() }); this.persist(); return structuredClone(record);
+    this.validateCanonical(record.canonicalFactId,'standard_size',input.category,undefined,input.sizingSystem);
+    const definition=record.canonicalFactId?canonicalFactById(record.canonicalFactId):undefined;
+    Object.assign(record, input, definition?{category:definition.category,label:definition.label}:{}, { updatedAt: this.now() }); this.persist(); return structuredClone(record);
   }
 
   addBrandFit(input: Omit<BrandFit, 'id' | 'kind' | 'visibility' | 'createdAt' | 'updatedAt'>): BrandFit {
@@ -167,7 +169,9 @@ export class SigmaService {
     this.ensureWritable();
     const record = this.data.brandFits.find((item) => item.id === recordId); if (!record) throw new Error('Brand fit not found.');
     this.requireManagement(record.profileId);
-    Object.assign(record, input, { updatedAt: this.now() }); this.persist(); return structuredClone(record);
+    this.validateCanonical(record.canonicalFactId,'brand_product_fact',input.category,undefined,input.sizingSystem);
+    const definition=record.canonicalFactId?canonicalFactById(record.canonicalFactId):undefined;
+    Object.assign(record, input, definition?{category:definition.category}:{}, { updatedAt: this.now() }); this.persist(); return structuredClone(record);
   }
 
   records(profileId: string, query = '', category = '') {
