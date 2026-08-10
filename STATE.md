@@ -2,9 +2,13 @@
 
 ## Current Phase
 
-Ticket 6E anatomy illustrations are complete across all current guided facts and presentation families. MI-20 interactive anatomy navigation and Ticket 6F remain deferred; Ticket 7 has not started.
+Ticket 6F1 semantic anatomy discovery is complete. The existing 35 guided physical measurements can be found through a progressive metadata-derived body hierarchy and handed into the ordinary record form. Ticket 6F2 interactive visual anatomy and Ticket 7 remain deferred.
 
 ## Completed
+
+- Ticket 6F1 adds optional “Browse by body” discovery alongside canonical search. `anatomyPath` supplies the hierarchy; eligibility requires an anatomy-tagged canonical measurement with both existing structured guidance and an existing illustration definition, yielding the current 35 supported facts.
+- Body-region and measurement choices are semantic buttons with progressive back navigation. Selecting a result changes the existing canonical picker and its unit/guidance state; there is no second editor.
+- Discovery and current-path state are transient presentation state, independent of Neutral/Masculine/Feminine artwork, and absent from schema 4 and backups. Interactive SVG regions remain deferred to 6F2.
 
 - Ticket 6D adds structured, static guidance for 35 priority canonical physical measurements. Creation and saved-record views resolve the same content from `canonicalFactId`; guidance is not persisted or exported.
 - Canonical measurement creation prioritises “Record this measurement” fields and uses each definition’s declared default unit. “How to measure” follows as a closed disclosure with preparation and mistakes nested inside it.
@@ -137,7 +141,7 @@ Ticket 6E anatomy illustrations are complete across all current guided facts and
 
 ## Next Planned Work
 
-Ticket 6F: anatomy-based canonical-fact discovery using the Ticket 6E registry. No interactive region navigation is present yet.
+Ticket 6F2: interactive visual anatomy. Semantic anatomy discovery is complete in 6F1; SVG hotspots, overlays and visual region navigation are not implemented.
 
 ## Ticket 6E anatomy illustration system
 

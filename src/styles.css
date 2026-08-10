@@ -631,6 +631,17 @@ button.danger {
 .anatomy-key .key-direction::before { width: .7rem; height: .7rem; border-top: 2px solid currentColor; border-right: 2px solid currentColor; transform: rotate(45deg); }
 @media (forced-colors: active) { .anatomy-path,.anatomy-hidden-path,.anatomy-start,.anatomy-end,.anatomy-landmark,.anatomy-direction,.anatomy-scale { stroke: CanvasText; } }
 .record-entry-heading { margin: var(--space-3) 0 0; }
+.anatomy-discovery { display: grid; gap: var(--space-3); }
+#open-anatomy-discovery { justify-self: start; min-height: 2.75rem; }
+#anatomy-discovery-browser { padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-subtle); }
+.anatomy-browser-heading { display: flex; align-items: start; justify-content: space-between; gap: var(--space-3); }
+.anatomy-browser-heading h3, .anatomy-discovery-panel h4 { margin: 0; }
+.anatomy-discovery-panel { display: grid; gap: var(--space-3); }
+.anatomy-back { justify-self: start; min-height: 2.75rem; }
+.anatomy-region-list, .anatomy-fact-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--space-2); }
+.anatomy-region-choice, .anatomy-fact-choice { min-width: 0; min-height: 3rem; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.anatomy-fact-choice { align-items: start; flex-direction: column; }
+.anatomy-fact-choice span { color: var(--text-muted); font-size: .82rem; font-weight: 500; }
 #creation-guidance { margin-top: var(--space-4); }
 .creation-guidance-disclosure { padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); }
 .creation-guidance-disclosure[open] { background: var(--bg-subtle); }
@@ -712,6 +723,7 @@ summary {
 }
 
 @media (max-width: 620px) {
+  .anatomy-region-list, .anatomy-fact-list { grid-template-columns: 1fr; }
   .toolbar,
   .form-row,
   .record-title,
