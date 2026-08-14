@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { createReadStream, existsSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, normalize } from 'node:path';
+import { networkInterfaces } from 'node:os';
 
 const port = Number(process.env.PORT ?? 5173);
 
@@ -19,6 +20,9 @@ const contentTypes = new Map([
   ['.html', 'text/html; charset=utf-8'],
   ['.js', 'text/javascript; charset=utf-8'],
   ['.css', 'text/css; charset=utf-8'],
+  ['.json', 'application/manifest+json; charset=utf-8'],
+  ['.png', 'image/png'],
+  ['.svg', 'image/svg+xml'],
 ]);
 
 const server = createServer((request, response) => {
@@ -33,5 +37,12 @@ const server = createServer((request, response) => {
 
 server.listen(port, () => {
   console.log(`Sigma dev server listening at http://localhost:${port}`);
+  const lanAddresses = Object.values(networkInterfaces())
+    .flat()
+    .filter((info) => info && info.family === 'IPv4' && !info.internal)
+    .map((info) => info.address);
+  for (const address of lanAddresses) {
+    console.log(`Also reachable on the same network at http://${address}:${port} (open this on a phone to test — installable "Add to Home Screen" needs HTTPS, so this only works for functional testing, not PWA install)`);
+  }
   console.log('The dev command builds once before serving dist/. Re-run it after source changes.');
 });

@@ -30,7 +30,11 @@ There is currently no `npm run lint` command. Linting is deliberately recorded a
 
 ## Development workflow
 
-`npm run dev` is cross-platform. It runs the production build first, then serves the freshly generated `dist/` directory on `http://localhost:5173` by default. Set `PORT` to use a different port. The command does not currently watch files; re-run it after source changes.
+`npm run dev` is cross-platform. It runs the production build first, then serves the freshly generated `dist/` directory on `http://localhost:5173` by default. Set `PORT` to use a different port. The command does not currently watch files; re-run it after source changes. It also prints a LAN-reachable URL for opening the running build on a phone on the same network — useful for functional testing, though installable "Add to Home Screen" requires a secure context (HTTPS or localhost), which the LAN URL is not.
+
+## Installable phone demo
+
+Sigma is installable as a Progressive Web App: standalone display, home-screen icon, no browser chrome — no service worker and no offline cache, since Sigma has no runtime network dependency to cache in the first place. `.github/workflows/deploy.yml` builds and publishes `dist/` to GitHub Pages on every push to `main`, which gives a real HTTPS URL for testing "Add to Home Screen" on an actual phone (GitHub Pages must be set to "GitHub Actions" as its source once in repository Settings before the workflow can publish).
 
 ## Local data
 

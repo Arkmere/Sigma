@@ -102,14 +102,38 @@ test('new-record creation uses the canonical picker and keeps custom creation se
   service.createProfile({ displayName: 'Alex', profileType: 'independent' });
   const html = renderRecords(service, 'measurement', '', '');
   assert.match(html, /id="canonical-fact-search"/);
-  assert.match(html, /value="measurement.height"[^>]*>General body dimensions · Height<\/option>/);
+  assert.match(html, /<optgroup label="General body dimensions">[\s\S]*?<option value="measurement.height"[^>]*>Height<\/option>[\s\S]*?<\/optgroup>/);
   assert.match(html, /Create custom fact/);
   assert.doesNotMatch(html, /name="label" required/);
 });
 
+test('canonical picker groups facts by category and Browse-by-body sits above the search field', () => {
+  const local = storage(); const service = new SigmaService(new LocalStorageRepository(local), () => '2026-07-15T12:00:00Z', () => 'profile-1');
+  service.createProfile({ displayName: 'Alex', profileType: 'independent' });
+  const html = renderRecords(service, 'measurement', '', '');
+  const toggleIndex = html.indexOf('id="open-anatomy-discovery"');
+  const searchIndex = html.indexOf('id="canonical-fact-search"');
+  assert.ok(toggleIndex >= 0 && toggleIndex < searchIndex, 'Browse-by-body toggle should appear above the search field');
+  assert.match(html, /<optgroup label="[^"]+">/);
+  const sizesHtml = renderRecords(service, 'standard_size', '', '');
+  assert.doesNotMatch(sizesHtml, /id="open-anatomy-discovery"/);
+});
+
 test('ordinary profile editing cannot change type and genuinely shared viewers see no mutation controls',()=>{const local=storage();let n=0;const service=new SigmaService(new LocalStorageRepository(local),()=> '2026-07-15T12:00:00Z',()=>`id-${++n}`);const alex=service.createProfile({displayName:'Alex',profileType:'independent'});service.addMeasurement({profileId:alex.id,measurementType:'Waist',category:'Upper body',label:'Waist',value:90,unit:'cm',originalValue:90,originalUnit:'cm',measuredAt:'2026-07-15',recordedAt:'2026-07-15',sourceType:'manual',acquisitionMethod:'manual'});const jordan=service.createProfile({displayName:'Jordan',profileType:'independent'});const profileHtml=renderProfiles(service,alex.id,true);assert.match(profileHtml,/Profile type cannot be changed/);assert.doesNotMatch(profileHtml,/name="profileType"/);const request=service.requestConnection(jordan.id);service.selectActor(jordan.id);service.respondConnection(request.id,true);service.selectActor(alex.id);service.grantAccess(alex.id,jordan.id,{type:'profile'});service.selectActor(jordan.id);service.selectProfile(alex.id);const recordsHtml=renderRecords(service,'measurement','','');assert.match(recordsHtml,/read-only/i);assert.doesNotMatch(recordsHtml,/id="record-form"|data-history-form|data-edit-measurement-form/);});
 
-test('imported standard-size cards show source details without measured language',()=>{const local=storage();const service=new SigmaService(new LocalStorageRepository(local),()=> '2026-07-15T12:00:00Z',()=>crypto.randomUUID());const profile=service.createProfile({displayName:'Alex',profileType:'independent'});service.addStandardSize({profileId:profile.id,category:'Clothing',label:'Clothing size',sizingSystem:'Generic',sizeValue:'M',recordedAt:'2026-07-01',sourceType:'imported_device',sourceName:'Measurement device',sourceId:'measurement_device',sourceItemId:'size-1',sourceDevice:'Demo wardrobe',confidence:0.9,derivation:{kind:'derived',method:'demo'}});const html=renderRecords(service,'standard_size','','');assert.match(html,/Source details/);assert.match(html,/imported device · Measurement device/);assert.doesNotMatch(html,/measured 1 Jul 2026/);});
+test('imported standard-size cards show source details without measured language',()=>{const local=storage();const service=new SigmaService(new LocalStorageRepository(local),()=> '2026-07-15T12:00:00Z',()=>crypto.randomUUID());const profile=service.createProfile({displayName:'Alex',profileType:'independent'});service.addStandardSize({profileId:profile.id,category:'Clothing',label:'Clothing size',sizingSystem:'Generic',sizeValue:'M',recordedAt:'2026-07-01',sourceType:'imported_device',sourceName:'Measurement device',sourceId:'measurement_device',sourceItemId:'size-1',sourceDevice:'Demo wardrobe',confidence:0.9,derivation:{kind:'derived',method:'demo'}});const html=renderRecords(service,'standard_size','','');assert.match(html,/<summary>Details<\/summary>/);assert.match(html,/<h4>Source<\/h4>/);assert.match(html,/imported device · Measurement device/);assert.doesNotMatch(html,/measured 1 Jul 2026/);});
+
+test('record cards merge conversions and source into one Details disclosure',()=>{
+  const local=storage();let n=0;const service=new SigmaService(new LocalStorageRepository(local),()=> '2026-07-15T12:00:00Z',()=>`id-${++n}`);
+  const profile=service.createProfile({displayName:'Alex',profileType:'independent'});
+  service.addMeasurement({profileId:profile.id,measurementType:'Waist',category:'Upper body',label:'Waist',value:96,unit:'cm',originalValue:96,originalUnit:'cm',measuredAt:'2026-07-01',recordedAt:'2026-07-01',sourceType:'manual',acquisitionMethod:'manual'});
+  const html=renderRecords(service,'measurement','','',false);
+  assert.doesNotMatch(html,/<summary>All conversions<\/summary>/);
+  assert.doesNotMatch(html,/<summary>Source details<\/summary>/);
+  const detailsCount=(html.match(/<summary>Details<\/summary>/g)??[]).length;
+  assert.equal(detailsCount,1);
+  assert.match(html,/<summary>Details<\/summary>[\s\S]*?<h4>Source<\/h4>/);
+});
 
 test('simulated permission cannot activate a future source',()=>{const local=storage();globalThis.localStorage=local;globalThis.matchMedia=()=>({matches:false});globalThis.document={documentElement:{dataset:{}}};const service=new SigmaService(new LocalStorageRepository(local));const root=new Root();mountApp(root,service);root.querySelectorAll('[data-route]').find(item=>item.dataset.route==='sources').click();assert.match(root.textContent,/Future integration/);root.querySelectorAll('[data-source-action]').find(item=>item.dataset.sourceAction==='smart_scale').click();assert.match(root.textContent,/Simulate allow/);root.querySelectorAll('[data-permission-allow]')[0].click();assert.match(root.textContent,/not implemented in the current local demo/);assert.match(root.textContent,/does not activate it/);assert.equal(service.snapshot().measurements.length,0);});
 
