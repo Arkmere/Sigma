@@ -34,6 +34,7 @@ function hashFor(route: RouteId, familyView: FamilyView): string {
 }
 
 export function mountApp(root: HTMLElement, service = new SigmaService(new LocalStorageRepository(globalThis.localStorage))): void {
+  const buildId = (globalThis as unknown as { __SIGMA_BUILD__?: string }).__SIGMA_BUILD__;
   const hasHash = typeof window !== 'undefined' && typeof window.location !== 'undefined';
   const seeded = hasHash && window.location.hash ? parseHash(window.location.hash) : undefined;
   let route: RouteId = seeded?.route ?? 'profiles'; let theme = readThemePreference(); let anatomyFamily=readAnatomyFamilyPreference(); let entitlement=readDemoEntitlement(); let mode: RecordMode = 'measurement'; let search = ''; let category = ''; let editingProfileId = ''; let profileFormOpen=false; let recordFormOpen=false; let familyView:FamilyView=seeded?.familyView ?? 'overview'; let notice:AppNotice|undefined;
@@ -43,7 +44,7 @@ export function mountApp(root: HTMLElement, service = new SigmaService(new Local
   const render = () => {
     const resolved = resolveTheme(theme, globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false);
     document.documentElement.dataset.theme = resolved; document.documentElement.dataset.themePreference = theme; writeThemePreference(theme);writeAnatomyFamilyPreference(anatomyFamily);
-    const content = route === 'profiles' ? renderProfiles(service, editingProfileId,profileFormOpen) : route === 'measurements' ? renderRecords(service, mode, search, category,recordFormOpen) : route === 'sources' ? renderSources(service,permissions,permissionFlow,importCandidates,excluded,sourceNotice) : route === 'privacy' ? renderPrivacy(service,permissions) : route === 'settings' ? renderSettings(service, theme, resolved, anatomyFamily, entitlement,permissions) : renderFamilyScreen(service, entitlement,grantComposer,familyView);
+    const content = route === 'profiles' ? renderProfiles(service, editingProfileId,profileFormOpen) : route === 'measurements' ? renderRecords(service, mode, search, category,recordFormOpen) : route === 'sources' ? renderSources(service,permissions,permissionFlow,importCandidates,excluded,sourceNotice) : route === 'privacy' ? renderPrivacy(service,permissions) : route === 'settings' ? renderSettings(service, theme, resolved, anatomyFamily, entitlement,permissions,buildId) : renderFamilyScreen(service, entitlement,grantComposer,familyView);
     root.innerHTML = renderShell(route, service, content,notice);
     void hydrateStandaloneAnatomy(root);
     const run=(action:()=>void,message?:string)=>{try{action();if(message)notice={kind:'success',message};render();}catch(error){if(error instanceof Error){notice={kind:'error',message:error.message};render();return;}throw error;}};

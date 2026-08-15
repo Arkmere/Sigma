@@ -27,6 +27,10 @@ try {
     .replace('/src/main.tsx', '/main.js')
     .replaceAll('__BUILD_ID__', buildId);
   await writeFile(join(outDir, 'index.html'), productionHtml);
+
+  const mainJsPath = join(outDir, 'main.js');
+  const mainJs = await readFile(mainJsPath, 'utf8');
+  await writeFile(mainJsPath, `globalThis.__SIGMA_BUILD__=${JSON.stringify(buildId)};\n${mainJs}`);
 } catch (error) {
   console.error('Failed to prepare static build assets.');
   console.error(error);
