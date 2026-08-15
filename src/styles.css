@@ -585,12 +585,29 @@ button.danger {
   cursor: pointer;
 }
 
-.record-tabs button.active {
+.record-tabs button.active,
+.stage-tabs button.active {
   border: 1px solid var(--accent);
   border-radius: .75rem;
   background: color-mix(in srgb, var(--surface) 70%, var(--accent));
   color: var(--accent-strong);
   padding: .72rem 1.1rem;
+  cursor: pointer;
+}
+
+.stage-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin-bottom: var(--space-4);
+}
+
+.stage-tabs button {
+  border: 1px solid var(--border);
+  border-radius: .75rem;
+  background: var(--surface-elevated);
+  color: var(--text);
+  padding: .65rem 1rem;
   cursor: pointer;
 }
 

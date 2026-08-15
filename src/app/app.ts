@@ -21,8 +21,23 @@ import { hydrateStandaloneAnatomy } from './ui/anatomy-illustration.js';
 import { renderAnatomyNavigator } from './ui/anatomy-navigator.js';
 import type { AnatomyPath } from '../domain/canonical-facts.js';
 
+const routeIds: readonly RouteId[] = ['profiles', 'measurements', 'family', 'sources', 'privacy', 'settings'];
+const familyStages: readonly Exclude<FamilyView, 'overview'>[] = ['families', 'people', 'connections', 'sharing'];
+function parseHash(hash: string): { route: RouteId; familyView: FamilyView } {
+  const segments = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
+  const route = (routeIds as readonly string[]).includes(segments[0]) ? segments[0] as RouteId : 'profiles';
+  const familyView = route === 'family' && (familyStages as readonly string[]).includes(segments[1]) ? segments[1] as FamilyView : 'overview';
+  return { route, familyView };
+}
+function hashFor(route: RouteId, familyView: FamilyView): string {
+  return route === 'family' && familyView !== 'overview' ? `#/family/${familyView}` : `#/${route}`;
+}
+
 export function mountApp(root: HTMLElement, service = new SigmaService(new LocalStorageRepository(globalThis.localStorage))): void {
-  let route: RouteId = 'profiles'; let theme = readThemePreference(); let anatomyFamily=readAnatomyFamilyPreference(); let entitlement=readDemoEntitlement(); let mode: RecordMode = 'measurement'; let search = ''; let category = ''; let editingProfileId = ''; let profileFormOpen=false; let recordFormOpen=false; let familyView:FamilyView='overview'; let notice:AppNotice|undefined;
+  const hasHash = typeof window !== 'undefined' && typeof window.location !== 'undefined';
+  const seeded = hasHash && window.location.hash ? parseHash(window.location.hash) : undefined;
+  let route: RouteId = seeded?.route ?? 'profiles'; let theme = readThemePreference(); let anatomyFamily=readAnatomyFamilyPreference(); let entitlement=readDemoEntitlement(); let mode: RecordMode = 'measurement'; let search = ''; let category = ''; let editingProfileId = ''; let profileFormOpen=false; let recordFormOpen=false; let familyView:FamilyView=seeded?.familyView ?? 'overview'; let notice:AppNotice|undefined;
+  const syncHash = () => { if (hasHash) { const next = hashFor(route, familyView); if (window.location.hash !== next) window.location.hash = next; } };
   const permissions=new PermissionDemoService(globalThis.localStorage); let permissionFlow:PermissionKind|undefined; let selectedSourceId:SourceId|undefined; let sourceNotice=''; let importCandidates:ImportCandidate[]=[]; let excluded=0;
   let grantComposer:GrantComposerState=emptyGrantComposerState();
   const render = () => {
@@ -32,18 +47,18 @@ export function mountApp(root: HTMLElement, service = new SigmaService(new Local
     root.innerHTML = renderShell(route, service, content,notice);
     void hydrateStandaloneAnatomy(root);
     const run=(action:()=>void,message?:string)=>{try{action();if(message)notice={kind:'success',message};render();}catch(error){if(error instanceof Error){notice={kind:'error',message:error.message};render();return;}throw error;}};
-    bind(root, '[data-route]', 'click', (element) => { notice=undefined; route = element.dataset.route as RouteId; render(); });
-    bind(root, '[data-select-profile]', 'click', (element) => {notice=undefined;run(()=>{ service.selectProfile(element.dataset.selectProfile!); route = 'measurements'; });});
+    bind(root, '[data-route]', 'click', (element) => { notice=undefined; route = element.dataset.route as RouteId; syncHash(); render(); });
+    bind(root, '[data-select-profile]', 'click', (element) => {notice=undefined;run(()=>{ service.selectProfile(element.dataset.selectProfile!); route = 'measurements'; syncHash(); });});
     bind(root, '[data-edit-profile]', 'click', (element) => { editingProfileId = element.dataset.editProfile!; profileFormOpen=true; render(); });
     bind(root, '#open-profile-form', 'click', () => { profileFormOpen=true; render(); root.querySelector<HTMLInputElement>('#profile-form input[name="displayName"]')?.focus(); });
     bind(root, '#cancel-profile-form', 'click', () => { profileFormOpen=false; editingProfileId=''; render(); });
     bind(root, '[data-record-mode]', 'click', (element) => { mode = element.dataset.recordMode as RecordMode; recordFormOpen=false; render(); });
     root.querySelector<HTMLSelectElement>('#record-mode-select')?.addEventListener('change',(event)=>{mode=(event.currentTarget as HTMLSelectElement).value as RecordMode;recordFormOpen=false;render();});
-    bind(root,'[data-family-view]','click',(element)=>{notice=undefined;familyView=element.dataset.familyView as FamilyView;route='family';render();});
+    bind(root,'[data-family-view]','click',(element)=>{notice=undefined;familyView=element.dataset.familyView as FamilyView;route='family';syncHash();render();});
     root.querySelectorAll<HTMLInputElement>('input[name="theme"]').forEach((input) => input.addEventListener('change', () => { theme = input.value as ThemePreference; render(); }));
     root.querySelectorAll<HTMLInputElement>('input[name="anatomyFamily"]').forEach((input) => input.addEventListener('change', () => { anatomyFamily = input.value as AnatomyFamilyPreference; writeAnatomyFamilyPreference(anatomyFamily); render(); }));
     root.querySelector<HTMLSelectElement>('#entitlement-select')?.addEventListener('change',(event)=>{entitlement=(event.currentTarget as HTMLSelectElement).value as DemoEntitlement;writeDemoEntitlement(entitlement);render();});
-    root.querySelectorAll<HTMLSelectElement>('#actor-select,#context-actor-select').forEach(select=>select.addEventListener('change',(event)=>run(()=>{service.selectActor((event.currentTarget as HTMLSelectElement).value);grantComposer=emptyGrantComposerState();familyView='overview';search='';category='';recordFormOpen=false;},'Acting local adult switched.')));
+    root.querySelectorAll<HTMLSelectElement>('#actor-select,#context-actor-select').forEach(select=>select.addEventListener('change',(event)=>run(()=>{service.selectActor((event.currentTarget as HTMLSelectElement).value);grantComposer=emptyGrantComposerState();familyView='overview';search='';category='';recordFormOpen=false;syncHash();},'Acting local adult switched.')));
     root.querySelector<HTMLSelectElement>('#context-profile-select')?.addEventListener('change',(event)=>run(()=>service.selectProfile((event.currentTarget as HTMLSelectElement).value)));
     onForm(root,'#family-form',(form)=>run(()=>service.createFamily(field(new FormData(form),'name')),'Family created.'));
     onForm(root,'#connection-form',(form)=>run(()=>service.requestConnection(field(new FormData(form),'recipientId')),'Connection request sent. No records were shared.'));
@@ -100,13 +115,15 @@ export function mountApp(root: HTMLElement, service = new SigmaService(new Local
     root.querySelector<HTMLInputElement>('#canonical-fact-search')?.addEventListener('input',(event)=>{const needle=(event.currentTarget as HTMLInputElement).value.toLowerCase();if(!canonicalPicker)return;for(const option of canonicalPicker.options)option.hidden=!!needle&&!option.dataset.search?.includes(needle);canonicalPicker.querySelectorAll<HTMLOptGroupElement>('optgroup').forEach((group)=>{group.hidden=[...group.querySelectorAll<HTMLOptionElement>('option')].every((option)=>option.hidden);});const first=[...canonicalPicker.options].find((option)=>!option.hidden);if(first&&canonicalPicker.selectedOptions[0]?.hidden){canonicalPicker.value=first.value;populateCanonicalChoices();}});
     root.querySelector<HTMLInputElement>('input[name="custom"]')?.addEventListener('change',(event)=>{const guidance=root.querySelector<HTMLElement>('#creation-guidance');if(guidance)guidance.hidden=(event.currentTarget as HTMLInputElement).checked;});
     bind(root, '#export-data', 'click', () => downloadBackup(service));
-    bind(root, '#reset-data', 'click', () => { if (globalThis.confirm('Delete every Sigma profile, record, Family, connection and sharing grant stored in this browser? This cannot be undone.')) { service.reset(); route = 'profiles'; notice={kind:'success',message:'Local Sigma data reset. You can start again.'}; render(); } });
-    bind(root,'[data-source-action]','click',(el)=>{const source=el.dataset.sourceAction as SourceId;selectedSourceId=source;sourceNotice='';if(['measurement_device','apple_health','health_connect'].includes(source))permissionFlow='health_data';else if(source==='camera_assisted'||source==='body_scan')permissionFlow='camera';else if(source==='external_scan')permissionFlow='files';else if(source==='smart_scale')permissionFlow='nearby_devices';render();});
-    bind(root,'[data-permission-allow]','click',(el)=>{const kind=el.dataset.permissionAllow as PermissionKind;permissions.set(kind,'demo_granted');permissionFlow=undefined;if(selectedSourceId==='measurement_device'){const results=evaluateDemoPayload();importCandidates=results.flatMap(x=>x.status==='accepted'?[x.candidate]:[]);excluded=results.filter(x=>x.status==='rejected').length;sourceNotice='Local demo access simulated. No external service was contacted.';}else{importCandidates=[];excluded=0;sourceNotice='This integration is not implemented in the current local demo. Simulated permission does not activate it.'}render();});
+    bind(root, '#reset-data', 'click', () => { if (globalThis.confirm('Delete every Sigma profile, record, Family, connection and sharing grant stored in this browser? This cannot be undone.')) { service.reset(); route = 'profiles'; familyView='overview'; syncHash(); notice={kind:'success',message:'Local Sigma data reset. You can start again.'}; render(); } });
+    bind(root,'[data-source-action]','click',(el)=>{const source=el.dataset.sourceAction as SourceId;selectedSourceId=source;sourceNotice='';if(['measurement_device','apple_health','health_connect'].includes(source))permissionFlow='health_data';else if(source==='camera_assisted'||source==='body_scan')permissionFlow='camera';else if(source==='external_scan')permissionFlow='files';else if(source==='smart_scale')permissionFlow='nearby_devices';render();root.querySelector<HTMLElement>('#permission-explanation')?.focus();});
+    bind(root,'[data-permission-allow]','click',(el)=>{const kind=el.dataset.permissionAllow as PermissionKind;permissions.set(kind,'demo_granted');permissionFlow=undefined;if(selectedSourceId==='measurement_device'){const results=evaluateDemoPayload();importCandidates=results.flatMap(x=>x.status==='accepted'?[x.candidate]:[]);excluded=results.filter(x=>x.status==='rejected').length;sourceNotice='Local demo access simulated. No external service was contacted.';}else{importCandidates=[];excluded=0;sourceNotice='This integration is not implemented in the current local demo. Simulated permission does not activate it.'}render();(root.querySelector<HTMLElement>('#import-candidates')??root.querySelector<HTMLElement>('#source-status'))?.focus();});
     bind(root,'[data-permission-decline]','click',(el)=>{permissions.set(el.dataset.permissionDecline as PermissionKind,'demo_denied');permissionFlow=undefined;importCandidates=[];excluded=0;notice={kind:'info',message:'Demo permission declined. Nothing was imported; manual entry remains available.'};render();});
     bind(root,'[data-import-candidate]','click',(el)=>{const target=root.querySelector<HTMLSelectElement>('#import-target')?.value;if(target){run(()=>{importCandidate(service,target,importCandidates[Number(el.dataset.importCandidate)]);importCandidates.splice(Number(el.dataset.importCandidate),1);},'Candidate imported with its provenance.');}});
     bind(root,'#reset-permission-demos','click',()=>{permissions.reset();permissionFlow=undefined;selectedSourceId=undefined;sourceNotice='';importCandidates=[];excluded=0;notice={kind:'success',message:'Permission demonstrations reset. Records were not deleted.'};render();});
   };
+  if (hasHash) window.addEventListener('hashchange', () => { const parsed = parseHash(window.location.hash); route = parsed.route; familyView = parsed.familyView; notice = undefined; render(); });
+  syncHash();
   render();
 }
 
