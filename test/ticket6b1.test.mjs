@@ -61,7 +61,7 @@ test('candidate previews preserve structured provenance and a primary confirmati
 
 test('Family overview uses one privacy explanation and four focused actions',()=>{
   const{service}=fixture();const html=renderFamily(service,'full');
-  assert.equal((html.match(/Family membership and adult connection do not share records\./g)||[]).length,1);
+  assert.equal((html.match(/Joining a Family or connecting with someone shares nothing by itself\./g)||[]).length,1);
   assert.doesNotMatch(html,/Choose one action|actions are separate|EXPLICIT CONSENT/i);
   for(const label of ['Families &amp; members','Managed people','Adult connections','Sharing access'])assert.match(html,new RegExp(label));
 });

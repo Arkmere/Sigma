@@ -31,7 +31,7 @@ test('empty whole-profile and empty category grants derive profile visibility fr
   for(const scope of [{type:'profile'},{type:'category',category:'Footwear'}]){
     const{service,alex,jordan}=fixture();connect(service,alex,jordan);const grant=service.grantAccess(alex.id,jordan.id,scope);service.selectActor(jordan.id);
     assert.equal(service.profileAccess(alex.id),'read_only');assert.ok(service.visibleProfiles().some(profile=>profile.id===alex.id));service.selectProfile(alex.id);
-    const html=renderRecords(service,'measurement','','',false);assert.match(html,/shared with you, but no recorded facts currently match the granted scope/i);assert.doesNotMatch(html,/id="record-form"|data-history-form|data-edit-/);
+    const html=renderRecords(service,'measurement','','',false);assert.match(html,/shared with you, but nothing here matches what was shared/i);assert.doesNotMatch(html,/id="record-form"|data-history-form|data-edit-/);
     service.selectActor(alex.id);service.revokeGrant(grant.id);service.selectActor(jordan.id);assert.equal(service.profileAccess(alex.id),'hidden');
   }
 });
