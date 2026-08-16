@@ -35,8 +35,15 @@ export function migrateStoredData(raw: unknown): MigrationResult {
     const canonicalReason=validateCanonicalRecords(migrated);if(canonicalReason)return corrupt(canonicalReason);
     return {status:'ok',data:migrated as unknown as SigmaData};
   }
+  if (raw.schemaVersion === 4) {
+    const reason=validateVersionTwo(raw,true);if(reason)return corrupt(reason);
+    const migrated=structuredClone(raw) as Record<string,unknown>;
+    migrated.schemaVersion=DATA_SCHEMA_VERSION;
+    const canonicalReason=validateCanonicalRecords(migrated);if(canonicalReason)return corrupt(canonicalReason);
+    return {status:'ok',data:migrated as unknown as SigmaData};
+  }
   if (raw.schemaVersion !== DATA_SCHEMA_VERSION) return { status: 'unsupported_version', version: raw.schemaVersion };
-  const reason = validateVersionTwo(raw,true);
+  const reason = validateVersionTwo(raw,true,true);
   if(!reason){
     const canonicalReason=validateCanonicalRecords(raw);
     if(canonicalReason)return corrupt(canonicalReason);
@@ -44,11 +51,14 @@ export function migrateStoredData(raw: unknown): MigrationResult {
   return reason ? corrupt(reason) : { status: 'ok', data: structuredClone(raw as unknown as SigmaData) };
 }
 
-function validateVersionTwo(root: Record<string, unknown>,allowCorrections=false): string | undefined {
-  const base = validateVersionOne(root,allowCorrections); if (base) return base;
+function validateVersionTwo(root: Record<string, unknown>,allowCorrections=false,allowDanglingAttribution=false): string | undefined {
+  const base = validateVersionOne(root,allowCorrections,allowDanglingAttribution); if (base) return base;
   if (![root.families, root.familyMemberships, root.adultConnections, root.sharingGrants].every(Array.isArray)) return 'Ticket 4 collections must be arrays.';
   if (!optionalString(root.activeActorProfileId)) return 'activeActorProfileId must be a string when present.';
   const profiles = root.profiles as Record<string, unknown>[]; const profile = (id: unknown) => profiles.find((p) => p.id === id);
+  // Historical "who did this" attribution: schema 5 tolerates a reference to a profile that has since been deleted.
+  // Subject/party fields (owner, recipient, membership profileId, etc.) are never covered by this — they must always resolve.
+  const attributed = (id: unknown) => allowDanglingAttribution ? (profile(id) === undefined || profile(id)?.profileType === 'independent') : profile(id)?.profileType === 'independent';
   if (root.activeActorProfileId !== undefined && profile(root.activeActorProfileId)?.profileType !== 'independent') return 'The active actor must be an independent profile.';
   for (const p of profiles) {
     if (p.profileType === 'independent' && (p.managedByProfileIds !== undefined || p.managedKind !== undefined)) return 'Independent profiles cannot have managed fields.';
@@ -56,9 +66,9 @@ function validateVersionTwo(root: Record<string, unknown>,allowCorrections=false
     if (p.managedKind !== undefined && !['child', 'dependant'].includes(String(p.managedKind))) return 'Managed kind is invalid.';
   }
   const families = root.families as Record<string, unknown>[];
-  for (const f of families) if (!requiredStrings(f, ['id','name','createdByProfileId','createdAt','updatedAt']) || profile(f.createdByProfileId)?.profileType !== 'independent') return 'A Family is invalid.';
+  for (const f of families) if (!requiredStrings(f, ['id','name','createdByProfileId','createdAt','updatedAt']) || !attributed(f.createdByProfileId)) return 'A Family is invalid.';
   const memberships = root.familyMemberships as Record<string, unknown>[]; const membershipKeys = new Set<string>();
-  for (const m of memberships) { if (!requiredStrings(m,['id','familyId','profileId','addedByProfileId','createdAt']) || !families.some((f) => f.id === m.familyId) || !profile(m.profileId) || profile(m.addedByProfileId)?.profileType !== 'independent') return 'A Family membership is invalid.'; const key=`${m.familyId}:${m.profileId}`; if(membershipKeys.has(key)) return 'Duplicate Family membership.'; membershipKeys.add(key); }
+  for (const m of memberships) { if (!requiredStrings(m,['id','familyId','profileId','addedByProfileId','createdAt']) || !families.some((f) => f.id === m.familyId) || !profile(m.profileId) || !attributed(m.addedByProfileId)) return 'A Family membership is invalid.'; const key=`${m.familyId}:${m.profileId}`; if(membershipKeys.has(key)) return 'Duplicate Family membership.'; membershipKeys.add(key); }
   for (const c of root.adultConnections as Record<string, unknown>[]) {
     if (!requiredStrings(c,['id','initiatorProfileId','recipientProfileId','status','requestedAt']) || c.initiatorProfileId === c.recipientProfileId || profile(c.initiatorProfileId)?.profileType !== 'independent' || profile(c.recipientProfileId)?.profileType !== 'independent' || !['pending','active','declined','disconnected'].includes(String(c.status)) || ![c.respondedAt,c.disconnectedAt,c.disconnectedByProfileId].every(optionalString)) return 'An adult connection is invalid.';
     if (c.status === 'pending' && [c.respondedAt,c.disconnectedAt,c.disconnectedByProfileId].some((v)=>v!==undefined)) return 'A pending connection has terminal metadata.';
@@ -69,17 +79,17 @@ function validateVersionTwo(root: Record<string, unknown>,allowCorrections=false
   const records = [...root.measurements as Record<string,unknown>[], ...root.standardSizes as Record<string,unknown>[], ...root.brandFits as Record<string,unknown>[]];
   for (const g of root.sharingGrants as Record<string, unknown>[]) {
     const owner=profile(g.ownerProfileId); const grantor=profile(g.grantedByProfileId);
-    if (!requiredStrings(g,['id','ownerProfileId','recipientProfileId','grantedByProfileId','status','grantedAt']) || !owner || profile(g.recipientProfileId)?.profileType !== 'independent' || grantor?.profileType !== 'independent' || !['active','revoked'].includes(String(g.status)) || !object(g.scope)) return 'A sharing grant is invalid.';
-    if ((owner.profileType==='independent'&&g.grantedByProfileId!==g.ownerProfileId)||(owner.profileType==='managed'&&(!Array.isArray(owner.managedByProfileIds)||!owner.managedByProfileIds.includes(g.grantedByProfileId)))) return 'A sharing grant has impossible grant authority.';
+    if (!requiredStrings(g,['id','ownerProfileId','recipientProfileId','grantedByProfileId','status','grantedAt']) || !owner || profile(g.recipientProfileId)?.profileType !== 'independent' || !attributed(g.grantedByProfileId) || !['active','revoked'].includes(String(g.status)) || !object(g.scope)) return 'A sharing grant is invalid.';
+    if (grantor && ((owner.profileType==='independent'&&g.grantedByProfileId!==g.ownerProfileId)||(owner.profileType==='managed'&&(!Array.isArray(owner.managedByProfileIds)||!owner.managedByProfileIds.includes(g.grantedByProfileId))))) return 'A sharing grant has impossible grant authority.';
     const s=g.scope; if (s.type === 'category' ? !nonEmpty(s.category) : s.type === 'record_kind' ? !['standard_size','brand_fit'].includes(String(s.recordKind)) : s.type === 'record' ? !['measurement','standard_size','brand_fit'].includes(String(s.recordKind)) || !records.some((r)=>r.id===s.recordId && r.kind===s.recordKind && r.profileId===g.ownerProfileId) : s.type !== 'profile') return 'A sharing scope is invalid.';
-    if ((g.status === 'active' && (g.revokedAt !== undefined || g.revokedByProfileId !== undefined)) || (g.status === 'revoked' && (!nonEmpty(g.revokedAt) || profile(g.revokedByProfileId)?.profileType!=='independent'))) return 'Grant revocation metadata is inconsistent.';
-    if (g.status==='revoked'&&((owner.profileType==='independent'&&g.revokedByProfileId!==owner.id)||(owner.profileType==='managed'&&(!Array.isArray(owner.managedByProfileIds)||!owner.managedByProfileIds.includes(g.revokedByProfileId))))) return 'Grant revocation actor was not authorised.';
+    if ((g.status === 'active' && (g.revokedAt !== undefined || g.revokedByProfileId !== undefined)) || (g.status === 'revoked' && (!nonEmpty(g.revokedAt) || !attributed(g.revokedByProfileId)))) return 'Grant revocation metadata is inconsistent.';
+    if (g.status==='revoked'&&profile(g.revokedByProfileId)&&((owner.profileType==='independent'&&g.revokedByProfileId!==owner.id)||(owner.profileType==='managed'&&(!Array.isArray(owner.managedByProfileIds)||!owner.managedByProfileIds.includes(g.revokedByProfileId))))) return 'Grant revocation actor was not authorised.';
     if (g.status==='active'&&owner.profileType==='managed'&&owner.managedKind==='child'&&!memberships.some((m)=>m.profileId===owner.id&&memberships.some((n)=>n.familyId===m.familyId&&n.profileId===g.recipientProfileId))) return 'An active child grant recipient must share a Family with the child.';
   }
   return undefined;
 }
 
-function validateVersionOne(root: Record<string, unknown>,allowCorrections=false): string | undefined {
+function validateVersionOne(root: Record<string, unknown>,allowCorrections=false,allowDanglingAttribution=false): string | undefined {
   if (!Array.isArray(root.profiles) || !Array.isArray(root.measurements) || !Array.isArray(root.standardSizes) || !Array.isArray(root.brandFits)) return 'Required record collections must be arrays.';
   if (!optionalString(root.activeProfileId)) return 'activeProfileId must be a string when present.';
   for (const profile of root.profiles) {
@@ -88,7 +98,7 @@ function validateVersionOne(root: Record<string, unknown>,allowCorrections=false
   }
   for (const record of root.measurements) {
     if (!object(record) || !requiredStrings(record, ['id', 'profileId', 'measurementType', 'category', 'label', 'createdAt', 'updatedAt']) || record.kind !== 'measurement' || record.visibility !== 'private' || !Array.isArray(record.values)) return 'A physical measurement has an invalid required field.';
-    for (const value of record.values) if (!validMeasurementValue(value,allowCorrections,root.profiles as Record<string,unknown>[])) return 'A physical measurement value has an invalid field.';
+    for (const value of record.values) if (!validMeasurementValue(value,allowCorrections,root.profiles as Record<string,unknown>[],allowDanglingAttribution)) return 'A physical measurement value has an invalid field.';
     if (!uniqueIds(record.values as Record<string,unknown>[])) return 'Measurement value IDs must be unique within their measurement.';
   }
   for (const record of root.standardSizes) if (!validStandardSize(record)) return 'A standard-size record has an invalid field.';
@@ -100,11 +110,14 @@ function validateVersionOne(root: Record<string, unknown>,allowCorrections=false
   return undefined;
 }
 
-function validMeasurementValue(value: unknown,allowCorrection=false,profiles:Record<string,unknown>[]=[]): boolean {
+function validMeasurementValue(value: unknown,allowCorrection=false,profiles:Record<string,unknown>[]=[],allowDanglingAttribution=false): boolean {
   if (!object(value) || !requiredStrings(value, ['id', 'unit', 'measuredAt', 'recordedAt', 'originalUnit', 'createdAt']) || typeof value.value !== 'number' || !Number.isFinite(value.value) || typeof value.originalValue !== 'number' || !Number.isFinite(value.originalValue) || !sourceTypes.has(String(value.sourceType)) || !sourceTypes.has(String(value.acquisitionMethod))) return false;
   if(value.correction!==undefined){
     const correction=value.correction;
-    if(!allowCorrection||!object(correction)||correction.status!=='voided'||!nonEmpty(correction.correctedAt)||!nonEmpty(correction.correctedByProfileId)||!profiles.some((profile)=>profile.id===correction.correctedByProfileId&&profile.profileType==='independent')||!optionalString(correction.reason))return false;
+    if(!allowCorrection||!object(correction)||correction.status!=='voided'||!nonEmpty(correction.correctedAt)||!nonEmpty(correction.correctedByProfileId)||!optionalString(correction.reason))return false;
+    const corrector=profiles.find((profile)=>profile.id===correction.correctedByProfileId);
+    const correctorValid=allowDanglingAttribution?(corrector===undefined||corrector.profileType==='independent'):(corrector!==undefined&&corrector.profileType==='independent');
+    if(!correctorValid)return false;
   }
   return optionalString(value.sourceName) && optionalString(value.notes) && validExternalProvenance(value);
 }

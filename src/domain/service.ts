@@ -102,6 +102,21 @@ export class SigmaService {
     if (!profile.displayName) throw new Error('Display name is required.');
     this.persist(); return structuredClone(profile);
   }
+  deleteProfile(profileId: string): void {
+    this.ensureWritable();
+    this.requireManagement(profileId);
+    this.data.measurements = this.data.measurements.filter((record) => record.profileId !== profileId);
+    this.data.standardSizes = this.data.standardSizes.filter((record) => record.profileId !== profileId);
+    this.data.brandFits = this.data.brandFits.filter((record) => record.profileId !== profileId);
+    this.data.sharingGrants = this.data.sharingGrants.filter((grant) => grant.ownerProfileId !== profileId && grant.recipientProfileId !== profileId);
+    this.data.adultConnections = this.data.adultConnections.filter((connection) => connection.initiatorProfileId !== profileId && connection.recipientProfileId !== profileId);
+    this.data.familyMemberships = this.data.familyMemberships.filter((membership) => membership.profileId !== profileId);
+    for (const other of this.data.profiles) if (other.managedByProfileIds?.includes(profileId)) other.managedByProfileIds = other.managedByProfileIds.filter((id) => id !== profileId);
+    this.data.profiles = this.data.profiles.filter((profile) => profile.id !== profileId);
+    if (this.data.activeActorProfileId === profileId) this.data.activeActorProfileId = this.data.profiles.find((profile) => profile.profileType === 'independent')?.id;
+    this.reconcileActiveProfile();
+    this.persist();
+  }
 
   addMeasurement(input: Omit<PhysicalMeasurement, 'id' | 'kind' | 'values' | 'visibility' | 'createdAt' | 'updatedAt'> & Omit<MeasurementValue, 'id' | 'createdAt'>): PhysicalMeasurement {
     this.ensureWritable();
@@ -130,6 +145,14 @@ export class SigmaService {
     value.correction={status:'voided',correctedAt:this.now(),correctedByProfileId:actor.id,reason:clean(reason)};
     record.updatedAt=this.now();this.persist();return structuredClone(record);
   }
+  deleteMeasurementValue(recordId:string,valueId:string):void {
+    this.ensureWritable();
+    const record=this.data.measurements.find((item)=>item.id===recordId);if(!record)throw new Error('Measurement not found.');
+    this.requireManagement(record.profileId);
+    if(record.values.length<=1)throw new Error('Delete the whole record instead of its only value.');
+    const index=record.values.findIndex((item)=>item.id===valueId);if(index<0)throw new Error('Measurement value not found.');
+    record.values.splice(index,1);record.updatedAt=this.now();this.persist();
+  }
 
   updateMeasurement(recordId: string, input: Pick<PhysicalMeasurement, 'label' | 'category' | 'measurementType'>): PhysicalMeasurement {
     this.ensureWritable();
@@ -138,6 +161,7 @@ export class SigmaService {
     this.validateCanonical(record.canonicalFactId,'measurement',input.category,input.measurementType);
     Object.assign(record, record.canonicalFactId?{updatedAt:this.now()}:{...input,updatedAt:this.now()}); this.persist(); return structuredClone(record);
   }
+  deleteMeasurement(recordId: string): void { this.deleteRecordInternal(this.data.measurements,recordId,'measurement'); }
 
   addStandardSize(input: Omit<StandardSize, 'id' | 'kind' | 'visibility' | 'createdAt' | 'updatedAt'>): StandardSize {
     this.ensureWritable();
@@ -156,6 +180,7 @@ export class SigmaService {
     const definition=record.canonicalFactId?canonicalFactById(record.canonicalFactId):undefined;
     Object.assign(record, input, definition?{category:definition.category,label:definition.label}:{}, { updatedAt: this.now() }); this.persist(); return structuredClone(record);
   }
+  deleteStandardSize(recordId: string): void { this.deleteRecordInternal(this.data.standardSizes,recordId,'standard_size'); }
 
   addBrandFit(input: Omit<BrandFit, 'id' | 'kind' | 'visibility' | 'createdAt' | 'updatedAt'>): BrandFit {
     this.ensureWritable();
@@ -173,6 +198,7 @@ export class SigmaService {
     const definition=record.canonicalFactId?canonicalFactById(record.canonicalFactId):undefined;
     Object.assign(record, input, definition?{category:definition.category}:{}, { updatedAt: this.now() }); this.persist(); return structuredClone(record);
   }
+  deleteBrandFit(recordId: string): void { this.deleteRecordInternal(this.data.brandFits,recordId,'brand_fit'); }
 
   records(profileId: string, query = '', category = '') {
     return this.filterRecords(profileId, query, category, false);
@@ -232,6 +258,14 @@ export class SigmaService {
   private requireProfile(id: string): Profile { const profile = this.data.profiles.find((item) => item.id === id); if (!profile) throw new Error('Profile not found.'); return profile; }
   private requireActor():Profile { const actor=this.activeActor(); if(!actor) throw new Error('Choose an independent profile to act as.'); return actor; }
   private requireManagement(profileId:string):Profile { const actor=this.requireActor(); const profile=this.requireProfile(profileId); if(!canManageProfile(this.data,actor.id,profileId)) throw new Error('Acting adult is not authorised to manage this profile.'); return profile; }
+  private deleteRecordInternal<T extends {id:string;profileId:string}>(collection:T[],recordId:string,kind:'measurement'|'standard_size'|'brand_fit'):void {
+    this.ensureWritable();
+    const index=collection.findIndex((item)=>item.id===recordId);if(index<0)throw new Error('Record not found.');
+    this.requireManagement(collection[index].profileId);
+    collection.splice(index,1);
+    this.data.sharingGrants=this.data.sharingGrants.filter((grant)=>!(grant.scope.type==='record'&&grant.scope.recordKind===kind&&grant.scope.recordId===recordId));
+    this.persist();
+  }
   private requireFamily(id:string){const f=this.data.families.find(x=>x.id===id);if(!f)throw new Error('Family not found.');return f;}
   private requireConnection(id:string){const c=this.data.adultConnections.find(x=>x.id===id);if(!c)throw new Error('Connection not found.');return c;}
   private addMembershipInternal(familyId:string,profileId:string,addedByProfileId:string,createdAt:string){if(this.data.familyMemberships.some(m=>m.familyId===familyId&&m.profileId===profileId))throw new Error('Profile is already a Family member.');this.data.familyMemberships.push({id:this.id(),familyId,profileId,addedByProfileId,createdAt});}
