@@ -1,6 +1,6 @@
 # Data Model
 
-Ticket 6C defines schema version 4 for Sigma's canonical single-device local data. Valid version-1 through version-3 data is deterministically migrated under the unchanged `sigma.data.v1` key.
+Ticket 6C defines schema version 4 for Sigma's canonical single-device local data; Ticket 9 adds real deletion and moves the current schema to version 5 (see "Deletion" below). Valid version-1 through version-4 data is deterministically migrated under the unchanged `sigma.data.v1` key.
 
 ## Canonical fact definitions
 
@@ -21,6 +21,12 @@ Profiles are either `independent` or `managed`. Independent profiles may act as 
 A physical measurement groups immutable value entries under a profile, type, category, and label. Each value preserves its numeric value, unit, original value/unit, measured and recorded timestamps, source type/name, acquisition method, optional confidence/notes, and creation timestamp. Schema 3 may add correction metadata (`voided`, correction actor/time and optional reason). Correction is non-destructive: the entry remains in history but is excluded from current-value selection and conversions. The current valid value is the entry with the latest measured date, then latest recorded timestamp.
 
 Only manual acquisition is active. The source vocabulary anticipates `imported_health_platform`, `imported_device`, `camera_assisted`, `body_scan`, and `third_party_service` without accessing those sources.
+
+## Deletion
+
+Ticket 9 adds genuine removal alongside correction: a single measurement value, a whole physical-measurement/standard-size/brand-fit record, or a whole profile can be deleted, not merely voided or reset. Deleting a record's only remaining value is rejected — delete the whole record instead. Deleting a profile cascades to remove its own records, its Family memberships, its adult connections, any sharing grant where it is owner or recipient, and its ID from any other profile's manager list (falling back to the same "legacy unassigned" state a migrated profile without a manager already uses — no new state is introduced). Deleting a record cascades to remove any sharing grant scoped to exactly that record. These are the only true array removals in the data layer; every other "undo" (revocation, disconnection, correction) remains a non-destructive status change that preserves history, and stays that way — deletion is reserved for cases the user explicitly asked to remove.
+
+Schema 5 distinguishes two kinds of profile-ID reference for validation purposes: subject/party fields (who owns or receives something — a record's `profileId`, a grant's owner/recipient, a connection's two parties, a membership's `profileId`, a profile's manager list) must always resolve to an existing profile, exactly as in schema 4. Purely historical "who did this" attribution fields (`grantedByProfileId`, `revokedByProfileId`, a Family's `createdByProfileId`, a membership's `addedByProfileId`, a correction's `correctedByProfileId`) may now reference a profile that has since been deleted; the record or grant they're attached to can still be perfectly valid, owned by someone who still exists.
 
 ## Recorded sizes and fit facts
 
@@ -57,7 +63,7 @@ Every record retains its original owner and private visibility; access is repres
 
 `migrateStoredData` validates all supported versions at runtime rather than trusting a TypeScript assertion. Schema-3 validation includes schema-2 authority checks and also requires correction actors to be existing independent profiles with valid correction metadata.
 
-Repository loads distinguish `empty`, `ok`, `corrupt`, and `unsupported_version`. The version discriminator must be a finite number; malformed discriminators are corrupt, while unknown finite versions are unsupported. Valid schema-1 and schema-2 data migrates losslessly to schema 4. Schema 3 also migrates losslessly; automatic canonical mapping is limited to exact allowlisted Height, Weight, Waist circumference, Foot length, Shoe size and Ring size combinations whose stored units/systems are permitted. Multiple physical records for the same profile and candidate canonical fact remain uncatalogued, while standard-size records may coexist. Labels are never rewritten. IDs, history, corrections, provenance and grants are preserved. Invalid or authority-impossible data is corrupt. Unsafe raw storage is retained unchanged and mutations and backup export remain blocked until explicit reset.
+Repository loads distinguish `empty`, `ok`, `corrupt`, and `unsupported_version`. The version discriminator must be a finite number; malformed discriminators are corrupt, while unknown finite versions are unsupported. Valid schema-1 through schema-4 data migrates losslessly to the current schema (5). Schema 3's automatic canonical mapping is limited to exact allowlisted Height, Weight, Waist circumference, Foot length, Shoe size and Ring size combinations whose stored units/systems are permitted. Multiple physical records for the same profile and candidate canonical fact remain uncatalogued, while standard-size records may coexist. Labels are never rewritten. IDs, history, corrections, provenance and grants are preserved. Invalid or authority-impossible data is corrupt. Unsafe raw storage is retained unchanged and mutations and backup export remain blocked until explicit reset.
 
 Runtime validation requires IDs to be unique within profiles, each record-kind collection, Families, memberships, connections and grants. Measurement-value IDs are unique within their containing measurement; reuse across measurements and reuse of a record ID across different record kinds remain valid. Record-scoped grants must resolve to a record owned by the grant owner. Canonical physical measurements and standard sizes must retain the registry label as well as their other canonical metadata; uncatalogued custom records remain flexible.
 

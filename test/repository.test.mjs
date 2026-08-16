@@ -9,7 +9,7 @@ function validData() { return { schemaVersion: 1, activeProfileId: 'p1', profile
 test('empty storage is distinguished and valid schema-1 data migrates to schema 4', () => {
   assert.equal(new LocalStorageRepository(storage()).load().status, 'empty');
   const result = new LocalStorageRepository(storage(JSON.stringify(validData()))).load();
-  assert.equal(result.status, 'ok'); assert.equal(result.data.schemaVersion, 4); assert.equal(result.data.profiles[0].displayName, 'Alex'); assert.equal(result.data.activeActorProfileId,'p1'); assert.deepEqual(result.data.sharingGrants,[]);
+  assert.equal(result.status, 'ok'); assert.equal(result.data.schemaVersion, 5); assert.equal(result.data.profiles[0].displayName, 'Alex'); assert.equal(result.data.activeActorProfileId,'p1'); assert.deepEqual(result.data.sharingGrants,[]);
 });
 
 test('invalid JSON and structurally invalid version-one data are corrupt', () => {
