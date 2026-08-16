@@ -133,7 +133,12 @@ export function mountApp(root: HTMLElement, service = new SigmaService(new Local
     bind(root,'[data-import-candidate]','click',(el)=>{const target=root.querySelector<HTMLSelectElement>('#import-target')?.value;if(target){run(()=>{importCandidate(service,target,importCandidates[Number(el.dataset.importCandidate)]);importCandidates.splice(Number(el.dataset.importCandidate),1);},'Candidate imported with its provenance.');}});
     bind(root,'#reset-permission-demos','click',()=>{permissions.reset();permissionFlow=undefined;selectedSourceId=undefined;sourceNotice='';importCandidates=[];excluded=0;notice={kind:'success',message:'Permission demonstrations reset. Records were not deleted.'};render();});
   };
-  if (hasHash) window.addEventListener('hashchange', () => { const parsed = parseHash(window.location.hash); route = parsed.route; familyView = parsed.familyView; notice = undefined; render(); });
+  // location.hash mutations from syncHash() fire `hashchange` asynchronously, after the action that
+  // called it has already rendered any success/error notice. Only clear the notice for a hashchange
+  // that represents real external navigation (back/forward, a typed/deep-linked URL) — recognised by
+  // the parsed hash disagreeing with route/familyView, which an action's own syncHash() echo never does
+  // since that handler already applied the same route/familyView change before calling it.
+  if (hasHash) window.addEventListener('hashchange', () => { const parsed = parseHash(window.location.hash); const external = parsed.route !== route || parsed.familyView !== familyView; route = parsed.route; familyView = parsed.familyView; if (external) notice = undefined; render(); });
   syncHash();
   render();
 }
