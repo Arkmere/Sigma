@@ -45,7 +45,37 @@ test('importFitCard rejects malformed payloads and stores a valid one, defaultin
   assert.throws(()=>service.importFitCard({senderProfileId:'',senderDisplayName:'',exportedAt:'',scope:{type:'profile'},measurements:[],standardSizes:[],brandFits:[]}),/not valid/);
   const card=service.importFitCard({senderProfileId:'remote-1',senderDisplayName:'Jordan',exportedAt:'2026-08-16T00:00:00Z',scope:{type:'profile'},measurements:[],standardSizes:[],brandFits:[]});
   assert.equal(card.label,'Jordan');
+  assert.equal(card.importedAt,card.updatedAt);
   assert.equal(service.snapshot().importedFitCards.length,1);
+});
+
+test('re-importing from the same sender updates the existing card instead of duplicating it',()=>{
+  const{service,alex}=fixture();
+  const first=service.importFitCard({senderProfileId:alex.id,senderDisplayName:'Alex',exportedAt:'x',scope:{type:'profile'},measurements:[],standardSizes:[],brandFits:[]},'My old friend Alex');
+  assert.equal(service.snapshot().importedFitCards.length,1);
+
+  const waist=measurement(service,alex.id,'Waist','Upper body');
+  const second=service.importFitCard({senderProfileId:alex.id,senderDisplayName:'Alex Renamed',exportedAt:'y',scope:{type:'profile'},measurements:[{...waist,id:'remote-waist'}],standardSizes:[],brandFits:[]});
+
+  assert.equal(service.snapshot().importedFitCards.length,1,'a second import from the same sender must not create a duplicate card');
+  assert.equal(second.id,first.id,'the card identity is preserved across updates');
+  assert.equal(second.label,'My old friend Alex','a previously chosen label survives a refresh');
+  assert.equal(second.senderDisplayName,'Alex Renamed','sender display-name changes propagate');
+  assert.equal(second.measurements.length,1);
+  assert.equal(second.importedAt,first.importedAt,'importedAt records when the relationship first started');
+  assert.notEqual(second.updatedAt,first.updatedAt,'updatedAt advances on every refresh');
+});
+
+test('re-importing a narrower export drops records the sender no longer shares, with no separate delete marker needed',()=>{
+  const{service,alex}=fixture();
+  service.importFitCard({senderProfileId:alex.id,senderDisplayName:'Alex',exportedAt:'x',scope:{type:'profile'},measurements:[measurement(service,alex.id,'Waist','Upper body')],standardSizes:[size(service,alex.id)],brandFits:[]});
+  assert.equal(service.snapshot().importedFitCards[0].measurements.length,1);
+  assert.equal(service.snapshot().importedFitCards[0].standardSizes.length,1);
+
+  // Simulate the sender later exporting a narrower scope (or having deleted the waist measurement).
+  const refreshed=service.importFitCard({senderProfileId:alex.id,senderDisplayName:'Alex',exportedAt:'y',scope:{type:'category',category:'Footwear'},measurements:[],standardSizes:[size(service,alex.id)],brandFits:[]});
+  assert.equal(refreshed.measurements.length,0,'a record dropped from the sender\'s export disappears from the local copy too');
+  assert.equal(refreshed.standardSizes.length,1);
 });
 
 test('deleteFitCard removes exactly the requested card',()=>{
@@ -81,21 +111,24 @@ test('full round trip: export, encrypt, decrypt, import lands the same data on a
   assert.ok(!recipient.snapshot().profiles.some(p=>p.id===card.senderProfileId));
 });
 
-test('schema 6 rejects a malformed imported fit card and accepts a well-formed one',()=>{
-  const base=()=>({schemaVersion:6,activeProfileId:'p',activeActorProfileId:'p',profiles:[{id:'p',displayName:'Alex',profileType:'independent',createdAt:'x',updatedAt:'x'}],measurements:[],standardSizes:[],brandFits:[],families:[],familyMemberships:[],adultConnections:[],sharingGrants:[],importedFitCards:[]});
+test('schema 7 rejects a malformed imported fit card and accepts a well-formed one',()=>{
+  const base=()=>({schemaVersion:7,activeProfileId:'p',activeActorProfileId:'p',profiles:[{id:'p',displayName:'Alex',profileType:'independent',createdAt:'x',updatedAt:'x'}],measurements:[],standardSizes:[],brandFits:[],families:[],familyMemberships:[],adultConnections:[],sharingGrants:[],importedFitCards:[]});
 
-  const wellFormed=base();wellFormed.importedFitCards=[{id:'c1',label:'Jordan',senderProfileId:'r1',senderDisplayName:'Jordan',importedAt:'2026-08-16',scope:{type:'profile'},measurements:[],standardSizes:[],brandFits:[]}];
+  const wellFormed=base();wellFormed.importedFitCards=[{id:'c1',label:'Jordan',senderProfileId:'r1',senderDisplayName:'Jordan',importedAt:'2026-08-16',updatedAt:'2026-08-16',scope:{type:'profile'},measurements:[],standardSizes:[],brandFits:[]}];
   assert.equal(migrateStoredData(wellFormed).status,'ok');
 
-  const missingField=base();missingField.importedFitCards=[{id:'c1',label:'Jordan',senderProfileId:'r1',senderDisplayName:'Jordan',scope:{type:'profile'},measurements:[],standardSizes:[],brandFits:[]}];
+  const missingField=base();missingField.importedFitCards=[{id:'c1',label:'Jordan',senderProfileId:'r1',senderDisplayName:'Jordan',updatedAt:'x',scope:{type:'profile'},measurements:[],standardSizes:[],brandFits:[]}];
   assert.equal(migrateStoredData(missingField).status,'corrupt');
 
-  const badScope=base();badScope.importedFitCards=[{id:'c1',label:'Jordan',senderProfileId:'r1',senderDisplayName:'Jordan',importedAt:'x',scope:{type:'nonsense'},measurements:[],standardSizes:[],brandFits:[]}];
+  const missingUpdatedAt=base();missingUpdatedAt.importedFitCards=[{id:'c1',label:'Jordan',senderProfileId:'r1',senderDisplayName:'Jordan',importedAt:'x',scope:{type:'profile'},measurements:[],standardSizes:[],brandFits:[]}];
+  assert.equal(migrateStoredData(missingUpdatedAt).status,'corrupt');
+
+  const badScope=base();badScope.importedFitCards=[{id:'c1',label:'Jordan',senderProfileId:'r1',senderDisplayName:'Jordan',importedAt:'x',updatedAt:'x',scope:{type:'nonsense'},measurements:[],standardSizes:[],brandFits:[]}];
   assert.equal(migrateStoredData(badScope).status,'corrupt');
 
   const duplicateIds=base();duplicateIds.importedFitCards=[
-    {id:'c1',label:'A',senderProfileId:'r1',senderDisplayName:'A',importedAt:'x',scope:{type:'profile'},measurements:[],standardSizes:[],brandFits:[]},
-    {id:'c1',label:'B',senderProfileId:'r2',senderDisplayName:'B',importedAt:'x',scope:{type:'profile'},measurements:[],standardSizes:[],brandFits:[]},
+    {id:'c1',label:'A',senderProfileId:'r1',senderDisplayName:'A',importedAt:'x',updatedAt:'x',scope:{type:'profile'},measurements:[],standardSizes:[],brandFits:[]},
+    {id:'c1',label:'B',senderProfileId:'r2',senderDisplayName:'B',importedAt:'x',updatedAt:'x',scope:{type:'profile'},measurements:[],standardSizes:[],brandFits:[]},
   ];
   assert.equal(migrateStoredData(duplicateIds).status,'corrupt');
 
@@ -103,16 +136,24 @@ test('schema 6 rejects a malformed imported fit card and accepts a well-formed o
   assert.equal(migrateStoredData(notArray).status,'corrupt');
 });
 
-test('schema 1 through 5 all migrate losslessly to schema 6 with an empty importedFitCards collection',()=>{
-  for(const version of [1,2,3,4,5]){
+test('schema 6 imported fit cards backfill updatedAt from importedAt on migration to schema 7',()=>{
+  const raw={schemaVersion:6,activeProfileId:'p',activeActorProfileId:'p',profiles:[{id:'p',displayName:'Alex',profileType:'independent',createdAt:'x',updatedAt:'x'}],measurements:[],standardSizes:[],brandFits:[],families:[],familyMemberships:[],adultConnections:[],sharingGrants:[],importedFitCards:[{id:'c1',label:'Jordan',senderProfileId:'r1',senderDisplayName:'Jordan',importedAt:'2026-08-16',scope:{type:'profile'},measurements:[],standardSizes:[],brandFits:[]}]};
+  const result=migrateStoredData(raw);
+  assert.equal(result.status,'ok');
+  assert.equal(result.data.schemaVersion,7);
+  assert.equal(result.data.importedFitCards[0].updatedAt,'2026-08-16');
+});
+
+test('schema 1 through 6 all migrate losslessly to schema 7 with an empty importedFitCards collection',()=>{
+  for(const version of [1,2,3,4,5,6]){
     const{service,alex}=fixture();
     measurement(service,alex.id);
     const raw={...service.snapshot(),schemaVersion:version};
     if(version===1){delete raw.families;delete raw.familyMemberships;delete raw.adultConnections;delete raw.sharingGrants;delete raw.activeActorProfileId;}
-    delete raw.importedFitCards;
+    if(version===6)raw.importedFitCards=[];else delete raw.importedFitCards;
     const result=migrateStoredData(raw);
     assert.equal(result.status,'ok',`schema ${version} should migrate cleanly`);
-    assert.equal(result.data.schemaVersion,6);
+    assert.equal(result.data.schemaVersion,7);
     assert.deepEqual(result.data.importedFitCards,[]);
   }
 });

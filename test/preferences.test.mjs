@@ -35,7 +35,7 @@ test('anatomy preference remains outside profiles, records, repository, backup a
  writeAnatomyFamilyPreference('masculine',store);
  assert.equal(store.getItem(ANATOMY_FAMILY_KEY),'masculine');assert.equal(store.getItem('sigma.data.v1'),repositoryBefore);assert.deepEqual(service.snapshot(),snapshotBefore);assert.equal(JSON.stringify(service.exportBackup()),backupBefore);assert.deepEqual(canonicalFactDefinitions.map(fact=>fact.id),factsBefore);
  for(const text of [store.getItem('sigma.data.v1'),JSON.stringify(service.exportBackup())])assert.doesNotMatch(text,/anatomyFamily|familyId|assetId|assetRef/);
- assert.equal(service.exportBackup().schemaVersion,6);
+ assert.equal(service.exportBackup().schemaVersion,7);
 });
 
 test('anatomy radio controls inherit the wrapping mobile-safe preference layout',async()=>{const css=await readFile(new URL('../src/styles.css',import.meta.url),'utf8');assert.match(css,/\.theme-options\s*\{[^}]*display:\s*flex;[^}]*flex-wrap:\s*wrap;[^}]*gap:/);assert.match(css,/\.theme-options label\s*\{[^}]*min-height:\s*2\.75rem;[^}]*display:\s*flex;/);});

@@ -105,11 +105,28 @@ export class SigmaService {
       brandFits:structuredClone(this.data.brandFits.filter((r)=>r.profileId===profileId&&scopeCovers(scope,r))),
     };
   }
+  // Re-importing from a sender you already have a card from updates that card in place rather than
+  // duplicating it (Ticket 11) — senderProfileId is the whole relationship's identity on this device.
+  // Each export is a full snapshot of the chosen scope, so replacing the card's records wholesale also
+  // correctly drops anything the sender deleted or narrowed out of scope since the last export, with no
+  // separate tombstone/delete-marker mechanism needed.
   importFitCard(payload:FitCardPayload, label?:string):ImportedFitCard {
     this.ensureWritable();
     this.requireActor();
     if(typeof payload?.senderProfileId!=='string'||!payload.senderProfileId.trim()||typeof payload.senderDisplayName!=='string'||!payload.senderDisplayName.trim()||typeof payload.exportedAt!=='string'||!payload.exportedAt.trim()||typeof payload.scope!=='object'||payload.scope===null||!Array.isArray(payload.measurements)||!Array.isArray(payload.standardSizes)||!Array.isArray(payload.brandFits))throw new Error('This fit card is not valid.');
-    const card:ImportedFitCard={id:this.id(),label:clean(label)??payload.senderDisplayName,senderProfileId:payload.senderProfileId,senderDisplayName:payload.senderDisplayName,scope:payload.scope,importedAt:this.now(),measurements:structuredClone(payload.measurements),standardSizes:structuredClone(payload.standardSizes),brandFits:structuredClone(payload.brandFits)};
+    const now=this.now();
+    const existing=this.data.importedFitCards.find((card)=>card.senderProfileId===payload.senderProfileId);
+    if(existing){
+      existing.senderDisplayName=payload.senderDisplayName;
+      existing.scope=payload.scope;
+      existing.measurements=structuredClone(payload.measurements);
+      existing.standardSizes=structuredClone(payload.standardSizes);
+      existing.brandFits=structuredClone(payload.brandFits);
+      existing.updatedAt=now;
+      this.persist();
+      return structuredClone(existing);
+    }
+    const card:ImportedFitCard={id:this.id(),label:clean(label)??payload.senderDisplayName,senderProfileId:payload.senderProfileId,senderDisplayName:payload.senderDisplayName,scope:payload.scope,importedAt:now,updatedAt:now,measurements:structuredClone(payload.measurements),standardSizes:structuredClone(payload.standardSizes),brandFits:structuredClone(payload.brandFits)};
     this.data.importedFitCards.push(card);
     this.persist();
     return structuredClone(card);

@@ -49,6 +49,18 @@ export function migrateStoredData(raw: unknown): MigrationResult {
     const canonicalReason=validateCanonicalRecords(migrated);if(canonicalReason)return corrupt(canonicalReason);
     return {status:'ok',data:migrated as unknown as SigmaData};
   }
+  if (raw.schemaVersion === 6) {
+    const reason=validateVersionTwo(raw,true,true);if(reason)return corrupt(reason);
+    if(!Array.isArray(raw.importedFitCards))return corrupt('importedFitCards must be an array.');
+    const migrated=structuredClone(raw) as Record<string,unknown>;
+    // Schema 6 cards have no updatedAt (Ticket 11 added it); backfill it from importedAt so every
+    // pre-existing card reads as "never refreshed" until its next real re-import.
+    migrated.importedFitCards=(migrated.importedFitCards as Record<string,unknown>[]).map((card)=>object(card)&&string(card.importedAt)?{...card,updatedAt:card.importedAt}:card);
+    migrated.schemaVersion=DATA_SCHEMA_VERSION;
+    const cardReason=validateImportedFitCards(migrated);if(cardReason)return corrupt(cardReason);
+    const canonicalReason=validateCanonicalRecords(migrated);if(canonicalReason)return corrupt(canonicalReason);
+    return {status:'ok',data:migrated as unknown as SigmaData};
+  }
   if (raw.schemaVersion !== DATA_SCHEMA_VERSION) return { status: 'unsupported_version', version: raw.schemaVersion };
   const reason = validateVersionTwo(raw,true,true) ?? validateImportedFitCards(raw);
   if(!reason){
@@ -63,7 +75,7 @@ function validateImportedFitCards(root: Record<string, unknown>): string | undef
   const cards = root.importedFitCards as Record<string, unknown>[];
   if (!uniqueIds(cards)) return 'Imported fit card IDs must be unique.';
   for (const card of cards) {
-    if (!requiredStrings(card, ['id','label','senderProfileId','senderDisplayName','importedAt']) || !object(card.scope)) return 'An imported fit card has an invalid required field.';
+    if (!requiredStrings(card, ['id','label','senderProfileId','senderDisplayName','importedAt','updatedAt']) || !object(card.scope)) return 'An imported fit card has an invalid required field.';
     const scope = card.scope as Record<string, unknown>;
     if (!['profile','category','record_kind','record'].includes(String(scope.type))) return 'An imported fit card has an invalid scope.';
     if (scope.type === 'category' && !nonEmpty(scope.category)) return 'An imported fit card has an invalid scope.';

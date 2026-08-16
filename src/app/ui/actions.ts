@@ -33,7 +33,7 @@ export async function exportFitCardFile(service: SigmaService, profileId: string
   link.href = url; link.download = `sigma-fitcard-${payload.senderDisplayName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${today()}.json`;
   link.click(); URL.revokeObjectURL(url);
 }
-export async function importFitCardFile(service: SigmaService, file: File, passphrase: string): Promise<void> {
+export async function importFitCardFile(service: SigmaService, file: File, passphrase: string): Promise<{ created: boolean; senderDisplayName: string }> {
   const text = await file.text();
   let envelope: unknown;
   try { envelope = JSON.parse(text); } catch { throw new Error('That file is not a valid fit card.'); }
@@ -41,5 +41,8 @@ export async function importFitCardFile(service: SigmaService, file: File, passp
   const decrypted = await decryptFitCard(envelope, passphrase);
   let payload: unknown;
   try { payload = JSON.parse(decrypted); } catch { throw new Error('That file is not a valid fit card.'); }
-  service.importFitCard(payload as FitCardPayload);
+  const typed = payload as FitCardPayload;
+  const existed = service.snapshot().importedFitCards.some((card) => card.senderProfileId === typed.senderProfileId);
+  const card = service.importFitCard(typed);
+  return { created: !existed, senderDisplayName: card.senderDisplayName };
 }

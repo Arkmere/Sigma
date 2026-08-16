@@ -1,4 +1,4 @@
-export const DATA_SCHEMA_VERSION = 6;
+export const DATA_SCHEMA_VERSION = 7;
 
 export type ProfileType = 'independent' | 'managed';
 export type SourceType = 'manual' | 'imported_health_platform' | 'imported_device' | 'camera_assisted' | 'body_scan' | 'third_party_service';
@@ -116,6 +116,7 @@ export interface ImportedFitCard {
   senderDisplayName: string;
   scope: SharingScope;
   importedAt: string;
+  updatedAt: string;
   measurements: PhysicalMeasurement[];
   standardSizes: StandardSize[];
   brandFits: BrandFit[];
