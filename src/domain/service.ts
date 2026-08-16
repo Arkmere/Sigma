@@ -1,6 +1,7 @@
 import { currentMeasurementValue, DATA_SCHEMA_VERSION, type AdultConnection, type BrandFit, type Family, type ImportedFitCard, type MeasurementValue, type PhysicalMeasurement, type Profile, type SharingGrant, type SharingScope, type SigmaBackup, type SigmaData, type StandardSize } from './model.js';
 import { activeConnection, canCreateGrant, canManageProfile, canRevokeGrant, canViewRecord, profilesShareFamily, scopeCovers } from './sharing.js';
 import type { DataRepository, LoadResult } from '../data/repository.js';
+import { validateFitCardRecords, validateSharingScopeShape } from '../data/migrations.js';
 import { convertUnit, footwearConversions, measurementSemantics, resolveUnit, unitsForDimension, type ConversionResult, type FootwearContext } from '../conversion/registry.js';
 import { canonicalFactById } from './canonical-facts.js';
 import type { FitCardPayload } from '../exchange/model.js';
@@ -113,7 +114,8 @@ export class SigmaService {
   importFitCard(payload:FitCardPayload, label?:string):ImportedFitCard {
     this.ensureWritable();
     this.requireActor();
-    if(typeof payload?.senderProfileId!=='string'||!payload.senderProfileId.trim()||typeof payload.senderDisplayName!=='string'||!payload.senderDisplayName.trim()||typeof payload.exportedAt!=='string'||!payload.exportedAt.trim()||typeof payload.scope!=='object'||payload.scope===null||!Array.isArray(payload.measurements)||!Array.isArray(payload.standardSizes)||!Array.isArray(payload.brandFits))throw new Error('This fit card is not valid.');
+    if(typeof payload?.senderProfileId!=='string'||!payload.senderProfileId.trim()||typeof payload.senderDisplayName!=='string'||!payload.senderDisplayName.trim()||typeof payload.exportedAt!=='string'||!payload.exportedAt.trim())throw new Error('This fit card is not valid.');
+    if(validateSharingScopeShape(payload.scope)||validateFitCardRecords(payload.measurements,payload.standardSizes,payload.brandFits))throw new Error('This fit card is not valid.');
     const now=this.now();
     const existing=this.data.importedFitCards.find((card)=>card.senderProfileId===payload.senderProfileId);
     if(existing){

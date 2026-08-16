@@ -80,7 +80,7 @@ function renderFitCards(service:SigmaService):string {
 
 function renderFitCardArticle(card:ImportedFitCard):string {
   const lines=[
-    ...card.measurements.map((record)=>{const current=currentMeasurementValue(record);return `<li>${e(record.label)}<strong>${current?`${current.originalValue} ${e(current.originalUnit)}`:'No current value'}</strong></li>`;}),
+    ...card.measurements.map((record)=>{const current=currentMeasurementValue(record);return `<li>${e(record.label)}<strong>${current?`${e(String(current.originalValue))} ${e(current.originalUnit)}`:'No current value'}</strong></li>`;}),
     ...card.standardSizes.map((record)=>`<li>${e(record.label)}<strong>${e(record.sizingSystem)} ${e(record.sizeValue)}</strong></li>`),
     ...card.brandFits.map((record)=>`<li>${e(record.brand)}${record.productName?` · ${e(record.productName)}`:''}<strong>${e(record.sizingSystem)} ${e(record.sizeValue)}</strong></li>`),
   ];

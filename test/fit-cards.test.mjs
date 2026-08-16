@@ -49,6 +49,25 @@ test('importFitCard rejects malformed payloads and stores a valid one, defaultin
   assert.equal(service.snapshot().importedFitCards.length,1);
 });
 
+test('importFitCard rejects a malformed embedded record instead of persisting it (Ticket 12 hardening)',()=>{
+  // Before this hardening pass, importFitCard only checked that measurements/standardSizes/brandFits were
+  // arrays, not that their elements were well-formed. A malformed element could pass the live import, get
+  // rendered (crashing or, worse, injecting unescaped content — see the XSS-shaped case below), and then
+  // fail the *stricter* migration validator on next reload, corrupting the entire local dataset.
+  const{service}=fixture();
+  const base={senderProfileId:'remote-1',senderDisplayName:'Jordan',exportedAt:'x',scope:{type:'profile'}};
+
+  assert.throws(()=>service.importFitCard({...base,measurements:[{}],standardSizes:[],brandFits:[]}),/not valid/,'a measurement missing every required field is rejected');
+  assert.throws(()=>service.importFitCard({...base,measurements:[{id:'m',profileId:'p',measurementType:'Waist',category:'Upper body',label:'Waist',createdAt:'x',updatedAt:'x',kind:'measurement',visibility:'private'}],standardSizes:[],brandFits:[]}),/not valid/,'a measurement with no values array is rejected');
+  // A type-confused value (string instead of number) is exactly the shape that used to reach the DOM unescaped.
+  const spoofedValue={id:'v',value:90,unit:'cm',originalValue:'<img src=x onerror=alert(1)>',originalUnit:'cm',measuredAt:'x',recordedAt:'x',createdAt:'x',sourceType:'manual',acquisitionMethod:'manual'};
+  assert.throws(()=>service.importFitCard({...base,measurements:[{id:'m',profileId:'p',measurementType:'Waist',category:'Upper body',label:'Waist',createdAt:'x',updatedAt:'x',kind:'measurement',visibility:'private',values:[spoofedValue]}],standardSizes:[],brandFits:[]}),/not valid/,'a non-numeric originalValue is rejected, not just rendered unescaped');
+  assert.throws(()=>service.importFitCard({...base,measurements:[],standardSizes:[{id:'s',profileId:'p'}],brandFits:[]}),/not valid/,'a malformed standard-size record is rejected');
+  assert.throws(()=>service.importFitCard({...base,measurements:[],standardSizes:[],brandFits:[{id:'b'}]}),/not valid/,'a malformed brand-fit record is rejected');
+  assert.throws(()=>service.importFitCard({...base,measurements:[],standardSizes:[],brandFits:[],scope:{type:'category'}}),/not valid/,'a category scope missing its category is rejected');
+  assert.equal(service.snapshot().importedFitCards.length,0,'none of the rejected imports left anything behind');
+});
+
 test('re-importing from the same sender updates the existing card instead of duplicating it',()=>{
   const{service,alex}=fixture();
   const first=service.importFitCard({senderProfileId:alex.id,senderDisplayName:'Alex',exportedAt:'x',scope:{type:'profile'},measurements:[],standardSizes:[],brandFits:[]},'My old friend Alex');

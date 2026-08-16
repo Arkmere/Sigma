@@ -28,8 +28,10 @@ export async function encryptFitCard(plaintext: string, passphrase: string): Pro
 }
 
 export async function decryptFitCard(file: EncryptedFitCardFile, passphrase: string): Promise<string> {
-  const key = await deriveKey(passphrase, fromBase64(file.salt));
+  // Malformed base64 in an adversarial/corrupted file (not just a wrong key or tampered ciphertext) must
+  // fail the same friendly way — so every decode step is inside this try, not just the actual decrypt call.
   try {
+    const key = await deriveKey(passphrase, fromBase64(file.salt));
     const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromBase64(file.iv) }, key, fromBase64(file.ciphertext));
     return new TextDecoder().decode(plaintext);
   } catch {
