@@ -611,6 +611,23 @@ button.danger {
   cursor: pointer;
 }
 
+.fitcard-facts {
+  list-style: none;
+  margin: var(--space-3) 0;
+  padding: 0;
+  display: grid;
+  gap: .2rem;
+}
+
+.fitcard-facts li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: .5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
 button.quiet {
   border-color: transparent;
   background: transparent;

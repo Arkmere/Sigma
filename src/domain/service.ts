@@ -1,8 +1,9 @@
-import { currentMeasurementValue, DATA_SCHEMA_VERSION, type AdultConnection, type BrandFit, type Family, type MeasurementValue, type PhysicalMeasurement, type Profile, type SharingGrant, type SharingScope, type SigmaBackup, type SigmaData, type StandardSize } from './model.js';
-import { activeConnection, canCreateGrant, canManageProfile, canRevokeGrant, canViewRecord, profilesShareFamily } from './sharing.js';
+import { currentMeasurementValue, DATA_SCHEMA_VERSION, type AdultConnection, type BrandFit, type Family, type ImportedFitCard, type MeasurementValue, type PhysicalMeasurement, type Profile, type SharingGrant, type SharingScope, type SigmaBackup, type SigmaData, type StandardSize } from './model.js';
+import { activeConnection, canCreateGrant, canManageProfile, canRevokeGrant, canViewRecord, profilesShareFamily, scopeCovers } from './sharing.js';
 import type { DataRepository, LoadResult } from '../data/repository.js';
 import { convertUnit, footwearConversions, measurementSemantics, resolveUnit, unitsForDimension, type ConversionResult, type FootwearContext } from '../conversion/registry.js';
 import { canonicalFactById } from './canonical-facts.js';
+import type { FitCardPayload } from '../exchange/model.js';
 
 type Clock = () => string;
 type IdFactory = () => string;
@@ -88,6 +89,39 @@ export class SigmaService {
   canViewRecord(actorId:string, recordId:string):boolean { const r=[...this.data.measurements,...this.data.standardSizes,...this.data.brandFits].find(x=>x.id===recordId); return !!r&&canViewRecord(this.data,actorId,r); }
   canManageProfile(profileId:string):boolean { const actor=this.activeActor(); return !!actor&&canManageProfile(this.data,actor.id,profileId); }
   hasActiveConnection(a:string,b:string):boolean{return activeConnection(this.data,a,b);}
+  exportFitCardPayload(profileId:string, scope:SharingScope):FitCardPayload {
+    this.ensureWritable();
+    const actor=this.requireActor();
+    const profile=this.requireProfile(profileId);
+    if(!canManageProfile(this.data,actor.id,profileId))throw new Error('You cannot export records for that profile.');
+    this.validateScope(profileId,scope);
+    return {
+      senderProfileId:profile.id,
+      senderDisplayName:profile.displayName,
+      exportedAt:this.now(),
+      scope,
+      measurements:structuredClone(this.data.measurements.filter((r)=>r.profileId===profileId&&scopeCovers(scope,r))),
+      standardSizes:structuredClone(this.data.standardSizes.filter((r)=>r.profileId===profileId&&scopeCovers(scope,r))),
+      brandFits:structuredClone(this.data.brandFits.filter((r)=>r.profileId===profileId&&scopeCovers(scope,r))),
+    };
+  }
+  importFitCard(payload:FitCardPayload, label?:string):ImportedFitCard {
+    this.ensureWritable();
+    this.requireActor();
+    if(typeof payload?.senderProfileId!=='string'||!payload.senderProfileId.trim()||typeof payload.senderDisplayName!=='string'||!payload.senderDisplayName.trim()||typeof payload.exportedAt!=='string'||!payload.exportedAt.trim()||typeof payload.scope!=='object'||payload.scope===null||!Array.isArray(payload.measurements)||!Array.isArray(payload.standardSizes)||!Array.isArray(payload.brandFits))throw new Error('This fit card is not valid.');
+    const card:ImportedFitCard={id:this.id(),label:clean(label)??payload.senderDisplayName,senderProfileId:payload.senderProfileId,senderDisplayName:payload.senderDisplayName,scope:payload.scope,importedAt:this.now(),measurements:structuredClone(payload.measurements),standardSizes:structuredClone(payload.standardSizes),brandFits:structuredClone(payload.brandFits)};
+    this.data.importedFitCards.push(card);
+    this.persist();
+    return structuredClone(card);
+  }
+  deleteFitCard(id:string):void {
+    this.ensureWritable();
+    this.requireActor();
+    const index=this.data.importedFitCards.findIndex((card)=>card.id===id);
+    if(index<0)throw new Error('Fit card not found.');
+    this.data.importedFitCards.splice(index,1);
+    this.persist();
+  }
 
   updateProfile(profileId: string, input: Partial<Pick<Profile, 'displayName' | 'relationshipLabel' | 'dateOfBirth' | 'notes'>>): Profile {
     this.ensureWritable();

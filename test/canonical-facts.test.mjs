@@ -66,7 +66,7 @@ test('schema-3 migration maps only exact allowlisted facts and preserves ambiguo
     {id:'a',profileId:'p',kind:'measurement',measurementType:'Height',category:'Custom',label:'Height',values:[{id:'v2',value:1,unit:'cm',originalValue:1,originalUnit:'cm',measuredAt:'2026-01-01',recordedAt:'2026-01-01',sourceType:'manual',acquisitionMethod:'manual',createdAt:'x'}],visibility:'private',createdAt:'x',updatedAt:'x'},
   ],standardSizes:[],brandFits:[],families:[],familyMemberships:[],adultConnections:[],sharingGrants:[]};
   local.setItem('sigma.data.v1',JSON.stringify(raw));const loaded=new LocalStorageRepository(local).load();
-  assert.equal(loaded.status,'ok');assert.equal(loaded.data.schemaVersion,5);
+  assert.equal(loaded.status,'ok');assert.equal(loaded.data.schemaVersion,6);
   assert.equal(loaded.data.measurements[0].canonicalFactId,'measurement.height');
   assert.equal(loaded.data.measurements[1].canonicalFactId,undefined);
   assert.equal(loaded.data.measurements[1].category,'Custom');
