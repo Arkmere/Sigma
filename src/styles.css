@@ -466,6 +466,17 @@ nav button.active {
 .record-empty { display: flex; align-items: center; gap: var(--space-3); }
 .summary-row { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 .summary-row span { padding: .65rem .8rem; border: 1px solid var(--border); border-radius: .75rem; }
+.dashboard { margin-bottom: var(--space-6); }
+.dashboard-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-4); }
+.dashboard-actions button { min-height: 2.9rem; }
+.dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: var(--space-4); }
+.dashboard-grid section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-4); }
+.dashboard-grid h3 { margin: 0 0 var(--space-3); font-size: .95rem; }
+.dashboard-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.dashboard-list li { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); padding: .55rem 0; border-bottom: 1px solid var(--border); }
+.dashboard-list li:last-child { border-bottom: 0; }
+.dashboard-list strong { font-variant-numeric: tabular-nums; }
+.dashboard-categories strong { color: var(--text-muted); font-weight: 500; }
 .future-source-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--space-2); }
 .value-label { display: block; color: var(--text-muted); font-size: .75rem; text-align: right; }
 .form-panel { margin-bottom: var(--space-5); }

@@ -69,6 +69,14 @@ export function mountApp(root: HTMLElement, service = new SigmaService(new Local
     bind(root, '[data-edit-profile]', 'click', (element) => { editingProfileId = element.dataset.editProfile!; profileFormOpen=true; render(); });
     bind(root, '#open-profile-form', 'click', () => { profileFormOpen=true; render(); root.querySelector<HTMLInputElement>('#profile-form input[name="displayName"]')?.focus(); });
     bind(root, '#cancel-profile-form', 'click', () => { profileFormOpen=false; editingProfileId=''; render(); });
+    bind(root,'[data-dashboard-action]','click',(element)=>{
+      const action=element.dataset.dashboardAction;
+      notice=undefined; route='measurements'; mode=action==='sizes'?'standard_size':'measurement'; recordFormOpen=action==='record'||action==='browse';
+      syncHash(); render();
+      // Browse by body lives inside the record-creation form itself; opening it here is the same
+      // click a user would make once the form is on screen, not a second, parallel entry point.
+      if(action==='browse')root.querySelector<HTMLButtonElement>('#open-anatomy-discovery')?.click();
+    });
     bind(root, '[data-record-mode]', 'click', (element) => { mode = element.dataset.recordMode as RecordMode; recordFormOpen=false; render(); });
     root.querySelector<HTMLSelectElement>('#record-mode-select')?.addEventListener('change',(event)=>{mode=(event.currentTarget as HTMLSelectElement).value as RecordMode;recordFormOpen=false;render();});
     bind(root,'[data-family-view]','click',(element)=>{notice=undefined;familyView=element.dataset.familyView as FamilyView;route='family';syncHash();render();});
@@ -150,11 +158,14 @@ export function mountApp(root: HTMLElement, service = new SigmaService(new Local
     bind(root,'#reset-permission-demos','click',()=>{permissions.reset();permissionFlow=undefined;selectedSourceId=undefined;sourceNotice='';importCandidates=[];excluded=0;notice={kind:'success',message:'Permission demonstrations reset. Records were not deleted.'};render();});
   };
   // location.hash mutations from syncHash() fire `hashchange` asynchronously, after the action that
-  // called it has already rendered any success/error notice. Only clear the notice for a hashchange
-  // that represents real external navigation (back/forward, a typed/deep-linked URL) — recognised by
-  // the parsed hash disagreeing with route/familyView, which an action's own syncHash() echo never does
-  // since that handler already applied the same route/familyView change before calling it.
-  if (hasHash) window.addEventListener('hashchange', () => { const parsed = parseHash(window.location.hash); const external = parsed.route !== route || parsed.familyView !== familyView; route = parsed.route; familyView = parsed.familyView; if (external) notice = undefined; render(); });
+  // called it has already rendered — and every render() fully replaces root.innerHTML, discarding any
+  // imperative post-render DOM state (a notice, an opened-by-script disclosure like the anatomy browser,
+  // focus, scroll position...). An echo of a change this app just applied itself doesn't need a second
+  // render to achieve anything, so skip it entirely rather than only patching individual symptoms —
+  // recognised by the parsed hash already agreeing with route/familyView, which an action's own
+  // syncHash() echo always does since that handler already applied the same change before calling it.
+  // Only real external navigation (back/forward, a typed/deep-linked URL) actually needs to re-render.
+  if (hasHash) window.addEventListener('hashchange', () => { const parsed = parseHash(window.location.hash); const external = parsed.route !== route || parsed.familyView !== familyView; if (!external) return; route = parsed.route; familyView = parsed.familyView; notice = undefined; render(); });
   syncHash();
   render();
 }
