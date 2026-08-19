@@ -1,7 +1,7 @@
 import type { SigmaService } from '../../domain/service.js';
 import { currentMeasurementValue, type ImportedFitCard, type SharingScope } from '../../domain/model.js';
 import type { DemoEntitlement } from '../../lib/entitlement.js';
-import { categoryOptions, escapeHtml as e, formatDate } from './html.js';
+import { categoryOptions, escapeHtml as e, formatDate, unitSpan } from './html.js';
 
 export type GrantScopeChoice = 'profile'|'category'|'standard_size'|'brand_fit'|'record:measurement'|'record:standard_size'|'record:brand_fit';
 export interface GrantComposerState { ownerId:string; recipientId:string; scope:GrantScopeChoice; category:string; recordId:string }
@@ -80,9 +80,9 @@ function renderFitCards(service:SigmaService):string {
 
 function renderFitCardArticle(card:ImportedFitCard):string {
   const lines=[
-    ...card.measurements.map((record)=>{const current=currentMeasurementValue(record);return `<li>${e(record.label)}<strong>${current?`${e(String(current.originalValue))} ${e(current.originalUnit)}`:'No current value'}</strong></li>`;}),
-    ...card.standardSizes.map((record)=>`<li>${e(record.label)}<strong>${e(record.sizingSystem)} ${e(record.sizeValue)}</strong></li>`),
-    ...card.brandFits.map((record)=>`<li>${e(record.brand)}${record.productName?` · ${e(record.productName)}`:''}<strong>${e(record.sizingSystem)} ${e(record.sizeValue)}</strong></li>`),
+    ...card.measurements.map((record)=>{const current=currentMeasurementValue(record);return `<li>${e(record.label)}<strong>${current?`${e(String(current.originalValue))}${unitSpan(current.originalUnit)}`:'No current value'}</strong></li>`;}),
+    ...card.standardSizes.map((record)=>`<li>${e(record.label)}<strong>${unitSpan(record.sizingSystem)} ${e(record.sizeValue)}</strong></li>`),
+    ...card.brandFits.map((record)=>`<li>${e(record.brand)}${record.productName?` · ${e(record.productName)}`:''}<strong>${unitSpan(record.sizingSystem)} ${e(record.sizeValue)}</strong></li>`),
   ];
   const refreshed=card.updatedAt!==card.importedAt;
   return `<article class="record-card"><h3>${e(card.label)}</h3><p class="metadata">From ${e(card.senderDisplayName)} · added ${formatDate(card.importedAt)}${refreshed?` · updated ${formatDate(card.updatedAt)}`:''}</p>${lines.length?`<ul class="fitcard-facts">${lines.join('')}</ul>`:'<p class="metadata">This fit card has no records.</p>'}<button type="button" class="quiet" data-delete-fitcard="${card.id}">Remove</button></article>`;

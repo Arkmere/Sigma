@@ -36,8 +36,8 @@ test('history items keep value, status, metadata, and correction form in one sem
   service.correctMeasurementValue(record.id,updated.values[1].id,'Entered in error');
 
   const html=renderRecords(service,'measurement','','',false);
-  assert.match(html,/<li class="history-entry corrected-entry">[\s\S]*41 cm[\s\S]*Incorrect[\s\S]*Marked incorrect[\s\S]*Reason<\/dt><dd>Entered in error<\/dd>[\s\S]*<\/li>/);
-  assert.match(html,/<li class="history-entry ">[\s\S]*40 cm[\s\S]*Current[\s\S]*class="correction-form"[\s\S]*Mark incorrect[\s\S]*<\/li>/);
+  assert.match(html,/<li class="history-entry corrected-entry">[\s\S]*41<span class="record-unit">cm<\/span>[\s\S]*Incorrect[\s\S]*Marked incorrect[\s\S]*Reason<\/dt><dd>Entered in error<\/dd>[\s\S]*<\/li>/);
+  assert.match(html,/<li class="history-entry ">[\s\S]*40<span class="record-unit">cm<\/span>[\s\S]*Current[\s\S]*class="correction-form"[\s\S]*Mark incorrect[\s\S]*<\/li>/);
 });
 
 test('mobile record actions retain single-column stacking and correction forms collapse',async()=>{

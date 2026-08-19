@@ -26,8 +26,8 @@ test('history entries are coherent blocks and corrected entries retain explicit 
   const updated=service.addMeasurementValue(record.id,{value:91,unit:'cm',originalValue:91,originalUnit:'cm',measuredAt:'2026-07-29',recordedAt:'2026-07-29T11:00:00Z',sourceType:'manual',acquisitionMethod:'manual'});
   service.correctMeasurementValue(record.id,updated.values[1].id,'Entered in error');
   const html=renderRecords(service,'measurement','','',false);
-  assert.match(html,/class="history-entry corrected-entry"[\s\S]*class="history-entry-main"[\s\S]*91 cm[\s\S]*Incorrect[\s\S]*<dt>Measured<\/dt>[\s\S]*<dt>Recorded<\/dt>[\s\S]*<dt>Marked incorrect<\/dt>[\s\S]*<dt>Reason<\/dt><dd>Entered in error<\/dd>/);
-  assert.match(html,/class="history-entry "[\s\S]*90 cm[\s\S]*Current[\s\S]*class="correction-form"/);
+  assert.match(html,/class="history-entry corrected-entry"[\s\S]*class="history-entry-main"[\s\S]*91<span class="record-unit">cm<\/span>[\s\S]*Incorrect[\s\S]*<dt>Measured<\/dt>[\s\S]*<dt>Recorded<\/dt>[\s\S]*<dt>Marked incorrect<\/dt>[\s\S]*<dt>Reason<\/dt><dd>Entered in error<\/dd>/);
+  assert.match(html,/class="history-entry "[\s\S]*90<span class="record-unit">cm<\/span>[\s\S]*Current[\s\S]*class="correction-form"/);
 });
 
 test('semantic button classes distinguish active actions from genuinely disabled controls',()=>{
