@@ -1,10 +1,11 @@
 import { type RouteId } from './content.js';
 import { LocalStorageRepository } from '../data/repository.js';
 import { SigmaService } from '../domain/service.js';
-import { readAnatomyFamilyPreference, readThemePreference, resolveTheme, type AnatomyFamilyPreference, type ThemePreference, writeAnatomyFamilyPreference, writeThemePreference } from '../lib/preferences.js';
+import { readAdminModePreference, readAnatomyFamilyPreference, readThemePreference, resolveTheme, writeAdminModePreference, type AnatomyFamilyPreference, type ThemePreference, writeAnatomyFamilyPreference, writeThemePreference } from '../lib/preferences.js';
 import { addHistory, downloadBackup, exportFitCardFile, importFitCardFile, saveProfile, saveRecord } from './ui/actions.js';
 import { field } from './ui/html.js';
 import { renderProfiles } from './ui/profiles.js';
+import { renderLogin } from './ui/login.js';
 import { renderRecords, type RecordMode } from './ui/records.js';
 import { renderShell, type AppNotice } from './ui/shell.js';
 import { renderPrivacy, renderSettings } from './ui/status.js';
@@ -37,13 +38,27 @@ export function mountApp(root: HTMLElement, service = new SigmaService(new Local
   const buildId = (globalThis as unknown as { __SIGMA_BUILD__?: string }).__SIGMA_BUILD__;
   const hasHash = typeof window !== 'undefined' && typeof window.location !== 'undefined';
   const seeded = hasHash && window.location.hash ? parseHash(window.location.hash) : undefined;
-  let route: RouteId = seeded?.route ?? 'profiles'; let theme = readThemePreference(); let anatomyFamily=readAnatomyFamilyPreference(); let entitlement=readDemoEntitlement(); let mode: RecordMode = 'measurement'; let search = ''; let category = ''; let editingProfileId = ''; let profileFormOpen=false; let recordFormOpen=false; let familyView:FamilyView=seeded?.familyView ?? 'overview'; let notice:AppNotice|undefined;
+  let route: RouteId = seeded?.route ?? 'profiles'; let theme = readThemePreference(); let anatomyFamily=readAnatomyFamilyPreference(); let entitlement=readDemoEntitlement(); let mode: RecordMode = 'measurement'; let search = ''; let category = ''; let editingProfileId = ''; let profileFormOpen=false; let recordFormOpen=false; let familyView:FamilyView=seeded?.familyView ?? 'overview'; let notice:AppNotice|undefined; let loginCreateFormOpen=false; let loginError:string|undefined;
+  // Corrupt/unsupported storage must surface its own warning, not silently throw from re-entering admin mode.
+  if (readAdminModePreference() && service.storageStatus().status === 'ok') service.enterAdminMode();
   const syncHash = () => { if (hasHash) { const next = hashFor(route, familyView); if (window.location.hash !== next) window.location.hash = next; } };
   const permissions=new PermissionDemoService(globalThis.localStorage); let permissionFlow:PermissionKind|undefined; let selectedSourceId:SourceId|undefined; let sourceNotice=''; let importCandidates:ImportCandidate[]=[]; let excluded=0;
   let grantComposer:GrantComposerState=emptyGrantComposerState();
   const render = () => {
     const resolved = resolveTheme(theme, globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false);
     document.documentElement.dataset.theme = resolved; document.documentElement.dataset.themePreference = theme; writeThemePreference(theme);writeAnatomyFamilyPreference(anatomyFamily);
+    // A corrupt/unsupported store must still show its own warning (handled inside renderShell), never
+    // the login screen — only gate on login once storage is known to be safely readable.
+    const unsafe = ['corrupt', 'unsupported_version'].includes(service.storageStatus().status);
+    if (!unsafe && !service.activeActor()) {
+      root.innerHTML = renderLogin(service, loginCreateFormOpen, loginError);
+      const loginAction = (action: () => void) => { try { action(); loginCreateFormOpen=false; loginError=undefined; route='profiles'; familyView='overview'; notice=undefined; syncHash(); render(); } catch (error) { if (error instanceof Error) { loginError=error.message; render(); return; } throw error; } };
+      onForm(root, '#login-form', (form) => loginAction(() => { const value = field(new FormData(form), 'profileId'); if (value === '__admin__') { service.enterAdminMode(); writeAdminModePreference(true); } else service.selectActor(value); }));
+      onForm(root, '#login-create-form', (form) => loginAction(() => { service.createProfile({ displayName: field(new FormData(form), 'displayName'), profileType: 'independent' }); }));
+      bind(root, '#login-open-create', 'click', () => { loginCreateFormOpen=true; loginError=undefined; render(); });
+      bind(root, '#login-cancel-create', 'click', () => { loginCreateFormOpen=false; loginError=undefined; render(); });
+      return;
+    }
     const content = route === 'profiles' ? renderProfiles(service, editingProfileId,profileFormOpen) : route === 'measurements' ? renderRecords(service, mode, search, category,recordFormOpen) : route === 'sources' ? renderSources(service,permissions,permissionFlow,importCandidates,excluded,sourceNotice) : route === 'privacy' ? renderPrivacy(service,permissions) : route === 'settings' ? renderSettings(service, theme, resolved, anatomyFamily, entitlement,permissions,buildId) : renderFamilyScreen(service, entitlement,grantComposer,familyView);
     root.innerHTML = renderShell(route, service, content,notice);
     void hydrateStandaloneAnatomy(root);
@@ -125,6 +140,7 @@ export function mountApp(root: HTMLElement, service = new SigmaService(new Local
     bind(root,'[data-anatomy-fact]','click',(element)=>{if(!canonicalPicker)return;canonicalPicker.value=element.dataset.anatomyFact!;canonicalPicker.dispatchEvent(new Event('change'));if(anatomyBrowser&&anatomyToggle){anatomyBrowser.hidden=true;anatomyToggle.setAttribute('aria-expanded','false');}canonicalPicker.focus();});
     root.querySelector<HTMLInputElement>('#canonical-fact-search')?.addEventListener('input',(event)=>{const needle=(event.currentTarget as HTMLInputElement).value.toLowerCase();if(!canonicalPicker)return;for(const option of canonicalPicker.options)option.hidden=!!needle&&!option.dataset.search?.includes(needle);canonicalPicker.querySelectorAll<HTMLOptGroupElement>('optgroup').forEach((group)=>{group.hidden=[...group.querySelectorAll<HTMLOptionElement>('option')].every((option)=>option.hidden);});const first=[...canonicalPicker.options].find((option)=>!option.hidden);if(first&&canonicalPicker.selectedOptions[0]?.hidden){canonicalPicker.value=first.value;populateCanonicalChoices();}});
     root.querySelector<HTMLInputElement>('input[name="custom"]')?.addEventListener('change',(event)=>{const guidance=root.querySelector<HTMLElement>('#creation-guidance');if(guidance)guidance.hidden=(event.currentTarget as HTMLInputElement).checked;});
+    bind(root, '#log-out', 'click', () => { service.logOut(); writeAdminModePreference(false); route='profiles'; familyView='overview'; editingProfileId=''; profileFormOpen=false; recordFormOpen=false; loginCreateFormOpen=false; notice=undefined; syncHash(); render(); });
     bind(root, '#export-data', 'click', () => downloadBackup(service));
     bind(root, '#reset-data', 'click', () => { if (globalThis.confirm('Delete every Sigma profile, record, Family, connection and sharing grant stored in this browser? This cannot be undone.')) { service.reset(); route = 'profiles'; familyView='overview'; syncHash(); notice={kind:'success',message:'Local Sigma data reset. You can start again.'}; render(); } });
     bind(root,'[data-source-action]','click',(el)=>{const source=el.dataset.sourceAction as SourceId;selectedSourceId=source;sourceNotice='';if(['measurement_device','apple_health','health_connect'].includes(source))permissionFlow='health_data';else if(source==='camera_assisted'||source==='body_scan')permissionFlow='camera';else if(source==='external_scan')permissionFlow='files';else if(source==='smart_scale')permissionFlow='nearby_devices';render();root.querySelector<HTMLElement>('#permission-explanation')?.focus();});

@@ -3,6 +3,19 @@ export type AnatomyFamilyPreference = 'neutral' | 'masculine' | 'feminine';
 
 const THEME_KEY = 'sigma.themePreference';
 export const ANATOMY_FAMILY_KEY = 'sigma.anatomyFamily';
+// Whether the last session was logged in as the local testing-only Admin identity. Kept entirely
+// separate from SigmaData/activeActorProfileId (which must always resolve to a real, schema-validated
+// profile) so admin mode can never be mistaken for stored account data or leak into a backup export.
+const ADMIN_MODE_KEY = 'sigma.adminMode';
+
+export function readAdminModePreference(): boolean {
+  return globalThis.localStorage?.getItem(ADMIN_MODE_KEY) === 'true';
+}
+
+export function writeAdminModePreference(value: boolean): void {
+  if (value) globalThis.localStorage?.setItem(ADMIN_MODE_KEY, 'true');
+  else globalThis.localStorage?.removeItem(ADMIN_MODE_KEY);
+}
 
 export function readThemePreference(): ThemePreference {
   const value = globalThis.localStorage?.getItem(THEME_KEY);

@@ -1,5 +1,5 @@
 import { currentMeasurementValue, DATA_SCHEMA_VERSION, type AdultConnection, type BrandFit, type Family, type ImportedFitCard, type MeasurementValue, type PhysicalMeasurement, type Profile, type SharingGrant, type SharingScope, type SigmaBackup, type SigmaData, type StandardSize } from './model.js';
-import { activeConnection, canCreateGrant, canManageProfile, canRevokeGrant, canViewRecord, profilesShareFamily, scopeCovers } from './sharing.js';
+import { activeConnection, ADMIN_ACTOR_ID, canCreateGrant, canManageProfile, canRevokeGrant, canViewRecord, profilesShareFamily, scopeCovers } from './sharing.js';
 import type { DataRepository, LoadResult } from '../data/repository.js';
 import { validateFitCardRecords, validateSharingScopeShape } from '../data/migrations.js';
 import { convertUnit, footwearConversions, measurementSemantics, resolveUnit, unitsForDimension, type ConversionResult, type FootwearContext } from '../conversion/registry.js';
@@ -10,10 +10,14 @@ type Clock = () => string;
 type IdFactory = () => string;
 const defaultId = () => globalThis.crypto?.randomUUID?.() ?? `sigma-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const defaultClock = () => new Date().toISOString();
+// Never stored in data.profiles, never persisted, never exported in a backup — admin mode is purely an
+// in-memory session flag on SigmaService (see enterAdminMode/logOut), so it cannot leak into anyone's data.
+const ADMIN_PROFILE: Profile = { id: ADMIN_ACTOR_ID, displayName: 'Admin', profileType: 'independent', createdAt: '', updatedAt: '' };
 
 export class SigmaService {
   private data: SigmaData;
   private loadResult: LoadResult;
+  private adminMode = false;
   constructor(private readonly repository: DataRepository, private readonly now: Clock = defaultClock, private readonly id: IdFactory = defaultId) {
     this.loadResult = repository.load();
     this.data = this.loadResult.data;
@@ -27,7 +31,14 @@ export class SigmaService {
     const profile = this.activeProfile();
     return profile && this.profileAccess(profile.id) !== 'hidden' ? profile : undefined;
   }
-  activeActor(): Profile | undefined { return this.data.profiles.find((profile) => profile.id === this.data.activeActorProfileId); }
+  activeActor(): Profile | undefined { return this.adminMode ? ADMIN_PROFILE : this.data.profiles.find((profile) => profile.id === this.data.activeActorProfileId); }
+  isAdminMode(): boolean { return this.adminMode; }
+  // Testing-only: logs in as the Super User/Admin identity, which bypasses every ownership/sharing
+  // check (see sharing.ts's ADMIN_ACTOR_ID) so every account's data can be viewed and edited at once.
+  enterAdminMode(): void { this.ensureWritable(); this.adminMode = true; this.data.activeActorProfileId = undefined; this.reconcileActiveProfile(); this.persist(); }
+  // Ends the current session (a normal account or admin mode) without touching any stored data —
+  // "logging out" here has no security meaning, it only clears which local account is being viewed.
+  logOut(): void { this.ensureWritable(); this.adminMode = false; this.data.activeActorProfileId = undefined; this.data.activeProfileId = undefined; this.persist(); }
   profileAccess(profileId: string): 'editable' | 'read_only' | 'hidden' {
     const actor = this.activeActor();
     if (!actor || !this.data.profiles.some((profile) => profile.id === profileId)) return 'hidden';

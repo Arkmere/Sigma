@@ -33,10 +33,12 @@ class Root {
     if (selector === '[data-route]') for (const match of this.html.matchAll(/data-route="([^"]+)"/g)) controls.push(new Control({ route: match[1] }));
     if (selector === '[data-source-action]') for (const match of this.html.matchAll(/data-source-action="([^"]+)"/g)) controls.push(new Control({ sourceAction: match[1] }));
     if (selector === '[data-permission-allow]') for (const match of this.html.matchAll(/data-permission-allow="([^"]+)"/g)) controls.push(new Control({ permissionAllow: match[1] }));
+    if (selector === '[data-permission-decline]') for (const match of this.html.matchAll(/data-permission-decline="([^"]+)"/g)) controls.push(new Control({ permissionDecline: match[1] }));
     if (selector === 'input[name="theme"]') for (const match of this.html.matchAll(/<input type="radio" name="theme" value="([^"]+)"/g)) controls.push(new Control({},match[1]));
     if (selector === 'input[name="anatomyFamily"]') for (const match of this.html.matchAll(/<input type="radio" name="anatomyFamily" value="([^"]+)"/g)) controls.push(new Control({},match[1]));
-    if (selector === '#actor-select,#context-actor-select' && this.html.includes('id="context-actor-select"')) controls.push(new Control({}));
     if (selector === '#reset-data' && this.html.includes('id="reset-data"')) controls.push(new Control({}));
+    if (selector === '#reset-permission-demos' && this.html.includes('id="reset-permission-demos"')) controls.push(new Control({}));
+    if (selector === '#log-out' && this.html.includes('id="log-out"')) controls.push(new Control({}));
     this.controls.set(selector, controls);
     return controls;
   }
@@ -48,17 +50,48 @@ test('shell renders truthful empty states and switches every primary route witho
   globalThis.localStorage = storage();
   globalThis.matchMedia = () => ({ matches: false });
   globalThis.document = { documentElement: { dataset: {} } };
+  const service = new SigmaService(new LocalStorageRepository(globalThis.localStorage));
+  service.createProfile({ displayName: 'Alex', profileType: 'independent' });
   const root = new Root();
-  mountApp(root, new SigmaService(new LocalStorageRepository(globalThis.localStorage)));
-  assert.match(root.textContent, /Create my profile/);
-  for (const [route, expected] of [['profiles', /People/], ['measurements', /No profile available/], ['family', /Family workflows are locked/], ['sources', /How imports are filtered/], ['privacy', /Who can see profiles/], ['settings', /Family entitlement/]]) {
+  mountApp(root, service);
+  assert.match(root.textContent, /People/);
+  for (const [route, expected] of [['profiles', /People/], ['measurements', /No physical measurements recorded yet/], ['family', /Family workflows are locked/], ['sources', /How imports are filtered/], ['privacy', /Who can see profiles/], ['settings', /Family entitlement/]]) {
     const button = root.querySelectorAll('[data-route]').find((item) => item.dataset.route === route);
     assert.ok(button); button.click(); assert.match(root.textContent, expected);
   }
 });
 
+test('a fresh device with no accounts shows the login screen, not any route content, until an account exists', () => {
+  globalThis.localStorage = storage();
+  globalThis.matchMedia = () => ({ matches: false });
+  globalThis.document = { documentElement: { dataset: {} } };
+  const service = new SigmaService(new LocalStorageRepository(globalThis.localStorage));
+  const root = new Root();
+  mountApp(root, service);
+  assert.match(root.textContent, /Get started/);
+  assert.match(root.innerHTML, /id="login-create-form"/);
+  assert.match(root.textContent, /no password/);
+  assert.doesNotMatch(root.innerHTML, /data-route=/);
+  assert.equal(service.snapshot().profiles.length, 0);
+});
+
+test('logging out returns to the login screen without deleting any account or its data', () => {
+  globalThis.localStorage = storage();
+  globalThis.matchMedia = () => ({ matches: false });
+  globalThis.document = { documentElement: { dataset: {} } };
+  const service = new SigmaService(new LocalStorageRepository(globalThis.localStorage));
+  service.createProfile({ displayName: 'Alex', profileType: 'independent' });
+  const root = new Root();
+  mountApp(root, service);
+  assert.match(root.textContent, /People/);
+  root.querySelectorAll('#log-out')[0].click();
+  assert.match(root.textContent, /Welcome back/);
+  assert.equal(service.snapshot().profiles.length, 1, 'logging out must not delete the account');
+  assert.equal(service.snapshot().profiles[0].displayName, 'Alex');
+});
+
 test('Settings exposes an accessible device-local anatomy presentation preference',()=>{
- const local=storage();globalThis.localStorage=local;globalThis.matchMedia=()=>({matches:false});globalThis.document={documentElement:{dataset:{}}};const root=new Root();mountApp(root,new SigmaService(new LocalStorageRepository(local)));root.querySelectorAll('[data-route]').find(item=>item.dataset.route==='settings').click();
+ const local=storage();globalThis.localStorage=local;globalThis.matchMedia=()=>({matches:false});globalThis.document={documentElement:{dataset:{}}};const service=new SigmaService(new LocalStorageRepository(local));service.createProfile({displayName:'Alex',profileType:'independent'});const root=new Root();mountApp(root,service);root.querySelectorAll('[data-route]').find(item=>item.dataset.route==='settings').click();
  assert.match(root.innerHTML,/<fieldset class="theme-options anatomy-family-options"[^>]*aria-describedby=/);assert.match(root.innerHTML,/<legend>Anatomy illustration<\/legend>/);assert.match(root.textContent,/changes illustrations only/i);assert.doesNotMatch(root.innerHTML,/profile-form[\s\S]*anatomyFamily/);
  const choices=root.querySelectorAll('input[name="anatomyFamily"]');assert.deepEqual(choices.map(choice=>choice.value),['neutral','masculine','feminine']);choices[1].change('masculine');assert.equal(local.getItem('sigma.anatomyFamily'),'masculine');assert.match(root.innerHTML,/name="anatomyFamily" value="masculine" checked/);
 });
@@ -135,15 +168,15 @@ test('record cards merge conversions and source into one Details disclosure',()=
   assert.match(html,/<summary>Details<\/summary>[\s\S]*?<h4>Source<\/h4>/);
 });
 
-test('simulated permission cannot activate a future source',()=>{const local=storage();globalThis.localStorage=local;globalThis.matchMedia=()=>({matches:false});globalThis.document={documentElement:{dataset:{}}};const service=new SigmaService(new LocalStorageRepository(local));const root=new Root();mountApp(root,service);root.querySelectorAll('[data-route]').find(item=>item.dataset.route==='sources').click();assert.match(root.textContent,/Future integration/);root.querySelectorAll('[data-source-action]').find(item=>item.dataset.sourceAction==='smart_scale').click();assert.match(root.textContent,/Simulate allow/);root.querySelectorAll('[data-permission-allow]')[0].click();assert.match(root.textContent,/not implemented in the current local demo/);assert.match(root.textContent,/does not activate it/);assert.equal(service.snapshot().measurements.length,0);});
+test('simulated permission cannot activate a future source',()=>{const local=storage();globalThis.localStorage=local;globalThis.matchMedia=()=>({matches:false});globalThis.document={documentElement:{dataset:{}}};const service=new SigmaService(new LocalStorageRepository(local));service.createProfile({displayName:'Alex',profileType:'independent'});const root=new Root();mountApp(root,service);root.querySelectorAll('[data-route]').find(item=>item.dataset.route==='sources').click();assert.match(root.textContent,/Future integration/);root.querySelectorAll('[data-source-action]').find(item=>item.dataset.sourceAction==='smart_scale').click();assert.match(root.textContent,/Simulate allow/);root.querySelectorAll('[data-permission-allow]')[0].click();assert.match(root.textContent,/not implemented in the current local demo/);assert.match(root.textContent,/does not activate it/);assert.equal(service.snapshot().measurements.length,0);});
 
-test('Ticket 6 first use includes account-free guidance and an accessible live notice region',()=>{
+test('the login screen is honest about having no password and has an accessible live region for its own errors',()=>{
   const local=storage();globalThis.localStorage=local;globalThis.matchMedia=()=>({matches:false});globalThis.document={documentElement:{dataset:{}}};
   const root=new Root();mountApp(root,new SigmaService(new LocalStorageRepository(local)));
-  assert.match(root.textContent,/useful measurements and sizes on this device/i);
-  assert.match(root.textContent,/No account is required/);
+  assert.match(root.textContent,/there is no password/i);
+  assert.match(root.textContent,/anyone with this device can select any account/i);
   assert.match(root.innerHTML,/aria-live="polite"/);
-  assert.match(root.innerHTML,/id="open-profile-form"/);
+  assert.match(root.innerHTML,/id="login-create-form"/);
 });
 
 test('Ticket 6 record entry is progressively disclosed and filters can be cleared',()=>{
@@ -165,12 +198,19 @@ test('record search preserves focus, caret and sequential input across rerenders
 });
 
 test('notices clear on route navigation and a new action replaces the previous notice',()=>{
-  const local=storage();const service=new SigmaService(new LocalStorageRepository(local));service.createProfile({displayName:'Alex',profileType:'independent'});const jordan=service.createProfile({displayName:'Jordan',profileType:'independent'});
+  const local=storage();const service=new SigmaService(new LocalStorageRepository(local));service.createProfile({displayName:'Alex',profileType:'independent'});
   globalThis.localStorage=local;globalThis.matchMedia=()=>({matches:false});globalThis.document={documentElement:{dataset:{}}};
   const root=new Root();mountApp(root,service);
-  root.querySelectorAll('#actor-select,#context-actor-select')[0].change(jordan.id);assert.match(root.textContent,/Acting local adult switched/);
-  root.querySelectorAll('#actor-select,#context-actor-select')[0].change('missing');assert.doesNotMatch(root.textContent,/Acting local adult switched/);assert.match(root.textContent,/Profile not found/);
-  root.querySelectorAll('[data-route]').find(item=>item.dataset.route==='sources').click();assert.doesNotMatch(root.textContent,/Profile not found/);
+  root.querySelectorAll('[data-route]').find(item=>item.dataset.route==='sources').click();
+  root.querySelectorAll('[data-source-action]').find(item=>item.dataset.sourceAction==='measurement_device').click();
+  root.querySelectorAll('[data-permission-decline]')[0].click();
+  assert.match(root.textContent,/Demo permission declined/);
+  root.querySelectorAll('[data-source-action]').find(item=>item.dataset.sourceAction==='measurement_device').click();
+  root.querySelectorAll('[data-permission-decline]')[0].click();
+  const occurrences=(root.textContent.match(/Demo permission declined/g)??[]).length;
+  assert.equal(occurrences,1,'a repeated notice-producing action replaces the previous notice rather than accumulating it');
+  root.querySelectorAll('[data-route]').find(item=>item.dataset.route==='profiles').click();
+  assert.doesNotMatch(root.textContent,/Demo permission declined/);
 });
 
 test('Ticket 6 unsafe storage suppresses ordinary route content and export',()=>{

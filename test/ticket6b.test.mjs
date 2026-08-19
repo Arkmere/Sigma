@@ -58,11 +58,13 @@ test('compact renderers hide creation and Family stages until explicitly selecte
   assert.doesNotMatch(renderFamily(service,'full',undefined,'families'),/id="connection-form"|id="grant-form"/);
 });
 
-test('compact context avoids redundant selectors until a real choice exists',()=>{
+test('compact context avoids a redundant profile selector until a real choice exists; identity now switches via login, not an in-context selector',()=>{
   const{service}=fixture();const one=renderShell('profiles',service,'');
-  assert.doesNotMatch(one,/id="context-actor-select"|id="context-profile-select"/);
-  service.createProfile({displayName:'Jordan',profileType:'independent'});
-  assert.match(renderShell('profiles',service,''),/id="context-actor-select"/);
+  assert.doesNotMatch(one,/id="context-profile-select"|id="context-actor-select"/);
+  const family=service.createFamily('Household');
+  service.createManagedProfile({displayName:'Kid',managedKind:'child',familyId:family.id});
+  assert.match(renderShell('profiles',service,''),/id="context-profile-select"/);
+  assert.doesNotMatch(renderShell('profiles',service,''),/id="context-actor-select"/);
 });
 
 test('Family shows pending requests to the recipient and composes sharing only in the selected eligible stage',()=>{

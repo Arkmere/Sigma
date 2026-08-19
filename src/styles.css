@@ -428,6 +428,27 @@ nav button.active {
 .app-notice:empty { display: none; }
 .app-notice { border-left: 3px solid var(--accent); background: var(--surface); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-4); }
 .app-notice.error { border-color: var(--error); }
+.login-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-5);
+  background: var(--bg);
+}
+.login-card {
+  width: min(26rem, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  display: grid;
+  gap: var(--space-4);
+}
+.login-card .brand { justify-content: center; }
+.login-card h1 { margin: 0; font-size: clamp(1.6rem, 4vw, 2.1rem); letter-spacing: -0.03em; text-align: center; }
+.login-card .metadata { text-align: center; }
 .first-use, .family-overview, .notice {
   padding: clamp(1rem, 2.5vw, 1.5rem);
   margin-bottom: var(--space-5);
