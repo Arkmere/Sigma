@@ -1,28 +1,29 @@
 import { type RouteId } from './content.js';
 import { LocalStorageRepository } from '../data/repository.js';
 import { SigmaService } from '../domain/service.js';
-import { readAnatomyFamilyPreference, readThemePreference, resolveTheme, type AnatomyFamilyPreference, type ThemePreference, writeAnatomyFamilyPreference, writeThemePreference } from '../lib/preferences.js';
-import { addHistory, downloadBackup, saveProfile, saveRecord } from './ui/actions.js';
+import { readAdminModePreference, readAnatomyFamilyPreference, readThemePreference, resolveTheme, writeAdminModePreference, type AnatomyFamilyPreference, type ThemePreference, writeAnatomyFamilyPreference, writeThemePreference } from '../lib/preferences.js';
+import { addHistory, downloadBackup, exportFitCardFile, importFitCardFile, saveProfile, saveRecord } from './ui/actions.js';
 import { field } from './ui/html.js';
 import { renderProfiles } from './ui/profiles.js';
+import { renderLogin } from './ui/login.js';
 import { renderRecords, type RecordMode } from './ui/records.js';
 import { renderShell, type AppNotice } from './ui/shell.js';
 import { renderPrivacy, renderSettings } from './ui/status.js';
-import { emptyGrantComposerState, renderFamily as renderFamilyScreen, type FamilyView, type GrantComposerState, type GrantScopeChoice } from './ui/family.js';
+import { emptyGrantComposerState, familyStageIds, renderFamily as renderFamilyScreen, type FamilyView, type GrantComposerState, type GrantScopeChoice } from './ui/family.js';
 import { readDemoEntitlement, writeDemoEntitlement, type DemoEntitlement } from '../lib/entitlement.js';
 import { unitsForDimension, type Dimension } from '../conversion/registry.js';
 import { PermissionDemoService } from '../permissions/service.js';
 import type { PermissionKind } from '../permissions/model.js';
 import { evaluateDemoPayload, importCandidate } from '../sources/import.js';
 import type { ImportCandidate } from '../sources/model.js';
-import type { SourceId } from '../domain/model.js';
+import type { SharingScope, SourceId } from '../domain/model.js';
 import { renderSources } from './ui/sources.js';
 import { hydrateStandaloneAnatomy } from './ui/anatomy-illustration.js';
 import { renderAnatomyNavigator } from './ui/anatomy-navigator.js';
 import type { AnatomyPath } from '../domain/canonical-facts.js';
 
 const routeIds: readonly RouteId[] = ['profiles', 'measurements', 'family', 'sources', 'privacy', 'settings'];
-const familyStages: readonly Exclude<FamilyView, 'overview'>[] = ['families', 'people', 'connections', 'sharing'];
+const familyStages: readonly Exclude<FamilyView, 'overview'>[] = familyStageIds;
 function parseHash(hash: string): { route: RouteId; familyView: FamilyView } {
   const segments = hash.replace(/^#\/?/, '').split('/').filter(Boolean);
   const route = (routeIds as readonly string[]).includes(segments[0]) ? segments[0] as RouteId : 'profiles';
@@ -37,17 +38,32 @@ export function mountApp(root: HTMLElement, service = new SigmaService(new Local
   const buildId = (globalThis as unknown as { __SIGMA_BUILD__?: string }).__SIGMA_BUILD__;
   const hasHash = typeof window !== 'undefined' && typeof window.location !== 'undefined';
   const seeded = hasHash && window.location.hash ? parseHash(window.location.hash) : undefined;
-  let route: RouteId = seeded?.route ?? 'profiles'; let theme = readThemePreference(); let anatomyFamily=readAnatomyFamilyPreference(); let entitlement=readDemoEntitlement(); let mode: RecordMode = 'measurement'; let search = ''; let category = ''; let editingProfileId = ''; let profileFormOpen=false; let recordFormOpen=false; let familyView:FamilyView=seeded?.familyView ?? 'overview'; let notice:AppNotice|undefined;
+  let route: RouteId = seeded?.route ?? 'profiles'; let theme = readThemePreference(); let anatomyFamily=readAnatomyFamilyPreference(); let entitlement=readDemoEntitlement(); let mode: RecordMode = 'measurement'; let search = ''; let category = ''; let editingProfileId = ''; let profileFormOpen=false; let recordFormOpen=false; let familyView:FamilyView=seeded?.familyView ?? 'overview'; let notice:AppNotice|undefined; let loginCreateFormOpen=false; let loginError:string|undefined;
+  // Corrupt/unsupported storage must surface its own warning, not silently throw from re-entering admin mode.
+  if (readAdminModePreference() && service.storageStatus().status === 'ok') service.enterAdminMode();
   const syncHash = () => { if (hasHash) { const next = hashFor(route, familyView); if (window.location.hash !== next) window.location.hash = next; } };
   const permissions=new PermissionDemoService(globalThis.localStorage); let permissionFlow:PermissionKind|undefined; let selectedSourceId:SourceId|undefined; let sourceNotice=''; let importCandidates:ImportCandidate[]=[]; let excluded=0;
   let grantComposer:GrantComposerState=emptyGrantComposerState();
   const render = () => {
     const resolved = resolveTheme(theme, globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false);
     document.documentElement.dataset.theme = resolved; document.documentElement.dataset.themePreference = theme; writeThemePreference(theme);writeAnatomyFamilyPreference(anatomyFamily);
+    // A corrupt/unsupported store must still show its own warning (handled inside renderShell), never
+    // the login screen — only gate on login once storage is known to be safely readable.
+    const unsafe = ['corrupt', 'unsupported_version'].includes(service.storageStatus().status);
+    if (!unsafe && !service.activeActor()) {
+      root.innerHTML = renderLogin(service, loginCreateFormOpen, loginError);
+      const loginAction = (action: () => void) => { try { action(); loginCreateFormOpen=false; loginError=undefined; route='profiles'; familyView='overview'; notice=undefined; syncHash(); render(); } catch (error) { if (error instanceof Error) { loginError=error.message; render(); return; } throw error; } };
+      onForm(root, '#login-form', (form) => loginAction(() => { const value = field(new FormData(form), 'profileId'); if (value === '__admin__') { service.enterAdminMode(); writeAdminModePreference(true); } else service.selectActor(value); }));
+      onForm(root, '#login-create-form', (form) => loginAction(() => { service.createProfile({ displayName: field(new FormData(form), 'displayName'), profileType: 'independent' }); }));
+      bind(root, '#login-open-create', 'click', () => { loginCreateFormOpen=true; loginError=undefined; render(); });
+      bind(root, '#login-cancel-create', 'click', () => { loginCreateFormOpen=false; loginError=undefined; render(); });
+      return;
+    }
     const content = route === 'profiles' ? renderProfiles(service, editingProfileId,profileFormOpen) : route === 'measurements' ? renderRecords(service, mode, search, category,recordFormOpen) : route === 'sources' ? renderSources(service,permissions,permissionFlow,importCandidates,excluded,sourceNotice) : route === 'privacy' ? renderPrivacy(service,permissions) : route === 'settings' ? renderSettings(service, theme, resolved, anatomyFamily, entitlement,permissions,buildId) : renderFamilyScreen(service, entitlement,grantComposer,familyView);
     root.innerHTML = renderShell(route, service, content,notice);
     void hydrateStandaloneAnatomy(root);
     const run=(action:()=>void,message?:string)=>{try{action();if(message)notice={kind:'success',message};render();}catch(error){if(error instanceof Error){notice={kind:'error',message:error.message};render();return;}throw error;}};
+    const onFormAsync=<T,>(selector:string,action:(form:HTMLFormElement)=>Promise<T>,message?:string|((result:T)=>string))=>{root.querySelector<HTMLFormElement>(selector)?.addEventListener('submit',(event)=>{event.preventDefault();const form=event.currentTarget as HTMLFormElement;action(form).then((result)=>{const text=typeof message==='function'?message(result):message;if(text)notice={kind:'success',message:text};render();}).catch((error:unknown)=>{if(error instanceof Error){notice={kind:'error',message:error.message};render();return;}throw error;});});};
     bind(root, '[data-route]', 'click', (element) => { notice=undefined; route = element.dataset.route as RouteId; syncHash(); render(); });
     bind(root, '[data-select-profile]', 'click', (element) => {notice=undefined;run(()=>{ service.selectProfile(element.dataset.selectProfile!); route = 'measurements'; syncHash(); });});
     bind(root, '[data-edit-profile]', 'click', (element) => { editingProfileId = element.dataset.editProfile!; profileFormOpen=true; render(); });
@@ -71,6 +87,10 @@ export function mountApp(root: HTMLElement, service = new SigmaService(new Local
     root.querySelector<HTMLSelectElement>('#grant-scope')?.addEventListener('change',(event)=>{grantComposer={...grantComposer,scope:(event.currentTarget as HTMLSelectElement).value as GrantScopeChoice,recordId:''};render();});
     root.querySelector<HTMLSelectElement>('#grant-category')?.addEventListener('change',(event)=>{grantComposer={...grantComposer,category:(event.currentTarget as HTMLSelectElement).value};render();});
     root.querySelector<HTMLSelectElement>('#grant-record')?.addEventListener('change',(event)=>{grantComposer={...grantComposer,recordId:(event.currentTarget as HTMLSelectElement).value};render();});
+    root.querySelector<HTMLSelectElement>('#fitcard-scope-type')?.addEventListener('change',(event)=>{const field=root.querySelector<HTMLElement>('#fitcard-category-field');if(field)field.hidden=(event.currentTarget as HTMLSelectElement).value!=='category';});
+    bind(root,'[data-delete-fitcard]','click',(el)=>{if(globalThis.confirm('Remove this fit card? It only removes the copy on this device; nothing changes for the person who shared it.'))run(()=>service.deleteFitCard(el.dataset.deleteFitcard!),'Fit card removed.');});
+    onFormAsync('#fitcard-export-form',async(form)=>{const data=new FormData(form);const type=field(data,'scopeType');const scope:SharingScope=type==='category'?{type:'category',category:field(data,'category')}:type==='standard_size'?{type:'record_kind',recordKind:'standard_size'}:type==='brand_fit'?{type:'record_kind',recordKind:'brand_fit'}:{type:'profile'};await exportFitCardFile(service,field(data,'ownerId'),scope,field(data,'passphrase'));form.reset();},'Fit card downloaded. Share the passphrase separately from the file.');
+    onFormAsync('#fitcard-import-form',async(form)=>{const data=new FormData(form);const file=data.get('file');if(!(file instanceof File)||!file.size)throw new Error('Choose a fit card file.');return importFitCardFile(service,file,field(data,'passphrase'));},(result)=>`Fit card from ${result.senderDisplayName} ${result.created?'added':'updated'}.`);
     bind(root,'[data-assign-manager]','click',(el)=>run(()=>service.assignManager(el.dataset.assignManager!,service.activeActor()!.id),'Manager assigned.'));
     bind(root,'[data-respond]','click',(el)=>run(()=>service.respondConnection(el.dataset.respond!,el.dataset.accept==='true'),el.dataset.accept==='true'?'Connection accepted. No records were shared.':'Connection declined.'));
     bind(root,'[data-disconnect]','click',(el)=>run(()=>service.disconnect(el.dataset.disconnect!),'Adult connection disconnected.'));
@@ -120,6 +140,7 @@ export function mountApp(root: HTMLElement, service = new SigmaService(new Local
     bind(root,'[data-anatomy-fact]','click',(element)=>{if(!canonicalPicker)return;canonicalPicker.value=element.dataset.anatomyFact!;canonicalPicker.dispatchEvent(new Event('change'));if(anatomyBrowser&&anatomyToggle){anatomyBrowser.hidden=true;anatomyToggle.setAttribute('aria-expanded','false');}canonicalPicker.focus();});
     root.querySelector<HTMLInputElement>('#canonical-fact-search')?.addEventListener('input',(event)=>{const needle=(event.currentTarget as HTMLInputElement).value.toLowerCase();if(!canonicalPicker)return;for(const option of canonicalPicker.options)option.hidden=!!needle&&!option.dataset.search?.includes(needle);canonicalPicker.querySelectorAll<HTMLOptGroupElement>('optgroup').forEach((group)=>{group.hidden=[...group.querySelectorAll<HTMLOptionElement>('option')].every((option)=>option.hidden);});const first=[...canonicalPicker.options].find((option)=>!option.hidden);if(first&&canonicalPicker.selectedOptions[0]?.hidden){canonicalPicker.value=first.value;populateCanonicalChoices();}});
     root.querySelector<HTMLInputElement>('input[name="custom"]')?.addEventListener('change',(event)=>{const guidance=root.querySelector<HTMLElement>('#creation-guidance');if(guidance)guidance.hidden=(event.currentTarget as HTMLInputElement).checked;});
+    bind(root, '#log-out', 'click', () => { service.logOut(); writeAdminModePreference(false); route='profiles'; familyView='overview'; editingProfileId=''; profileFormOpen=false; recordFormOpen=false; loginCreateFormOpen=false; notice=undefined; syncHash(); render(); });
     bind(root, '#export-data', 'click', () => downloadBackup(service));
     bind(root, '#reset-data', 'click', () => { if (globalThis.confirm('Delete every Sigma profile, record, Family, connection and sharing grant stored in this browser? This cannot be undone.')) { service.reset(); route = 'profiles'; familyView='overview'; syncHash(); notice={kind:'success',message:'Local Sigma data reset. You can start again.'}; render(); } });
     bind(root,'[data-source-action]','click',(el)=>{const source=el.dataset.sourceAction as SourceId;selectedSourceId=source;sourceNotice='';if(['measurement_device','apple_health','health_connect'].includes(source))permissionFlow='health_data';else if(source==='camera_assisted'||source==='body_scan')permissionFlow='camera';else if(source==='external_scan')permissionFlow='files';else if(source==='smart_scale')permissionFlow='nearby_devices';render();root.querySelector<HTMLElement>('#permission-explanation')?.focus();});
@@ -128,7 +149,12 @@ export function mountApp(root: HTMLElement, service = new SigmaService(new Local
     bind(root,'[data-import-candidate]','click',(el)=>{const target=root.querySelector<HTMLSelectElement>('#import-target')?.value;if(target){run(()=>{importCandidate(service,target,importCandidates[Number(el.dataset.importCandidate)]);importCandidates.splice(Number(el.dataset.importCandidate),1);},'Candidate imported with its provenance.');}});
     bind(root,'#reset-permission-demos','click',()=>{permissions.reset();permissionFlow=undefined;selectedSourceId=undefined;sourceNotice='';importCandidates=[];excluded=0;notice={kind:'success',message:'Permission demonstrations reset. Records were not deleted.'};render();});
   };
-  if (hasHash) window.addEventListener('hashchange', () => { const parsed = parseHash(window.location.hash); route = parsed.route; familyView = parsed.familyView; notice = undefined; render(); });
+  // location.hash mutations from syncHash() fire `hashchange` asynchronously, after the action that
+  // called it has already rendered any success/error notice. Only clear the notice for a hashchange
+  // that represents real external navigation (back/forward, a typed/deep-linked URL) — recognised by
+  // the parsed hash disagreeing with route/familyView, which an action's own syncHash() echo never does
+  // since that handler already applied the same route/familyView change before calling it.
+  if (hasHash) window.addEventListener('hashchange', () => { const parsed = parseHash(window.location.hash); const external = parsed.route !== route || parsed.familyView !== familyView; route = parsed.route; familyView = parsed.familyView; if (external) notice = undefined; render(); });
   syncHash();
   render();
 }

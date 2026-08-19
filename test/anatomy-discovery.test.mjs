@@ -55,7 +55,7 @@ test('read-only profiles expose no anatomy discovery or record form and navigato
   const values=new Map(),storage={getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,String(value)),removeItem:key=>values.delete(key)};let n=0;
   const service=new SigmaService(new LocalStorageRepository(storage),()=> '2026-08-10T12:00:00Z',()=>`id-${++n}`),owner=service.createProfile({displayName:'Owner',profileType:'independent'}),viewer=service.createProfile({displayName:'Viewer',profileType:'independent'});const request=service.requestConnection(viewer.id);service.selectActor(viewer.id);service.respondConnection(request.id,true);service.selectActor(owner.id);service.grantAccess(owner.id,viewer.id,{type:'profile'});service.selectActor(viewer.id);service.selectProfile(owner.id);
   const html=renderRecords(service,'measurement','','');assert.doesNotMatch(html,/open-anatomy-discovery|record-form/);
-  const backup=service.exportBackup();assert.equal(backup.schemaVersion,5);assert.doesNotMatch(JSON.stringify(backup),/discoveryMode|currentAnatomyPath|anatomy-discovery/);
+  const backup=service.exportBackup();assert.equal(backup.schemaVersion,7);assert.doesNotMatch(JSON.stringify(backup),/discoveryMode|currentAnatomyPath|anatomy-discovery/);
 });
 
 test('back to Body has a visible semantic opener as its context-preserving focus target',async()=>{

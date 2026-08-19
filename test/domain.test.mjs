@@ -60,7 +60,7 @@ test('searches labels, categories, brands and products and exports versioned dat
   assert.equal(service.records(profile.id, '', 'Clothing').brandFits.length, 0);
   const backup = service.exportBackup();
   assert.equal(backup.product, 'Sigma');
-  assert.equal(backup.schemaVersion, 5);
+  assert.equal(backup.schemaVersion, 7);
   assert.equal(backup.profiles.length, 1);
   assert.equal(backup.brandFits.length, 1);
   assert.ok(backup.exportedAt);

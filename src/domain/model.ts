@@ -1,4 +1,4 @@
-export const DATA_SCHEMA_VERSION = 5;
+export const DATA_SCHEMA_VERSION = 7;
 
 export type ProfileType = 'independent' | 'managed';
 export type SourceType = 'manual' | 'imported_health_platform' | 'imported_device' | 'camera_assisted' | 'body_scan' | 'third_party_service';
@@ -106,6 +106,22 @@ export interface BrandFit {
   updatedAt: string;
 }
 
+// A fit card is a scoped, read-only snapshot imported from someone else's exported file (Ticket 10).
+// It belongs to no local profile and is never subject to local ownership/authority rules — it exists
+// purely so this device can look up a fact someone else shared (e.g. a size, to buy them something).
+export interface ImportedFitCard {
+  id: string;
+  label: string;
+  senderProfileId: string;
+  senderDisplayName: string;
+  scope: SharingScope;
+  importedAt: string;
+  updatedAt: string;
+  measurements: PhysicalMeasurement[];
+  standardSizes: StandardSize[];
+  brandFits: BrandFit[];
+}
+
 export interface SigmaData {
   schemaVersion: number;
   activeProfileId?: string;
@@ -118,6 +134,7 @@ export interface SigmaData {
   familyMemberships: FamilyMembership[];
   adultConnections: AdultConnection[];
   sharingGrants: SharingGrant[];
+  importedFitCards: ImportedFitCard[];
 }
 
 export interface SigmaBackup extends SigmaData {
@@ -135,6 +152,7 @@ export const emptySigmaData = (): SigmaData => ({
   familyMemberships: [],
   adultConnections: [],
   sharingGrants: [],
+  importedFitCards: [],
 });
 
 export function currentMeasurementValue(record: PhysicalMeasurement): MeasurementValue | undefined {

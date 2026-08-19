@@ -1,17 +1,23 @@
-import { currentMeasurementValue, DATA_SCHEMA_VERSION, type AdultConnection, type BrandFit, type Family, type MeasurementValue, type PhysicalMeasurement, type Profile, type SharingGrant, type SharingScope, type SigmaBackup, type SigmaData, type StandardSize } from './model.js';
-import { activeConnection, canCreateGrant, canManageProfile, canRevokeGrant, canViewRecord, profilesShareFamily } from './sharing.js';
+import { currentMeasurementValue, DATA_SCHEMA_VERSION, type AdultConnection, type BrandFit, type Family, type ImportedFitCard, type MeasurementValue, type PhysicalMeasurement, type Profile, type SharingGrant, type SharingScope, type SigmaBackup, type SigmaData, type StandardSize } from './model.js';
+import { activeConnection, ADMIN_ACTOR_ID, canCreateGrant, canManageProfile, canRevokeGrant, canViewRecord, profilesShareFamily, scopeCovers } from './sharing.js';
 import type { DataRepository, LoadResult } from '../data/repository.js';
+import { validateFitCardRecords, validateSharingScopeShape } from '../data/migrations.js';
 import { convertUnit, footwearConversions, measurementSemantics, resolveUnit, unitsForDimension, type ConversionResult, type FootwearContext } from '../conversion/registry.js';
 import { canonicalFactById } from './canonical-facts.js';
+import type { FitCardPayload } from '../exchange/model.js';
 
 type Clock = () => string;
 type IdFactory = () => string;
 const defaultId = () => globalThis.crypto?.randomUUID?.() ?? `sigma-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const defaultClock = () => new Date().toISOString();
+// Never stored in data.profiles, never persisted, never exported in a backup — admin mode is purely an
+// in-memory session flag on SigmaService (see enterAdminMode/logOut), so it cannot leak into anyone's data.
+const ADMIN_PROFILE: Profile = { id: ADMIN_ACTOR_ID, displayName: 'Admin', profileType: 'independent', createdAt: '', updatedAt: '' };
 
 export class SigmaService {
   private data: SigmaData;
   private loadResult: LoadResult;
+  private adminMode = false;
   constructor(private readonly repository: DataRepository, private readonly now: Clock = defaultClock, private readonly id: IdFactory = defaultId) {
     this.loadResult = repository.load();
     this.data = this.loadResult.data;
@@ -25,7 +31,14 @@ export class SigmaService {
     const profile = this.activeProfile();
     return profile && this.profileAccess(profile.id) !== 'hidden' ? profile : undefined;
   }
-  activeActor(): Profile | undefined { return this.data.profiles.find((profile) => profile.id === this.data.activeActorProfileId); }
+  activeActor(): Profile | undefined { return this.adminMode ? ADMIN_PROFILE : this.data.profiles.find((profile) => profile.id === this.data.activeActorProfileId); }
+  isAdminMode(): boolean { return this.adminMode; }
+  // Testing-only: logs in as the Super User/Admin identity, which bypasses every ownership/sharing
+  // check (see sharing.ts's ADMIN_ACTOR_ID) so every account's data can be viewed and edited at once.
+  enterAdminMode(): void { this.ensureWritable(); this.adminMode = true; this.data.activeActorProfileId = undefined; this.reconcileActiveProfile(); this.persist(); }
+  // Ends the current session (a normal account or admin mode) without touching any stored data —
+  // "logging out" here has no security meaning, it only clears which local account is being viewed.
+  logOut(): void { this.ensureWritable(); this.adminMode = false; this.data.activeActorProfileId = undefined; this.data.activeProfileId = undefined; this.persist(); }
   profileAccess(profileId: string): 'editable' | 'read_only' | 'hidden' {
     const actor = this.activeActor();
     if (!actor || !this.data.profiles.some((profile) => profile.id === profileId)) return 'hidden';
@@ -88,6 +101,57 @@ export class SigmaService {
   canViewRecord(actorId:string, recordId:string):boolean { const r=[...this.data.measurements,...this.data.standardSizes,...this.data.brandFits].find(x=>x.id===recordId); return !!r&&canViewRecord(this.data,actorId,r); }
   canManageProfile(profileId:string):boolean { const actor=this.activeActor(); return !!actor&&canManageProfile(this.data,actor.id,profileId); }
   hasActiveConnection(a:string,b:string):boolean{return activeConnection(this.data,a,b);}
+  exportFitCardPayload(profileId:string, scope:SharingScope):FitCardPayload {
+    this.ensureWritable();
+    const actor=this.requireActor();
+    const profile=this.requireProfile(profileId);
+    if(!canManageProfile(this.data,actor.id,profileId))throw new Error('You cannot export records for that profile.');
+    this.validateScope(profileId,scope);
+    return {
+      senderProfileId:profile.id,
+      senderDisplayName:profile.displayName,
+      exportedAt:this.now(),
+      scope,
+      measurements:structuredClone(this.data.measurements.filter((r)=>r.profileId===profileId&&scopeCovers(scope,r))),
+      standardSizes:structuredClone(this.data.standardSizes.filter((r)=>r.profileId===profileId&&scopeCovers(scope,r))),
+      brandFits:structuredClone(this.data.brandFits.filter((r)=>r.profileId===profileId&&scopeCovers(scope,r))),
+    };
+  }
+  // Re-importing from a sender you already have a card from updates that card in place rather than
+  // duplicating it (Ticket 11) — senderProfileId is the whole relationship's identity on this device.
+  // Each export is a full snapshot of the chosen scope, so replacing the card's records wholesale also
+  // correctly drops anything the sender deleted or narrowed out of scope since the last export, with no
+  // separate tombstone/delete-marker mechanism needed.
+  importFitCard(payload:FitCardPayload, label?:string):ImportedFitCard {
+    this.ensureWritable();
+    this.requireActor();
+    if(typeof payload?.senderProfileId!=='string'||!payload.senderProfileId.trim()||typeof payload.senderDisplayName!=='string'||!payload.senderDisplayName.trim()||typeof payload.exportedAt!=='string'||!payload.exportedAt.trim())throw new Error('This fit card is not valid.');
+    if(validateSharingScopeShape(payload.scope)||validateFitCardRecords(payload.measurements,payload.standardSizes,payload.brandFits))throw new Error('This fit card is not valid.');
+    const now=this.now();
+    const existing=this.data.importedFitCards.find((card)=>card.senderProfileId===payload.senderProfileId);
+    if(existing){
+      existing.senderDisplayName=payload.senderDisplayName;
+      existing.scope=payload.scope;
+      existing.measurements=structuredClone(payload.measurements);
+      existing.standardSizes=structuredClone(payload.standardSizes);
+      existing.brandFits=structuredClone(payload.brandFits);
+      existing.updatedAt=now;
+      this.persist();
+      return structuredClone(existing);
+    }
+    const card:ImportedFitCard={id:this.id(),label:clean(label)??payload.senderDisplayName,senderProfileId:payload.senderProfileId,senderDisplayName:payload.senderDisplayName,scope:payload.scope,importedAt:now,updatedAt:now,measurements:structuredClone(payload.measurements),standardSizes:structuredClone(payload.standardSizes),brandFits:structuredClone(payload.brandFits)};
+    this.data.importedFitCards.push(card);
+    this.persist();
+    return structuredClone(card);
+  }
+  deleteFitCard(id:string):void {
+    this.ensureWritable();
+    this.requireActor();
+    const index=this.data.importedFitCards.findIndex((card)=>card.id===id);
+    if(index<0)throw new Error('Fit card not found.');
+    this.data.importedFitCards.splice(index,1);
+    this.persist();
+  }
 
   updateProfile(profileId: string, input: Partial<Pick<Profile, 'displayName' | 'relationshipLabel' | 'dateOfBirth' | 'notes'>>): Profile {
     this.ensureWritable();

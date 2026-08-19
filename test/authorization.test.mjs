@@ -18,3 +18,53 @@ test('ordinary metadata editing cannot change profile type and reload remains va
 test('manager additions require existing authority and eligible independent managers',()=>{const{service,alex,jordan,chris}=fixture();const family=service.createFamily('Home');service.addFamilyMember(family.id,jordan.id);const child=service.createManagedProfile({displayName:'Sam',managedKind:'child',familyId:family.id});service.selectActor(jordan.id);assert.throws(()=>service.assignManager(child.id,jordan.id),/existing manager/);service.selectActor(alex.id);assert.throws(()=>service.assignManager(child.id,chris.id),/share a Family/);service.assignManager(child.id,jordan.id);assert.throws(()=>service.assignManager(child.id,jordan.id),/already/);assert.throws(()=>service.assignManager(child.id,child.id),/independent/);assert.deepEqual(service.snapshot().profiles.find(p=>p.id===child.id).managedByProfileIds,[alex.id,jordan.id]);});
 
 test('legacy managed profiles require an explicit same-existing-Family initial assignment',()=>{const old={schemaVersion:1,activeProfileId:'a',profiles:[{id:'a',displayName:'Alex',profileType:'independent',createdAt:'x',updatedAt:'x'},{id:'m',displayName:'Legacy',profileType:'managed',createdAt:'x',updatedAt:'x'}],measurements:[],standardSizes:[],brandFits:[]};const service=new SigmaService(new LocalStorageRepository(storage(JSON.stringify(old))));assert.equal(service.snapshot().profiles[1].managedByProfileIds,undefined);assert.throws(()=>service.assignManager('m','a'),/share a Family/);const family=service.createFamily('Home');service.addFamilyMember(family.id,'m');service.assignManager('m','a');assert.deepEqual(service.snapshot().profiles[1].managedByProfileIds,['a']);});
+
+test('admin mode can view and edit every account with no grant, connection or management relationship',()=>{
+  const{service,alex,jordan,chris}=fixture();
+  const measurement=service.addMeasurement(measurementInput(alex.id));
+  service.enterAdminMode();
+  assert.equal(service.isAdminMode(),true);
+  assert.equal(service.activeActor().displayName,'Admin');
+  // Every real account is visible and editable, unrelated by any grant/Family/connection.
+  for(const profile of [alex,jordan,chris])assert.equal(service.profileAccess(profile.id),'editable');
+  assert.deepEqual(service.visibleProfiles().map(p=>p.id).sort(),[alex.id,jordan.id,chris.id].sort());
+  // Admin can mutate a record on a totally unrelated profile.
+  service.updateMeasurement(measurement.id,{label:'Adjusted',category:'Upper body',measurementType:'Waist'});
+  assert.equal(service.snapshot().measurements[0].label,'Adjusted');
+  service.addMeasurement(measurementInput(jordan.id));
+  assert.equal(service.snapshot().measurements.filter(m=>m.profileId===jordan.id).length,1);
+  // The synthetic Admin identity never becomes a real, storable, exportable profile.
+  assert.equal(service.snapshot().profiles.some(p=>p.displayName==='Admin'),false);
+  assert.equal(service.exportBackup().profiles.some(p=>p.displayName==='Admin'),false);
+});
+
+test('admin mode can create and revoke a sharing grant between two unrelated accounts',()=>{
+  const{service,alex,jordan}=fixture();
+  service.enterAdminMode();
+  const grant=service.grantAccess(alex.id,jordan.id,{type:'profile'});
+  assert.equal(grant.status,'active');
+  service.revokeGrant(grant.id);
+  assert.equal(service.snapshot().sharingGrants[0].status,'revoked');
+});
+
+test('logOut clears the current session (normal account or admin) without deleting any data',()=>{
+  const{service,alex,local}=fixture();
+  service.addMeasurement(measurementInput(alex.id));
+  service.logOut();
+  assert.equal(service.activeActor(),undefined);
+  assert.equal(service.activeProfile(),undefined);
+  assert.equal(service.snapshot().profiles.length,3,'logging out must not delete any account');
+  assert.equal(service.snapshot().measurements.length,1,'logging out must not delete any record');
+
+  service.enterAdminMode();
+  assert.equal(service.isAdminMode(),true);
+  service.logOut();
+  assert.equal(service.isAdminMode(),false);
+  assert.equal(service.activeActor(),undefined);
+  assert.equal(new SigmaService(new LocalStorageRepository(local)).storageStatus().status,'ok','logged-out state reloads cleanly');
+});
+
+test('the admin sentinel identity cannot be reached through ordinary actor selection',()=>{
+  const{service}=fixture();
+  assert.throws(()=>service.selectActor('__sigma_admin__'),/not found/);
+});

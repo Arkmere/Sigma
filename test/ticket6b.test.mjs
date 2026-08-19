@@ -42,7 +42,7 @@ test('equal measured dates use the most recently recorded valid entry and explai
 
 test('schema 2 migrates to current schema and malformed correction metadata fails closed',()=>{
   const{service,local}=fixture();const raw=JSON.parse(local.getItem('sigma.data.v1'));raw.schemaVersion=2;const migrated=new LocalStorageRepository(storage(JSON.stringify(raw))).load();
-  assert.equal(migrated.status,'ok');assert.equal(migrated.data.schemaVersion,5);
+  assert.equal(migrated.status,'ok');assert.equal(migrated.data.schemaVersion,7);
   raw.schemaVersion=3;raw.measurements=[{id:'m',profileId:raw.profiles[0].id,kind:'measurement',measurementType:'Waist',category:'Upper body',label:'Waist',visibility:'private',createdAt:'2026-01-01',updatedAt:'2026-01-01',values:[{id:'v',value:90,unit:'cm',originalValue:90,originalUnit:'cm',measuredAt:'2026-01-01',recordedAt:'2026-01-01',createdAt:'2026-01-01',sourceType:'manual',acquisitionMethod:'manual',correction:{status:'deleted'}}]}];
   assert.equal(new LocalStorageRepository(storage(JSON.stringify(raw))).load().status,'corrupt');
   assert.ok(service);
@@ -58,11 +58,13 @@ test('compact renderers hide creation and Family stages until explicitly selecte
   assert.doesNotMatch(renderFamily(service,'full',undefined,'families'),/id="connection-form"|id="grant-form"/);
 });
 
-test('compact context avoids redundant selectors until a real choice exists',()=>{
+test('compact context avoids a redundant profile selector until a real choice exists; identity now switches via login, not an in-context selector',()=>{
   const{service}=fixture();const one=renderShell('profiles',service,'');
-  assert.doesNotMatch(one,/id="context-actor-select"|id="context-profile-select"/);
-  service.createProfile({displayName:'Jordan',profileType:'independent'});
-  assert.match(renderShell('profiles',service,''),/id="context-actor-select"/);
+  assert.doesNotMatch(one,/id="context-profile-select"|id="context-actor-select"/);
+  const family=service.createFamily('Household');
+  service.createManagedProfile({displayName:'Kid',managedKind:'child',familyId:family.id});
+  assert.match(renderShell('profiles',service,''),/id="context-profile-select"/);
+  assert.doesNotMatch(renderShell('profiles',service,''),/id="context-actor-select"/);
 });
 
 test('Family shows pending requests to the recipient and composes sharing only in the selected eligible stage',()=>{

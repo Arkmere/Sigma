@@ -19,18 +19,18 @@ export function migrateStoredData(raw: unknown): MigrationResult {
   if (typeof raw.schemaVersion !== 'number' || !Number.isFinite(raw.schemaVersion)) return corrupt('schemaVersion must be a finite number.');
   if (raw.schemaVersion === 1) {
     const reason = validateVersionOne(raw); if (reason) return corrupt(reason);
-    const migrated = { ...structuredClone(raw), schemaVersion: DATA_SCHEMA_VERSION, activeActorProfileId: undefined, families: [], familyMemberships: [], adultConnections: [], sharingGrants: [] } as unknown as SigmaData;
+    const migrated = { ...structuredClone(raw), schemaVersion: DATA_SCHEMA_VERSION, activeActorProfileId: undefined, families: [], familyMemberships: [], adultConnections: [], sharingGrants: [], importedFitCards: [] } as unknown as SigmaData;
     const actor = migrated.profiles.find((p) => p.profileType === 'independent'); if (actor) migrated.activeActorProfileId = actor.id;
     return { status: 'ok', data: migrated };
   }
   if (raw.schemaVersion === 2) {
     const reason=validateVersionTwo(raw,false);if(reason)return corrupt(reason);
-    return {status:'ok',data:{...structuredClone(raw),schemaVersion:DATA_SCHEMA_VERSION} as unknown as SigmaData};
+    return {status:'ok',data:{...structuredClone(raw),schemaVersion:DATA_SCHEMA_VERSION,importedFitCards:[]} as unknown as SigmaData};
   }
   if (raw.schemaVersion === 3) {
     const reason=validateVersionTwo(raw,true);if(reason)return corrupt(reason);
     const migrated=structuredClone(raw) as Record<string,unknown>;
-    migrated.schemaVersion=DATA_SCHEMA_VERSION;
+    migrated.schemaVersion=DATA_SCHEMA_VERSION; migrated.importedFitCards=[];
     applySafeCanonicalMappings(migrated);
     const canonicalReason=validateCanonicalRecords(migrated);if(canonicalReason)return corrupt(canonicalReason);
     return {status:'ok',data:migrated as unknown as SigmaData};
@@ -38,17 +38,75 @@ export function migrateStoredData(raw: unknown): MigrationResult {
   if (raw.schemaVersion === 4) {
     const reason=validateVersionTwo(raw,true);if(reason)return corrupt(reason);
     const migrated=structuredClone(raw) as Record<string,unknown>;
+    migrated.schemaVersion=DATA_SCHEMA_VERSION; migrated.importedFitCards=[];
+    const canonicalReason=validateCanonicalRecords(migrated);if(canonicalReason)return corrupt(canonicalReason);
+    return {status:'ok',data:migrated as unknown as SigmaData};
+  }
+  if (raw.schemaVersion === 5) {
+    const reason=validateVersionTwo(raw,true,true);if(reason)return corrupt(reason);
+    const migrated=structuredClone(raw) as Record<string,unknown>;
+    migrated.schemaVersion=DATA_SCHEMA_VERSION; migrated.importedFitCards=[];
+    const canonicalReason=validateCanonicalRecords(migrated);if(canonicalReason)return corrupt(canonicalReason);
+    return {status:'ok',data:migrated as unknown as SigmaData};
+  }
+  if (raw.schemaVersion === 6) {
+    const reason=validateVersionTwo(raw,true,true);if(reason)return corrupt(reason);
+    if(!Array.isArray(raw.importedFitCards))return corrupt('importedFitCards must be an array.');
+    const migrated=structuredClone(raw) as Record<string,unknown>;
+    // Schema 6 cards have no updatedAt (Ticket 11 added it); backfill it from importedAt so every
+    // pre-existing card reads as "never refreshed" until its next real re-import.
+    migrated.importedFitCards=(migrated.importedFitCards as Record<string,unknown>[]).map((card)=>object(card)&&string(card.importedAt)?{...card,updatedAt:card.importedAt}:card);
     migrated.schemaVersion=DATA_SCHEMA_VERSION;
+    const cardReason=validateImportedFitCards(migrated);if(cardReason)return corrupt(cardReason);
     const canonicalReason=validateCanonicalRecords(migrated);if(canonicalReason)return corrupt(canonicalReason);
     return {status:'ok',data:migrated as unknown as SigmaData};
   }
   if (raw.schemaVersion !== DATA_SCHEMA_VERSION) return { status: 'unsupported_version', version: raw.schemaVersion };
-  const reason = validateVersionTwo(raw,true,true);
+  const reason = validateVersionTwo(raw,true,true) ?? validateImportedFitCards(raw);
   if(!reason){
     const canonicalReason=validateCanonicalRecords(raw);
     if(canonicalReason)return corrupt(canonicalReason);
   }
   return reason ? corrupt(reason) : { status: 'ok', data: structuredClone(raw as unknown as SigmaData) };
+}
+
+// Shared with SigmaService.importFitCard, which is the *first* place a decrypted, fully attacker-controlled
+// payload is accepted (the sender chooses every field, including this device's own encryption passphrase for
+// that file) — the live-import path used to only check top-level array-ness, which let malformed records
+// (e.g. a non-numeric originalValue, or a measurement with no values array at all) reach local storage and
+// rendering unvalidated. Reusing these exact rules at import time, not just at the next reload's stricter
+// migration check, closes that gap instead of leaving two validators that could silently drift apart.
+export function validateSharingScopeShape(scope: unknown): string | undefined {
+  if (!object(scope)) return 'An imported fit card has an invalid scope.';
+  if (!['profile','category','record_kind','record'].includes(String(scope.type))) return 'An imported fit card has an invalid scope.';
+  if (scope.type === 'category' && !nonEmpty(scope.category)) return 'An imported fit card has an invalid scope.';
+  if ((scope.type === 'record_kind' || scope.type === 'record') && !['measurement','standard_size','brand_fit'].includes(String(scope.recordKind))) return 'An imported fit card has an invalid scope.';
+  if (scope.type === 'record' && !nonEmpty(scope.recordId)) return 'An imported fit card has an invalid scope.';
+  return undefined;
+}
+
+export function validateFitCardRecords(measurements: unknown, standardSizes: unknown, brandFits: unknown): string | undefined {
+  if (!Array.isArray(measurements) || !Array.isArray(standardSizes) || !Array.isArray(brandFits)) return 'An imported fit card has invalid record collections.';
+  for (const record of measurements as Record<string,unknown>[]) {
+    if (!object(record) || !requiredStrings(record, ['id','profileId','measurementType','category','label','createdAt','updatedAt']) || record.kind !== 'measurement' || record.visibility !== 'private' || !Array.isArray(record.values)) return 'An imported measurement has an invalid field.';
+    for (const value of record.values) if (!validMeasurementValue(value,true,[],true)) return 'An imported measurement value has an invalid field.';
+    if (!uniqueIds(record.values as Record<string,unknown>[])) return 'Imported measurement value IDs must be unique within their measurement.';
+  }
+  for (const record of standardSizes as Record<string,unknown>[]) if (!validStandardSize(record)) return 'An imported standard-size record has an invalid field.';
+  for (const record of brandFits as Record<string,unknown>[]) if (!validBrandFit(record)) return 'An imported brand-fit record has an invalid field.';
+  return undefined;
+}
+
+function validateImportedFitCards(root: Record<string, unknown>): string | undefined {
+  if (!Array.isArray(root.importedFitCards)) return 'Imported fit cards must be an array.';
+  const cards = root.importedFitCards as Record<string, unknown>[];
+  if (!uniqueIds(cards)) return 'Imported fit card IDs must be unique.';
+  for (const card of cards) {
+    if (!requiredStrings(card, ['id','label','senderProfileId','senderDisplayName','importedAt','updatedAt']) || !object(card.scope)) return 'An imported fit card has an invalid required field.';
+    const scopeReason = validateSharingScopeShape(card.scope); if (scopeReason) return scopeReason;
+    const recordsReason = validateFitCardRecords(card.measurements, card.standardSizes, card.brandFits); if (recordsReason) return recordsReason;
+  }
+  return undefined;
 }
 
 function validateVersionTwo(root: Record<string, unknown>,allowCorrections=false,allowDanglingAttribution=false): string | undefined {

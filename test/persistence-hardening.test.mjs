@@ -8,7 +8,7 @@ const value=(id='v',unit='cm')=>({id,value:170,unit,originalValue:170,originalUn
 const measurement=(id='m',profileId='p',values=[value()])=>({id,profileId,kind:'measurement',measurementType:'Height',category:'General body dimensions',label:'Height',values,visibility:'private',createdAt:'x',updatedAt:'x'});
 const size=(id='s',profileId='p')=>({id,profileId,kind:'standard_size',category:'Footwear',label:'Shoe size',sizingSystem:'UK',sizeValue:'9',recordedAt:'x',sourceType:'manual',visibility:'private',createdAt:'x',updatedAt:'x'});
 const profile=(id='p')=>({id,displayName:id,profileType:'independent',createdAt:'x',updatedAt:'x'});
-const data=(schemaVersion=5)=>({schemaVersion,activeProfileId:'p',activeActorProfileId:'p',profiles:[profile()],measurements:[measurement()],standardSizes:[size()],brandFits:[],families:[],familyMemberships:[],adultConnections:[],sharingGrants:[]});
+const data=(schemaVersion=7)=>({schemaVersion,activeProfileId:'p',activeActorProfileId:'p',profiles:[profile()],measurements:[measurement()],standardSizes:[size()],brandFits:[],families:[],familyMemberships:[],adultConnections:[],sharingGrants:[],importedFitCards:[]});
 const memory=()=>{const values=new Map();return{values,getItem:key=>values.get(key)??null,setItem:(key,val)=>values.set(key,val),removeItem:key=>values.delete(key)}};
 
 test('schema-3 canonical mapping requires permitted units and no same-profile collision',()=>{
@@ -19,7 +19,7 @@ test('schema-3 canonical mapping requires permitted units and no same-profile co
   assert.equal(result.status,'ok');
   assert.deepEqual(result.data.measurements.map(record=>record.canonicalFactId),[undefined,undefined,'measurement.height',undefined]);
   assert.deepEqual(result.data.standardSizes.map(record=>record.canonicalFactId),['size.shoe-size','size.shoe-size']);
-  assert.deepEqual(raw,before); assert.equal(result.data.schemaVersion,5);
+  assert.deepEqual(raw,before); assert.equal(result.data.schemaVersion,7);
 });
 
 test('invalid version discriminators are corrupt and finite unknown versions are unsupported without mutation',()=>{
@@ -61,9 +61,9 @@ test('canonical measurement and standard-size labels are validated but custom la
 });
 
 test('backup export refuses unsafe repository states and preserves raw storage',()=>{
-  for(const raw of [{schemaVersion:5,bad:true},{schemaVersion:99,future:true}]){
+  for(const raw of [{schemaVersion:7,bad:true},{schemaVersion:99,future:true}]){
     const local=memory();local.setItem('sigma.data.v1',JSON.stringify(raw));const before=local.getItem('sigma.data.v1');
     const service=new SigmaService(new LocalStorageRepository(local));assert.throws(()=>service.exportBackup());assert.equal(local.getItem('sigma.data.v1'),before);
   }
-  const local=memory();const service=new SigmaService(new LocalStorageRepository(local));assert.equal(service.exportBackup().schemaVersion,5);
+  const local=memory();const service=new SigmaService(new LocalStorageRepository(local));assert.equal(service.exportBackup().schemaVersion,7);
 });

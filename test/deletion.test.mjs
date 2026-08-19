@@ -120,6 +120,6 @@ test('schema 4 stored data still migrates losslessly to the current schema',()=>
   const legacy={...service.snapshot(),schemaVersion:4};
   const result=migrateStoredData(legacy);
   assert.equal(result.status,'ok');
-  assert.equal(result.data.schemaVersion,5);
+  assert.equal(result.data.schemaVersion,7);
   assert.equal(result.data.measurements.length,1);
 });
