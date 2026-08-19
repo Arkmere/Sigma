@@ -6,7 +6,7 @@ export const navigationItems: ReadonlyArray<{
   shortLabel: string;
   icon: string;
 }> = [
-  { id: 'profiles', label: 'Profiles', shortLabel: 'Profiles', icon: '◌' },
+  { id: 'profiles', label: 'Home', shortLabel: 'Home', icon: '◌' },
   { id: 'measurements', label: 'Measurements & Sizes', shortLabel: 'Records', icon: '⌁' },
   { id: 'family', label: 'Family', shortLabel: 'Family', icon: '⌂' },
   { id: 'sources', label: 'Sources', shortLabel: 'Sources', icon: '⊕' },

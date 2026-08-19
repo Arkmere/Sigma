@@ -1,22 +1,25 @@
 :root {
   color-scheme: light;
   --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --bg: #f4f0e8;
-  --bg-subtle: #eae5da;
-  --surface: #fdfaf3;
-  --surface-elevated: #fffdf8;
-  --text: #202725;
-  --text-muted: #59635f;
-  --accent: #28766f;
-  --accent-strong: #1f625d;
-  --accent-contrast: #f8fffd;
-  --border: #d6d0c4;
-  --focus: #237c74;
+  /* A balance between Sigma's original warm cream and a cooler, more instrument-like neutral: */
+  /* still faintly warm so it doesn't read as sterile, but far closer to neutral grey than before. */
+  --bg: #f2f0eb;
+  --bg-subtle: #e7e4dd;
+  --surface: #faf9f5;
+  --surface-elevated: #ffffff;
+  --text: #1d2422;
+  --text-muted: #565f5c;
+  --accent: #1f8177;
+  --accent-strong: #166058;
+  --accent-contrast: #f5fffd;
+  --border: #d7d3ca;
+  --focus: #1f8177;
   --success: #31714b;
   --error: #9c342b;
-  --shadow: 0 8px 24px rgba(29, 36, 35, 0.06);
-  --radius-lg: 28px;
-  --radius-md: 18px;
+  --shadow: 0 4px 16px rgba(20, 24, 23, 0.05);
+  --radius-lg: 20px;
+  --radius-md: 12px;
+  --radius-pill: 14px;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
   --space-4: 1rem;
@@ -32,7 +35,7 @@ html[data-theme='dark'] {
   --surface-elevated: #202825;
   --text: #f2efe8;
   --text-muted: #aeb8b3;
-  --accent: #4e9d95;
+  --accent: #48a89d;
   --accent-strong: #86c8c1;
   --accent-contrast: #07100f;
   --border: #33403d;
@@ -165,7 +168,7 @@ nav button {
   width: 100%;
   min-height: 3rem;
   border: 1px solid transparent;
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: transparent;
   color: var(--text-muted);
   display: flex;
@@ -290,7 +293,7 @@ nav button.active {
   align-items: center;
   gap: 0.5rem;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 0.65rem 1rem;
   background: var(--surface-elevated);
   cursor: pointer;
@@ -424,7 +427,7 @@ nav button.active {
 .context-bar span, .context-bar small { color: var(--text-muted); font-size: .78rem; }
 .context-bar label { min-width: 10rem; font-size: .78rem; }
 .context-bar small { margin-left: auto; }
-.status-badge { border: 1px solid var(--border); border-radius: 999px; padding: .4rem .65rem; color: var(--text) !important; }
+.status-badge { border: 1px solid var(--border); border-radius: var(--radius-pill); padding: .4rem .65rem; color: var(--text) !important; }
 .app-notice:empty { display: none; }
 .app-notice { border-left: 3px solid var(--accent); background: var(--surface); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-4); }
 .app-notice.error { border-color: var(--error); }
@@ -463,6 +466,17 @@ nav button.active {
 .record-empty { display: flex; align-items: center; gap: var(--space-3); }
 .summary-row { display: flex; flex-wrap: wrap; gap: var(--space-3); }
 .summary-row span { padding: .65rem .8rem; border: 1px solid var(--border); border-radius: .75rem; }
+.dashboard { margin-bottom: var(--space-6); }
+.dashboard-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-bottom: var(--space-4); }
+.dashboard-actions button { min-height: 2.9rem; }
+.dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: var(--space-4); }
+.dashboard-grid section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-4); }
+.dashboard-grid h3 { margin: 0 0 var(--space-3); font-size: .95rem; }
+.dashboard-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.dashboard-list li { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); padding: .55rem 0; border-bottom: 1px solid var(--border); }
+.dashboard-list li:last-child { border-bottom: 0; }
+.dashboard-list strong { font-variant-numeric: tabular-nums; }
+.dashboard-categories strong { color: var(--text-muted); font-weight: 500; }
 .future-source-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: var(--space-2); }
 .value-label { display: block; color: var(--text-muted); font-size: .75rem; text-align: right; }
 .form-panel { margin-bottom: var(--space-5); }
@@ -574,8 +588,18 @@ nav button.active {
 
 .record-value {
   color: var(--accent-strong);
-  font-size: clamp(1.4rem, 3vw, 1.85rem);
+  font-size: clamp(1.5rem, 3.4vw, 2rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+/* The recorded number is the fact; its unit/system is a quiet qualifier, never competing with it. */
+.record-unit {
+  margin-left: 0.3em;
+  font-size: 0.52em;
+  font-weight: 500;
+  color: var(--text-muted);
 }
 
 .profile-banner,
@@ -783,7 +807,7 @@ summary {
   border-bottom: 1px solid var(--border);
 }
 
-.history-value { font-size: 1.05rem; }
+.history-value { font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .history-status { color: var(--text-muted); font-weight: 700; }
 .corrected-entry .history-status { color: var(--error); }
 
